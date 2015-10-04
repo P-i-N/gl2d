@@ -1,7 +1,7 @@
 #pragma once
 
-#include <gl/GL.h>
 #include <windows.h>
+#include <gl/GL.h>
 
 namespace gl2d {
 
@@ -107,7 +107,7 @@ struct shader
 {
   const api &gl_api;
 
-  shader(const api &glapi)
+  explicit shader(const api &glapi)
     : gl_api(glapi)
   {
 
