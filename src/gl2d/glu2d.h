@@ -1,7 +1,8 @@
 #pragma once
 
+#include <map>
 #include <memory>
-#include <vector>
+#include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -11,44 +12,24 @@
 #define _TEXT
 #endif
 #else
+
 #endif
 
 namespace gl2d {
 
-class application;
+typedef unsigned window_id_t;
 
-class window : public std::enable_shared_from_this<window>
+struct window_flag
 {
-  friend class application;
-  struct protection_tag { };
-  application &_app;
-
-public:
-  enum flag
+  enum 
   {
     none = 0,
     resizable = 1,
     fullscreen = 2
   };
-
-  static const unsigned default_flags = resizable;
-
-  window(const protection_tag &tag, application &app, const std::string &title, int width, int height, unsigned flags = default_flags);
-
-  virtual ~window();
-
-  void close();
-
-#ifdef _WIN32
-  HWND handle() const { return _hWnd; }
-
-private:
-  int wnd_proc(UINT message, WPARAM wParam, LPARAM lParam);
-
-  HWND _hWnd;
-#else
-#endif
 };
+
+static const unsigned default_flags = window_flag::resizable;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -78,27 +59,21 @@ public:
 #endif
   }
 
-  typedef std::vector<std::shared_ptr<window>> windows_t;
-
-  windows_t &windows() { return _windows; }
-
-  const windows_t &windows() const { return _windows; }
-
-  std::shared_ptr<window> open_window(const std::string &title, int width, int height, unsigned flags = window::default_flags)
+  window_id_t open_window(const std::string &title, int width, int height, unsigned flags = default_flags)
   {
-    auto result = std::make_shared<window>(window::protection_tag(), *this, title, width, height, flags);
-    _windows.push_back(result);
+    auto id = _next_id++;
+    _windows[id] = std::make_unique<window>(this, id, title, width, height, flags);
 
-    return result;
+    return id;
   }
 
-  bool close_window(const std::shared_ptr<window> ptr)
+  bool close_window(window_id_t id)
   {
-    auto iter = std::find(_windows.begin(), _windows.end(), ptr);
-
+    auto iter = _windows.find(id);
     if (iter != _windows.end())
     {
       _windows.erase(iter);
+      _should_quit |= _windows.empty();      
       return true;
     }
 
@@ -108,27 +83,73 @@ public:
   void run()
   {
 #ifdef _WIN32
-  MSG msg = { 0 };
-
-	while (GetMessage(&msg, nullptr, 0, 0) > 0)
-		DispatchMessage(&msg);
+    MSG msg = { 0 };
+    while (!_should_quit)
+    {
+      if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+      {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+      }
+      else
+        tick();
+    }
 #else
+
 #endif
   }
 
 private:
-  friend class window;
+  struct window
+  {
+    application *app;
+
+    window_id_t id;
+
+    window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_flags);
+
+    virtual ~window();
+
+#ifdef _WIN32
+    HWND _handle;
+#else
+
+#endif
+  };
 
   bool _should_quit = false;
 
+  unsigned _next_id = 1;
+
+  typedef std::map<window_id_t, std::unique_ptr<window>> windows_t;
+
   windows_t _windows;
+
+  void tick()
+  {
+    std::this_thread::yield();
+  }
 
 #ifdef _WIN32
   LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
-    for (auto w : _windows)
-      if (w->handle() == hWnd)
-        return w->wnd_proc(message, wParam, lParam);
+    for (auto &kvp : _windows)
+    {
+      if (kvp.second->_handle == hWnd)
+      {
+        switch (message)
+        {
+          case WM_CLOSE:
+            close_window(kvp.first);
+            return 0;
+
+          default:
+            break;
+        }
+      
+        break;
+      }
+    }
 
     return DefWindowProc(hWnd, message, wParam, lParam);
   }
@@ -141,15 +162,17 @@ private:
 
   WNDCLASS _window_class;
 #else
+
 #endif
 };
 
-inline window::window(const protection_tag &tag, application &app, const std::string &title, int width, int height, unsigned flags)
-  : _app(app)
+inline application::window::window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
+  : app(a)
+  , id(win_id)
 {
 #ifdef _WIN32
-  _hWnd = CreateWindow(_app._window_class.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-  SetWindowLongPtr(_hWnd, GWL_USERDATA, reinterpret_cast<LONG>(&app));
+  _handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+  SetWindowLongPtr(_handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
 
 	PIXELFORMATDESCRIPTOR pfd =
 	{
@@ -163,7 +186,7 @@ inline window::window(const protection_tag &tag, application &app, const std::st
 		0, PFD_MAIN_PLANE, 0, 0, 0, 0
 	};
  
-	HDC ourWindowHandleToDeviceContext = GetDC(_hWnd);
+	HDC ourWindowHandleToDeviceContext = GetDC(_handle);
 
 	int  letWindowsChooseThisPixelFormat;
 	letWindowsChooseThisPixelFormat = ChoosePixelFormat(ourWindowHandleToDeviceContext, &pfd); 
@@ -173,35 +196,17 @@ inline window::window(const protection_tag &tag, application &app, const std::st
 	wglMakeCurrent(ourWindowHandleToDeviceContext, ourOpenGLRenderingContext);
 
 #else
+
 #endif
 }
 
-inline window::~window()
-{
-
-}
-
-inline void window::close()
+inline application::window::~window()
 {
 #ifdef _WIN32
-  DestroyWindow(_hWnd);
+  DestroyWindow(_handle);
 #else
+
 #endif
-}
-
-inline int window::wnd_proc(UINT message, WPARAM wParam, LPARAM lParam)
-{
-  switch (message)
-  {
-    case WM_CLOSE:
-      _app.close_window(shared_from_this());
-      break;
-
-    default:
-      return DefWindowProc(_hWnd, message, wParam, lParam);
-  }
-
-  return 0;
 }
 
 }
