@@ -36,28 +36,10 @@ static const unsigned default_flags = window_flag::resizable;
 class application
 {
 public:
-  application()
-  {
-#ifdef _WIN32
-    _window_class = { 0 };
-    _window_class.lpfnWndProc = wnd_proc_shared;
-    _window_class.hInstance = GetModuleHandle(nullptr);
-    _window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND);
-    _window_class.lpszClassName = _TEXT"gl2d_window";
-    _window_class.style = CS_OWNDC;
-    RegisterClass(&_window_class);
-#else
+  application();
+  ~application();
 
-#endif
-  }
-
-  virtual ~application()
-  {
-#ifdef _WIN32
-    UnregisterClass(_TEXT"gl2d_window", _window_class.hInstance);
-#else
-#endif
-  }
+  void run();
 
   window_id_t open_window(const std::string &title, int width, int height, unsigned flags = default_flags)
   {
@@ -80,101 +62,93 @@ public:
     return false;
   }
 
-  void run()
-  {
-#ifdef _WIN32
-    MSG msg = { 0 };
-    while (!_should_quit)
-    {
-      if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-      {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-      }
-      else
-        tick();
-    }
-#else
-
-#endif
-  }
-
 private:
-  struct window
+  struct basic_window
   {
     application *app;
-
     window_id_t id;
 
-    window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_flags);
+    basic_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_flags)
+      : app(a)
+      , id(win_id)
+    {
+      
+    }
 
-    virtual ~window();
-
-#ifdef _WIN32
-    HWND handle;
-
-    HDC hdc;
-
-    HGLRC hglrc;
-#else
-
-#endif
+    virtual ~basic_window() { }
   };
 
-  bool _should_quit = false;
+#ifdef _WIN32
+  struct window : basic_window
+  {
+    HWND handle;
+    HDC hdc;
+    HGLRC hglrc;
 
+    window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_flags);
+    virtual ~window();
+  };
+
+  LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+  static LRESULT CALLBACK wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+  WNDCLASS _window_class;
+#endif
+
+  bool _should_quit = false;
   unsigned _next_id = 1;
 
   typedef std::map<window_id_t, std::unique_ptr<window>> windows_t;
-
   windows_t _windows;
 
   void tick()
   {
     std::this_thread::yield();
   }
-
-#ifdef _WIN32
-  LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-  {
-    for (auto &kvp : _windows)
-    {
-      if (kvp.second->handle == hWnd)
-      {
-        switch (message)
-        {
-          case WM_CLOSE:
-            close_window(kvp.first);
-            return 0;
-
-          default:
-            break;
-        }
-      
-        break;
-      }
-    }
-
-    return DefWindowProc(hWnd, message, wParam, lParam);
-  }
-
-  static LRESULT CALLBACK wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-  {
-    auto app = reinterpret_cast<application *>(GetWindowLongPtr(hWnd, GWL_USERDATA));
-    return app ? app->wnd_proc(hWnd, message, wParam, lParam) : DefWindowProc(hWnd, message, wParam, lParam);
-  }
-
-  WNDCLASS _window_class;
-#else
-
-#endif
 };
 
-inline application::window::window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
-  : app(a)
-  , id(win_id)
-{
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #ifdef _WIN32
+
+//---------------------------------------------------------------------------------------------------------------------
+inline application::application()
+{
+  _window_class = { 0 };
+  _window_class.lpfnWndProc = wnd_proc_shared;
+  _window_class.hInstance = GetModuleHandle(nullptr);
+  _window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND);
+  _window_class.lpszClassName = _TEXT"gl2d_window";
+  _window_class.style = CS_OWNDC;
+  RegisterClass(&_window_class);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline application::~application()
+{
+  UnregisterClass(_TEXT"gl2d_window", _window_class.hInstance);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline void application::run()
+{
+  MSG msg = { 0 };
+  while (!_should_quit)
+  {
+    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+    else
+      tick();
+  }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline application::window::window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
+  : basic_window(a, win_id, title, width, height, flags)
+{
   handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
   SetWindowLongPtr(handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
 
@@ -197,20 +171,50 @@ inline application::window::window(application *a, window_id_t win_id, const std
  
 	hglrc = wglCreateContext(hdc);
 	wglMakeCurrent(hdc, hglrc);
-
-#else
-
-#endif
 }
 
+//---------------------------------------------------------------------------------------------------------------------
 inline application::window::~window()
 {
-#ifdef _WIN32
   wglDeleteContext(hglrc);
   DestroyWindow(handle);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+  for (auto &kvp : _windows)
+  {
+    if (kvp.second->handle == hWnd)
+    {
+      switch (message)
+      {
+        case WM_CLOSE:
+          close_window(kvp.first);
+          return 0;
+
+        default:
+          break;
+      }
+      
+      break;
+    }
+  }
+
+  return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline LRESULT CALLBACK application::wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+  auto app = reinterpret_cast<application *>(GetWindowLongPtr(hWnd, GWL_USERDATA));
+  return app ? app->wnd_proc(hWnd, message, wParam, lParam) : DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #else
 
 #endif
-}
 
 }
