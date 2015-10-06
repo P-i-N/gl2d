@@ -111,7 +111,11 @@ private:
     virtual ~window();
 
 #ifdef _WIN32
-    HWND _handle;
+    HWND handle;
+
+    HDC hdc;
+
+    HGLRC hglrc;
 #else
 
 #endif
@@ -135,7 +139,7 @@ private:
   {
     for (auto &kvp : _windows)
     {
-      if (kvp.second->_handle == hWnd)
+      if (kvp.second->handle == hWnd)
       {
         switch (message)
         {
@@ -171,8 +175,8 @@ inline application::window::window(application *a, window_id_t win_id, const std
   , id(win_id)
 {
 #ifdef _WIN32
-  _handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-  SetWindowLongPtr(_handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
+  handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+  SetWindowLongPtr(handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
 
 	PIXELFORMATDESCRIPTOR pfd =
 	{
@@ -186,14 +190,13 @@ inline application::window::window(application *a, window_id_t win_id, const std
 		0, PFD_MAIN_PLANE, 0, 0, 0, 0
 	};
  
-	HDC ourWindowHandleToDeviceContext = GetDC(_handle);
+	hdc = GetDC(handle);
 
-	int  letWindowsChooseThisPixelFormat;
-	letWindowsChooseThisPixelFormat = ChoosePixelFormat(ourWindowHandleToDeviceContext, &pfd); 
-	SetPixelFormat(ourWindowHandleToDeviceContext,letWindowsChooseThisPixelFormat, &pfd);
+	int pf = ChoosePixelFormat(hdc, &pfd); 
+	SetPixelFormat(hdc, pf, &pfd);
  
-	HGLRC ourOpenGLRenderingContext = wglCreateContext(ourWindowHandleToDeviceContext);
-	wglMakeCurrent(ourWindowHandleToDeviceContext, ourOpenGLRenderingContext);
+	hglrc = wglCreateContext(hdc);
+	wglMakeCurrent(hdc, hglrc);
 
 #else
 
@@ -203,7 +206,8 @@ inline application::window::window(application *a, window_id_t win_id, const std
 inline application::window::~window()
 {
 #ifdef _WIN32
-  DestroyWindow(_handle);
+  wglDeleteContext(hglrc);
+  DestroyWindow(handle);
 #else
 
 #endif
