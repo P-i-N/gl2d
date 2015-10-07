@@ -5,8 +5,7 @@ gl2d::application app;
 
 int main()
 {
-  auto window = app.open_window("Test window", 800, 600);
-
+  app.open_window("Test platform_window", 800, 600);
   app.run();
   return 0;
 }
