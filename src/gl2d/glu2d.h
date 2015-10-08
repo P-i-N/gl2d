@@ -7,6 +7,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <windowsx.h>
 #ifdef UNICODE
 #define _TEXT L
 #else
@@ -28,33 +29,12 @@ struct window_flag
   {
     none = 0,
     resizable = 1,
-    fullscreen = 2
+    fullscreen = 2,
+    title = 4,
   };
 };
 
-static const unsigned default_window_flags = window_flag::resizable;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct window
-{
-  application *app;
-  window_id_t id;
-  std::string title;
-  int width, height;
-
-  window(application *a, window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags)
-    : app(a)
-    , id(win_id)
-    , title(win_title)
-    , width(win_width)
-    , height(win_height)
-  {
-      
-  }
-
-  virtual ~window() { }
-};
+static const unsigned default_window_flags = window_flag::resizable | window_flag::title;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -100,30 +80,71 @@ enum class event_type
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct mod_flag
+{
+  enum
+  {
+    none = 0,
+    alt = 1,
+    control = 2,
+    shift = 4,
+    mouse_left = 8,
+    mouse_right = 16,
+  };
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct event
 {
   event_type type;
-  const gl2d::window &window;
+  window_id_t window_id;
   double time;
   double delta;
-  bool used = false;
+  unsigned mods = mod_flag::none;
 
   union
   {
-    struct { unsigned mods; key key; char key_char; } keyboard;
+    struct { key key; char key_char; } keyboard;
     struct { int width, height; } resize;
     struct { int x, y, dx, dy; mouse_button button; } mouse;
   };
 
-  event(event_type et, const gl2d::window &w, double t, double d)
+  event(event_type et, window_id_t id, double t, double d)
     : type(et)
-    , window(w)
+    , window_id(id)
     , time(t)
     , delta(d)
   {
     
   }
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+struct window
+{
+  application *app;
+  window_id_t id;
+  std::string title;
+  int width, height;
+
+  window(application *a, window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags)
+    : app(a)
+    , id(win_id)
+    , title(win_title)
+    , width(win_width)
+    , height(win_height)
+  {
+      
+  }
+
+  virtual ~window() { }
+};
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -135,18 +156,19 @@ public:
 
   void run();
 
-  window_id_t open_window(const std::string &title, int width, int height, unsigned flags = default_window_flags)
+  window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags)
   {
     auto id = _next_id++;
     _windows[id] = std::make_unique<platform_window>(this, id, title, width, height, flags);
     return id;
   }
 
-  bool close_window(window_id_t id)
+  bool window_close(window_id_t id)
   {
     auto iter = _windows.find(id);
     if (iter != _windows.end())
     {
+      send({ event_type::close, iter->second->id, _time, _delta });
       _windows.erase(iter);
       _should_quit |= _windows.empty();      
       return true;
@@ -155,38 +177,77 @@ public:
     return false;
   }
 
-  typedef std::function<void(event &)> event_handler_t;
+  void set_window_title(window_id_t id, const std::string &text)
+  {
+    auto iter = _windows.find(id);
+    if (iter != _windows.end())
+      iter->second->set_title(text);
+  }
 
-  void event_handler(const event_handler_t &handler) { _event_handler = handler; }
+  const std::string &window_title(window_id_t id) const
+  {
+    auto iter = _windows.find(id);
+    if (iter != _windows.end())
+      return iter->second->title;
+
+    static const std::string empty_title = "";
+    return empty_title;
+  }
+
+  void set_window_size(window_id_t id, int width, int height)
+  {
+    auto iter = _windows.find(id);
+    if (iter != _windows.end())
+      iter->second->set_size(width, height);
+  }
+
+  typedef std::function<void(const event &)> event_handler_t;
+
+  void set_event_handler(const event_handler_t &handler) { _event_handler = handler; }
   const event_handler_t &event_handler() const { return _event_handler; }
   
-  virtual void on_event(event &e) { }
-
-private:
+protected:
+  virtual void on_event(const event &e) { }
   
+private:
 #ifdef _WIN32
-  struct platform_window : window
+  struct platform_window : detail::window
   {
     HWND handle;
     HDC hdc;
     HGLRC hglrc;
+    DWORD style;
 
     platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_window_flags);
     virtual ~platform_window();
+
+    void flip();
+    void set_title(const std::string &text);
+    void set_size(int w, int h);
   };
 
   LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
   static LRESULT CALLBACK wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-
+  
   WNDCLASS _window_class;
 #endif
 
   bool _should_quit = false;
   unsigned _next_id = 1;
 
+  double _time = 0.0;
+  double _delta = 0.0;
+
   typedef std::map<window_id_t, std::unique_ptr<platform_window>> windows_t;
   windows_t _windows;
   event_handler_t _event_handler;
+
+  void send(const event &e)
+  {
+    on_event(e);
+    if (_event_handler != nullptr)
+      _event_handler(e);
+  }
 
   void tick()
   {
@@ -194,13 +255,10 @@ private:
 
     for (auto &kvp : _windows)
     {
-      event e(event_type::tick, *kvp.second, time, delta);
-      on_event(e);
-
-      if (!e.used && _event_handler != nullptr)
-        _event_handler(e);
+      send({ event_type::tick, kvp.second->id, time, delta });
+      kvp.second->flip();
     }
-
+    
     std::this_thread::yield();
   }
 };
@@ -218,6 +276,7 @@ inline application::application()
   _window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND);
   _window_class.lpszClassName = _TEXT"gl2d_window";
   _window_class.style = CS_OWNDC;
+  _window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
   RegisterClass(&_window_class);
 }
 
@@ -247,7 +306,15 @@ inline void application::run()
 inline application::platform_window::platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
   : window(a, win_id, title, width, height, flags)
 {
-  handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, width, height, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+  style =  WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+
+  RECT adjustedRect;
+  adjustedRect.top = adjustedRect.left = 0;
+  adjustedRect.right = width;
+  adjustedRect.bottom = height;
+  AdjustWindowRectEx(&adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0);
+
+  handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
   SetWindowLongPtr(handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
 
 	PIXELFORMATDESCRIPTOR pfd =
@@ -279,6 +346,36 @@ inline application::platform_window::~platform_window()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+inline void application::platform_window::flip()
+{
+  SwapBuffers(hdc);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline void application::platform_window::set_title(const std::string &text)
+{
+  
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline void application::platform_window::set_size(int w, int h)
+{
+  if (width != w || height != h)
+  {
+    width = w;
+    height = h;
+    RECT rect;
+    GetClientRect(handle, &rect);
+    int x = rect.left;
+    int y = rect.top;
+    rect.right = rect.left + w;
+    rect.bottom = rect.top + h;
+    AdjustWindowRectEx(&rect, style & ~WS_OVERLAPPED, FALSE, 0);
+    SetWindowPos(handle, handle, x, y, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOREPOSITION);
+  }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   for (auto &kvp : _windows)
@@ -287,8 +384,31 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
     {
       switch (message)
       {
+        case WM_MOUSEMOVE:
+        {
+          event e(event_type::mouse_move, kvp.second->id, _time, _delta);
+          e.mouse.x = GET_X_LPARAM(lParam);
+          e.mouse.y = GET_Y_LPARAM(lParam);
+          send(e);
+        }
+        return 0;
+
+        case WM_SIZE:
+        {
+          event e(event_type::resize, kvp.second->id, _time, _delta);
+          e.resize.width = LOWORD(lParam);
+          e.resize.height = HIWORD(lParam);
+          send(e);
+          //tick();
+        }
+        break;
+
+        case WM_SIZING:
+          tick();
+          break;
+
         case WM_CLOSE:
-          close_window(kvp.first);
+          window_close(kvp.first);
           return 0;
 
         default:
