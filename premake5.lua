@@ -1,6 +1,6 @@
 -- Define list of projects in this solution. Supported parameters and default values:
 --
---     dir - required parameter
+--     dir - required parameter, directory containing source files
 --
 --     type ("lib") - console application ("console")
 --                  - windowed application ("windowed")
@@ -59,59 +59,59 @@ end
 -- Generate named project using defined params
 function generateProject(params)
 
-	local name = group().current.filename
-	local projectGroup = group().group
-	
-	print("Generating project: " .. projectGroup .. "/" .. name)
-	
-	function getParam(key, default)
-		local result = params[key]
-		if result == nil then	return default end
-		return result
-	end
-	
-	local _type = getParam("type", "lib")
-	local _language = getParam("language", "C++")
-	local _include_current = getParam("include_current", false)
-	local _name = getParam("name", "")
-	local _shared_macro = getParam("shared_macro", "BUILDING")
+  local name = group().current.filename
+  local projectGroup = group().group
+  
+  print("Generating project: " .. projectGroup .. "/" .. name)
+  
+  function getParam(key, default)
+    local result = params[key]
+    if result == nil then return default end
+    return result
+  end
+  
+  local _type = getParam("type", "lib")
+  local _language = getParam("language", "C++")
+  local _include_current = getParam("include_current", false)
+  local _name = getParam("name", "")
+  local _shared_macro = getParam("shared_macro", "BUILDING")
   local _links = getParam("links", { })
   local _windows_links = getParam("windows_links", { })
   local _linux_links = getParam("linux_links", { })
   local _include = getParam("include", { })
   local _configure_callback = getParam("configure_callback", nil)
 
-	language(_language)
-	
-	if _type == "lib" then
-		filter { "configurations:Static*" }
-			kind "StaticLib"
-		filter { "configurations:DLL*" }
-			kind "SharedLib"
-			defines { _shared_macro }
-		filter { }
-	elseif _type == "console" then
-		kind "ConsoleApp"
-	elseif _type == "windowed" then
-		kind "WindowedApp"
-	elseif _type == "static" then
-		kind "StaticLib"
-	elseif _type == "dynamic" then
-		kind "SharedLib"
-		defines { _shared_macro }
-	elseif _type == "app" then
-		filter { "configurations:*Debug" }
-			kind "ConsoleApp"
-		filter { "configurations:*Release" }
-			kind "WindowedApp"
-		filter { }
-	end
-	
-	files { "**.c", "**.cc", "**.cpp", "**.h", "**.hpp", "**.inl" }
-	
-	if _name ~= "" then
-		targetname(_name)
-	end
+  language(_language)
+  
+  if _type == "lib" then
+    filter { "configurations:Static*" }
+      kind "StaticLib"
+    filter { "configurations:DLL*" }
+      kind "SharedLib"
+      defines { _shared_macro }
+    filter { }
+  elseif _type == "console" then
+    kind "ConsoleApp"
+  elseif _type == "windowed" then
+    kind "WindowedApp"
+  elseif _type == "static" then
+    kind "StaticLib"
+  elseif _type == "dynamic" then
+    kind "SharedLib"
+    defines { _shared_macro }
+  elseif _type == "app" then
+    filter { "configurations:*Debug" }
+      kind "ConsoleApp"
+    filter { "configurations:*Release" }
+      kind "WindowedApp"
+    filter { }
+  end
+  
+  files { "**.c", "**.cc", "**.cpp", "**.h", "**.hpp", "**.inl" }
+  
+  if _name ~= "" then
+    targetname(_name)
+  end
   
   links(_links)
   includedirs(_include)
@@ -127,7 +127,7 @@ function generateProject(params)
   if _configure_callback ~= nil then
     _configure_callback(params)
   end
-	
+  
 end
 
 -----------------------------------------------------------------------------------------------------------------------
