@@ -5,14 +5,10 @@
 #include <memory>
 #include <thread>
 
+#include "gl2d.h"
+
 #ifdef _WIN32
-#include <windows.h>
 #include <windowsx.h>
-#ifdef UNICODE
-#define _TEXT L
-#else
-#define _TEXT
-#endif
 #else
 
 #endif
@@ -52,7 +48,9 @@ enum class key
   insert, del,
   home, end,
   page_up, page_down,
-  f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12
+  f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
+
+  last
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +62,9 @@ enum class mouse_button
   wheel_up, wheel_down,
   wheel_left, wheel_right,
   special_0, special_1,
-  back, forward
+  back, forward,
+
+  last
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +230,10 @@ private:
   static LRESULT CALLBACK wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
   
   WNDCLASS _window_class;
+
+  uint64_t _timer_offset = 0;
+  uint64_t _timer_frequency = 0;
+  uint64_t _last_timer_counter = 0;
 #endif
 
   bool _should_quit = false;
@@ -242,6 +246,8 @@ private:
   windows_t _windows;
   event_handler_t _event_handler;
 
+  void update_timer();
+
   void send(const event &e)
   {
     on_event(e);
@@ -251,11 +257,11 @@ private:
 
   void tick()
   {
-    double time = 0.0, delta = 0.0;
+    update_timer();
 
     for (auto &kvp : _windows)
     {
-      send({ event_type::tick, kvp.second->id, time, delta });
+      send({ event_type::tick, kvp.second->id, _time, _delta });
       kvp.second->flip();
     }
     
@@ -274,7 +280,7 @@ inline application::application()
   _window_class.lpfnWndProc = wnd_proc_shared;
   _window_class.hInstance = GetModuleHandle(nullptr);
   _window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND);
-  _window_class.lpszClassName = _TEXT"gl2d_window";
+  _window_class.lpszClassName = TEXT("gl2d_window");
   _window_class.style = CS_OWNDC;
   _window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
   RegisterClass(&_window_class);
@@ -283,12 +289,19 @@ inline application::application()
 //---------------------------------------------------------------------------------------------------------------------
 inline application::~application()
 {
-  UnregisterClass(_TEXT"gl2d_window", _window_class.hInstance);
+  UnregisterClass(TEXT("gl2d_window"), _window_class.hInstance);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 inline void application::run()
 {
+  LARGE_INTEGER li;
+  QueryPerformanceCounter(&li);
+  _timer_offset = li.QuadPart;
+
+  QueryPerformanceFrequency(&li);
+  _timer_frequency = li.QuadPart;
+
   MSG msg = { 0 };
   while (!_should_quit)
   {
@@ -376,6 +389,17 @@ inline void application::platform_window::set_size(int w, int h)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+inline void application::update_timer()
+{
+  LARGE_INTEGER li;
+  QueryPerformanceCounter(&li);
+
+  _time = static_cast<double>(li.QuadPart - _timer_offset) / static_cast<double>(_timer_frequency);
+  _delta = static_cast<double>(li.QuadPart - _timer_offset - _last_timer_counter) / static_cast<double>(_timer_frequency);
+  _last_timer_counter = li.QuadPart;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   for (auto &kvp : _windows)
@@ -399,7 +423,6 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
           e.resize.width = LOWORD(lParam);
           e.resize.height = HIWORD(lParam);
           send(e);
-          //tick();
         }
         break;
 

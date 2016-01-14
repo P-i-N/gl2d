@@ -12,20 +12,33 @@ struct vec2
   float x = 0.0f, y = 0.0f;
 
   vec2() { }
+  vec2(const vec2 &copy): x(copy.x), y(copy.y) { }
+  vec2(float _x, float _y): x(_x), y(_y) { }
 
-  vec2(const vec2 &copy)
-    : x(copy.x)
-    , y(copy.y)
-  {
-    
-  }
+  vec2 operator+(const vec2 &v) const { return vec2(x + v.x, y + v.y); }
+  vec2 operator-(const vec2 &v) const { return vec2(x - v.x, y - v.y); }
+  vec2 operator*(const vec2 &v) const { return vec2(x * v.x, y * v.y); }
+  vec2 operator/(const vec2 &v) const { return vec2(x / v.x, y / v.y); }
 
-  vec2(float _x, float _y)
-    : x(_x)
-    , y(_y)
-  {
-    
-  }
+  vec2 operator+(float v) const { return vec2(x + v, y + v); }
+  vec2 operator-(float v) const { return vec2(x - v, y - v); }
+  vec2 operator*(float v) const { return vec2(x * v, y * v); }
+  vec2 operator/(float v) const { return vec2(x / v, y / v); }
+
+  friend vec2 operator+(float v, const vec2 &vec) { return vec2(v + vec.x, v + vec.y); }
+  friend vec2 operator-(float v, const vec2 &vec) { return vec2(v - vec.x, v - vec.y); }
+  friend vec2 operator*(float v, const vec2 &vec) { return vec2(v * vec.x, v * vec.y); }
+  friend vec2 operator/(float v, const vec2 &vec) { return vec2(v / vec.x, v / vec.y); }
+
+  vec2 &operator+=(const vec2 &v) { x += v.x; y += v.y; return *this; }
+  vec2 &operator-=(const vec2 &v) { x -= v.x; y -= v.y; return *this; }
+  vec2 &operator*=(const vec2 &v) { x *= v.x; y *= v.y; return *this; }
+  vec2 &operator/=(const vec2 &v) { x /= v.x; y /= v.y; return *this; }
+
+  vec2 &operator+=(float v) { x += v; y += v; return *this; }
+  vec2 &operator-=(float v) { x -= v; y -= v; return *this; }
+  vec2 &operator*=(float v) { x *= v; y *= v; return *this; }
+  vec2 &operator/=(float v) { x /= v; y /= v; return *this; }
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,10 +118,10 @@ struct vbo
 
 struct shader
 {
-  const api &gl_api;
+  const api &gl;
 
   explicit shader(const api &glapi)
-    : gl_api(glapi)
+    : gl(glapi)
   {
 
   }
@@ -131,7 +144,7 @@ class context
 {
 public:
   context()
-    : _shader(_api)
+    : _shader(_gl)
   {
 
   }
@@ -166,7 +179,7 @@ public:
   }
 
 private:
-  detail::api _api;
+  detail::api _gl;
 
   detail::shader _shader;
 

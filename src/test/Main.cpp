@@ -34,7 +34,6 @@ int main()
 {
   app.set_event_handler(on_event);
   auto id = app.window_open("Test platform_window", 800, 600);
-  app.set_window_size(id, 400, 300);
 
   app.run();
   return 0;
