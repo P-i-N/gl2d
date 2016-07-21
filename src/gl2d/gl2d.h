@@ -25,7 +25,7 @@ namespace gl2d {
 template <typename T>
 struct xvec2
 {
-  T x = 0.0f, y = 0.0f;
+  T x = 0, y = 0;
 
   xvec2() { }
   xvec2(const xvec2 &copy): x(copy.x), y(copy.y) { }

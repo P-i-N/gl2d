@@ -232,6 +232,15 @@ public:
       iter->second->set_size(width, height);
   }
 
+  ivec2 get_window_size(window_id_t id) const
+  {
+    auto iter = _windows.find(id);
+    if (iter != _windows.end())
+      return ivec2(iter->second->width, iter->second->height);
+
+    return ivec2();
+  }
+
   typedef std::function<void(const event &)> event_handler_t;
 
   void set_event_handler(const event_handler_t &handler) { _event_handler = handler; }
