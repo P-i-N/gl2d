@@ -189,6 +189,8 @@ static const int font_width = 288;
 static const int font_height = 42;
 static const int font_char_width = 9;
 static const int font_char_height = 14;
+static const int font_char_step = 8;
+static const int font_line_height = 12;
 
 static const char *font_base64 =
   "AAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAwADAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -503,30 +505,11 @@ public:
             if (byte & 1)
             {
               *cursorOutput = 0xFFFFFFFFu;
+              *(cursorOutput + detail::font_width + 1) = 0xFF000000u;
             }
           }
         }
       }
-      
-      /*
-      for (int ch = 0; ch < 96; ++ch)
-      {
-        uint32_t *charPixel = image + ((ch % 16) * 16) + ((ch / 16) * 16 * 256);
-        auto charBits = detail::ibm_font[ch];
-
-        for (int y = 0; y < 8; ++y, charPixel += 256)
-        {
-          for (int x = 0; x < 8; ++x, charBits >>= 1)
-          {
-            if (charBits & 1)
-            {
-              charPixel[x] = 0xFFFFFFFFu;
-              *(charPixel + x + 256 + 1) = 0xFF000000u;
-            }
-          }
-        }
-      }
-      */
 
       image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
 
@@ -854,7 +837,7 @@ private:
       else
         ++skippedChars;
 
-      x += detail::font_char_width;
+      x += detail::font_char_step;
       ++text;
       --length;
     }
