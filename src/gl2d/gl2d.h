@@ -399,8 +399,6 @@ struct state
 class context
 {
 public:
-  static context *current;
-
   context()
   {
     clear();
@@ -859,76 +857,79 @@ private:
   std::vector<detail::draw_call> _drawCalls;
 };
 
+// Global application instance
+extern context *current_context;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(const rgba_color &c)
 {
-  if (context::current)
-    context::current->color(c);
+  if (current_context)
+    current_context->color(c);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(float r, float g, float b, float a = 1.0f)
 {
-  if (context::current)
-    context::current->color(r, g, b, a);
+  if (current_context)
+    current_context->color(r, g, b, a);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(uint32_t argb)
 {
-  if (context::current)
-    context::current->color(argb);
+  if (current_context)
+    current_context->color(argb);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(const vec2 &a, const vec2 &b)
 {
-  if (context::current)
-    context::current->line(a, b);
+  if (current_context)
+    current_context->line(a, b);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(float x1, float y1, float x2, float y2)
 {
-  if (context::current)
-    context::current->line(x1, y1, x2, y2);
+  if (current_context)
+    current_context->line(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void linei(int x1, int y1, int x2, int y2)
 {
-  if (context::current)
-    context::current->linei(x1, y1, x2, y2);
+  if (current_context)
+    current_context->linei(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(const vec2 &a, const vec2 &b, bool filled = false)
 {
-  if (context::current)
-    context::current->rectangle(a, b, filled);
+  if (current_context)
+    current_context->rectangle(a, b, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(float x1, float y1, float x2, float y2, bool filled = false)
 {
-  if (context::current)
-    context::current->rectangle(x1, y1, x2, y2, filled);
+  if (current_context)
+    current_context->rectangle(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectanglei(int x1, int y1, int x2, int y2, bool filled = false)
 {
-  if (context::current)
-    context::current->rectanglei(x1, y1, x2, y2, filled);
+  if (current_context)
+    current_context->rectanglei(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void text(const vec2 &pos, const char *fmt, va_list &ap)
 {
-  if (context::current)
-    context::current->text(pos, fmt, ap);
+  if (current_context)
+    current_context->text(pos, fmt, ap);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -965,7 +966,7 @@ void text(int x, int y, const char *fmt, ...)
 
 namespace gl2d {
   
-context *context::current = nullptr;
+static context *current_context = nullptr;
 
 }
 
