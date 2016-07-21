@@ -308,6 +308,10 @@ public:
 #ifndef __GL3D_H_IMPL__
 #define __GL3D_H_IMPL__
 
+#ifdef _MSC_VER
+#pragma comment(lib, "opengl32.lib")
+#endif
+
 #include <memory>
 
 namespace gl3d {

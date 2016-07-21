@@ -225,14 +225,6 @@ public:
       gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
       gl->BindVertexArray(_vao);
       vertex2d::init_vao();
-      /*
-      gl->EnableVertexAttribArray(0);
-      gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), 0);
-      gl->EnableVertexAttribArray(1);
-      gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, color)));
-      gl->EnableVertexAttribArray(2);
-      gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, uv)));
-      */
       gl->BindVertexArray(0);
       gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
     }
@@ -734,10 +726,6 @@ void text(int x, int y, const char *fmt, ...)
 #ifdef GL3D_IMPLEMENTATION
 #ifndef __GL2D_H_IMPL__
 #define __GL2D_H_IMPL__
-
-#ifdef _MSC_VER
-#pragma comment(lib, "opengl32.lib")
-#endif
 
 namespace gl3d {
   
