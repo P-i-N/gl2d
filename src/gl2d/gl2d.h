@@ -788,61 +788,71 @@ private:
 //---------------------------------------------------------------------------------------------------------------------
 void color(const rgba_color &c)
 {
-  context::current->color(c);
+  if (context::current)
+    context::current->color(c);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(float r, float g, float b, float a = 1.0f)
 {
-  context::current->color(r, g, b, a);
+  if (context::current)
+    context::current->color(r, g, b, a);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(uint32_t argb)
 {
-  context::current->color(argb);
+  if (context::current)
+    context::current->color(argb);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(const vec2 &a, const vec2 &b)
 {
-  context::current->line(a, b);
+  if (context::current)
+    context::current->line(a, b);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(float x1, float y1, float x2, float y2)
 {
-  context::current->line(x1, y1, x2, y2);
+  if (context::current)
+    context::current->line(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void linei(int x1, int y1, int x2, int y2)
 {
-  context::current->linei(x1, y1, x2, y2);
+  if (context::current)
+    context::current->linei(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(const vec2 &a, const vec2 &b, bool filled = false)
 {
-  context::current->rectangle(a, b, filled);
+  if (context::current)
+    context::current->rectangle(a, b, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(float x1, float y1, float x2, float y2, bool filled = false)
 {
-  context::current->rectangle(x1, y1, x2, y2, filled);
+  if (context::current)
+    context::current->rectangle(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectanglei(int x1, int y1, int x2, int y2, bool filled = false)
 {
-  context::current->rectanglei(x1, y1, x2, y2, filled);
+  if (context::current)
+    context::current->rectanglei(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void text(const vec2 &pos, const char *fmt, va_list &ap)
 {
-  context::current->text(pos, fmt, ap);
+  if (context::current)
+    context::current->text(pos, fmt, ap);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
