@@ -1,72 +1,9 @@
 #ifndef __GL2D_H__
 #define __GL2D_H__
 
-#include <vector>
+#include "gl3d.h"
 
-#if !defined(GL2D_APIENTRY)
-#if defined(WIN32)
-#define GL2D_APIENTRY __stdcall
-#else
-#define GL2D_APIENTRY
-#endif
-#endif
-
-#if defined(WIN32)
-#include <windows.h>
-#else
-#endif
-
-#include <gl/GL.h>
-
-namespace gl2d {
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-struct xvec2
-{
-  T x = 0, y = 0;
-
-  xvec2() { }
-  xvec2(const xvec2 &copy): x(copy.x), y(copy.y) { }
-
-  template <typename T2>
-  xvec2(T2 v): x(static_cast<T>(v)), y(static_cast<T>(v)) { }
-
-  template <typename T2>
-  xvec2(T2 _x, T2 _y): x(static_cast<T>(_x)), y(static_cast<T>(_y)) { }
-
-  T *data() { return &x; }
-  const T *data() const { return &x; }
-
-  xvec2 operator+(const xvec2 &v) const { return xvec2(x + v.x, y + v.y); }
-  xvec2 operator-(const xvec2 &v) const { return xvec2(x - v.x, y - v.y); }
-  xvec2 operator*(const xvec2 &v) const { return xvec2(x * v.x, y * v.y); }
-  xvec2 operator/(const xvec2 &v) const { return xvec2(x / v.x, y / v.y); }
-
-  xvec2 operator+(T v) const { return xvec2(x + v, y + v); }
-  xvec2 operator-(T v) const { return xvec2(x - v, y - v); }
-  xvec2 operator*(T v) const { return xvec2(x * v, y * v); }
-  xvec2 operator/(T v) const { return xvec2(x / v, y / v); }
-
-  friend xvec2 operator+(T v, const xvec2 &vec) { return xvec2(v + vec.x, v + vec.y); }
-  friend xvec2 operator-(T v, const xvec2 &vec) { return xvec2(v - vec.x, v - vec.y); }
-  friend xvec2 operator*(T v, const xvec2 &vec) { return xvec2(v * vec.x, v * vec.y); }
-  friend xvec2 operator/(T v, const xvec2 &vec) { return xvec2(v / vec.x, v / vec.y); }
-
-  xvec2 &operator+=(const xvec2 &v) { x += v.x; y += v.y; return *this; }
-  xvec2 &operator-=(const xvec2 &v) { x -= v.x; y -= v.y; return *this; }
-  xvec2 &operator*=(const xvec2 &v) { x *= v.x; y *= v.y; return *this; }
-  xvec2 &operator/=(const xvec2 &v) { x /= v.x; y /= v.y; return *this; }
-
-  xvec2 &operator+=(T v) { x += v; y += v; return *this; }
-  xvec2 &operator-=(T v) { x -= v; y -= v; return *this; }
-  xvec2 &operator*=(T v) { x *= v; y *= v; return *this; }
-  xvec2 &operator/=(T v) { x /= v; y /= v; return *this; }
-};
-
-typedef xvec2<float> vec2;
-typedef xvec2<int> ivec2;
+namespace gl3d {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -92,32 +29,6 @@ struct rect
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct rgba_color
-{
-  float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
-
-  rgba_color() { }
-
-  rgba_color(const rgba_color &copy): r(copy.r), g(copy.g), b(copy.b), a(copy.a) { }
-
-  rgba_color(float _r, float _g, float _b, float _a = 1.0f): r(_r), g(_g), b(_b), a(_a) { }
-
-  rgba_color(uint32_t argb)
-    : r(((argb >> 16) & 0xFFu) / 255.0f)
-    , g(((argb >>  8) & 0xFFu) / 255.0f)
-    , b(((argb      ) & 0xFFu) / 255.0f)
-    , a(((argb >> 24) & 0xFFu) / 255.0f)
-  {
-    
-  }
-
-  rgba_color &operator=(const rgba_color &rhs)
-  {
-    r = rhs.r; g = rhs.g; b = rhs.b; a = rhs.a;
-    return *this;
-  }
-};
 
 namespace detail {
   
@@ -247,121 +158,7 @@ std::vector<uint8_t> base64_decode(const char *encoded_string)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define GL2D_API_FUNC(retValue, name, ...) \
-  typedef retValue(GL2D_APIENTRY *gl_ ## name ## _ptr_t)(__VA_ARGS__); \
-  gl_ ## name ## _ptr_t name = reinterpret_cast<gl_ ## name ## _ptr_t>(get_gl_proc_address("gl" ## #name));
-
-#define GL2D_API_FUNC_INIT(name) \
-  name = reinterpret_cast<gl_ ## name ## _ptr_t>(get_gl_proc_address("gl" ## #name)); \
-  if (name == nullptr) return false
-
-//---------------------------------------------------------------------------------------------------------------------
-struct gl_api
-{
-  static void *get_gl_proc_address(const char *funcName) { return wglGetProcAddress(funcName); }
-
-  GL2D_API_FUNC(void, GenBuffers, GLsizei, GLuint *)
-  GL2D_API_FUNC(void, DeleteBuffers, GLsizei, const GLuint *)
-  GL2D_API_FUNC(void, BindBuffer, GLenum, GLuint)
-  GL2D_API_FUNC(void, BufferData, GLenum, ptrdiff_t, const GLvoid *, GLenum)
-  GL2D_API_FUNC(void, GenVertexArrays, GLsizei, GLuint *)
-  GL2D_API_FUNC(void, BindVertexArray, GLuint)
-  GL2D_API_FUNC(void, EnableVertexAttribArray, GLuint)
-  GL2D_API_FUNC(void, VertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const GLvoid *)
-  GL2D_API_FUNC(void, BindAttribLocation, GLuint, GLuint, const char *)
-  GL2D_API_FUNC(void, DeleteVertexArrays, GLsizei, const GLuint *)
-  GL2D_API_FUNC(GLuint, CreateShader, GLenum)
-  GL2D_API_FUNC(void, DeleteShader, GLuint)
-  GL2D_API_FUNC(void, ShaderSource, GLuint, GLsizei, const char **, const GLint *)
-  GL2D_API_FUNC(void, CompileShader, GLuint)
-  GL2D_API_FUNC(void, GetShaderiv, GLuint, GLenum, GLint *)
-  GL2D_API_FUNC(GLuint, CreateProgram)
-  GL2D_API_FUNC(void, DeleteProgram, GLuint)
-  GL2D_API_FUNC(void, AttachShader, GLuint, GLuint)
-  GL2D_API_FUNC(void, DetachShader, GLuint, GLuint)
-  GL2D_API_FUNC(void, LinkProgram, GLuint)
-  GL2D_API_FUNC(void, UseProgram, GLuint)
-  GL2D_API_FUNC(void, GetProgramiv, GLuint, GLenum, GLint *)
-  GL2D_API_FUNC(GLint, GetUniformLocation, GLuint, const char *)
-  GL2D_API_FUNC(void, Uniform1i, GLint, GLint)
-  GL2D_API_FUNC(void, Uniform2fv, GLint, GLsizei, const GLfloat *)
-  GL2D_API_FUNC(void, ActiveTexture, GLenum)
-    
-  static const GLenum CLAMP_TO_EDGE = 0x812F;
-  static const GLenum TEXTURE0 = 0x84C0;
-  static const GLenum ARRAY_BUFFER = 0x8892;
-  static const GLenum STREAM_DRAW = 0x88E0;
-  static const GLenum FRAGMENT_SHADER = 0x8B30;
-  static const GLenum VERTEX_SHADER = 0x8B31;
-  static const GLenum COMPILE_STATUS = 0x8B81;
-  static const GLenum LINK_STATUS = 0x8B82;
-
-  gl_api()
-  {
-    
-  }
-
-  ~gl_api()
-  {
-    
-  }
-
-  bool init()
-  {
-    auto funcPtr = reinterpret_cast<size_t *>(this);
-    for (size_t i = 0; i < sizeof(gl_api) / sizeof(size_t *); ++i, ++funcPtr)
-      if (!funcPtr)
-        return false;
-
-    return true;
-  }
-
-  GLuint compile_shader(GLenum shaderType, const char *source)
-  {
-    GLuint result = CreateShader(shaderType);
-    ShaderSource(result, 1, &source, nullptr);
-    CompileShader(result);
-
-    GLint status;
-    GetShaderiv(result, COMPILE_STATUS, &status);
-    if (status == GL_FALSE)
-    {
-      DeleteShader(result);
-      return 0;
-    }
-
-    return result;
-  }
-
-  GLuint link_program(GLuint vert, GLuint frag)
-  {
-    GLuint result = CreateProgram();
-    AttachShader(result, vert);
-    AttachShader(result, frag);
-    LinkProgram(result);
-
-    GLint status;
-    GetProgramiv(result, LINK_STATUS, &status);
-
-    DetachShader(result, vert);
-    DetachShader(result, frag);
-
-    if (status == GL_FALSE)
-    {
-      DeleteProgram(result);
-      return 0;
-    }
-
-    return result;
-  }
-};
-
-#undef GL2D_API_FUNC
-#undef GL2D_API_FUNC_INIT
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct vertex
+struct vertex2d
 {
   vec2 pos;
   rgba_color color;
@@ -389,22 +186,22 @@ struct state
 {
   rect viewport;
   rect scissors;
-  rgba_color color;
+  gl3d::rgba_color color;
 };
 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class context
+class context2d
 {
 public:
-  context()
+  context2d()
   {
     clear();
   }
 
-  virtual ~context()
+  virtual ~context2d()
   {
     done();
   }
@@ -433,11 +230,11 @@ public:
       _gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
       _gl->BindVertexArray(_vao);
       _gl->EnableVertexAttribArray(0);
-      _gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), 0);
+      _gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), 0);
       _gl->EnableVertexAttribArray(1);
-      _gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void *>(offsetof(vertex, color)));
+      _gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, color)));
       _gl->EnableVertexAttribArray(2);
-      _gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void *>(offsetof(vertex, uv)));
+      _gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, uv)));
       _gl->BindVertexArray(0);
       _gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
     }
@@ -527,23 +324,9 @@ public:
       _vao = 0;
     }
 
-    if (_vertShader)
-    {
-      _gl->DeleteShader(_vertShader);
-      _vertShader = 0;
-    }
-
-    if (_fragShader)
-    {
-      _gl->DeleteShader(_fragShader);
-      _fragShader = 0;
-    }
-
-    if (_program)
-    {
-      _gl->DeleteProgram(_program);
-      _program = 0;
-    }
+    _vertShader.destroy();
+    _fragShader.destroy();
+    _program.destroy();
 
     if (_fontTexture)
     {
@@ -561,7 +344,7 @@ public:
     _drawCalls.clear();
     _drawCalls.emplace_back(true, 0);
     _vertexCursor = 0;
-    _state.color = gl2d::rgba_color(1, 1, 1, 1);
+    _state.color = gl3d::rgba_color(1, 1, 1, 1);
   }
 
   void color(const rgba_color &c) { _state.color = c; }
@@ -648,7 +431,7 @@ public:
     float y = pos.y;
     const char *text = buff;
     const char *end = text + length;
-    gl2d::rgba_color color = _state.color;
+    gl3d::rgba_color color = _state.color;
 
     while (text < end)
     {
@@ -674,24 +457,24 @@ public:
 
           switch (*colorChar)
           {
-            case '0': color = gl2d::rgba_color(0, 0, 0, 1); break;
-            case '1': color = gl2d::rgba_color(0, 0, h, 1); break;
-            case '2': color = gl2d::rgba_color(0, h, 0, 1); break;
-            case '3': color = gl2d::rgba_color(0, h, h, 1); break;
-            case '4': color = gl2d::rgba_color(h, 0, 0, 1); break;
-            case '5': color = gl2d::rgba_color(h, 0, h, 1); break;
-            case '6': color = gl2d::rgba_color(h, h, 0, 1); break;
-            case '7': color = gl2d::rgba_color(h, h, h, 1); break;
-            case '8': color = gl2d::rgba_color(q, q, q, 1); break;
-            case '9': color = gl2d::rgba_color(q, h, 1, 1); break;
-            case 'a': color = gl2d::rgba_color(q, 1, q, 1); break;
-            case 'b': color = gl2d::rgba_color(q, 1, 1, 1); break;
-            case 'c': color = gl2d::rgba_color(1, h, q, 1); break;
-            case 'd': color = gl2d::rgba_color(1, q, 1, 1); break;
-            case 'e': color = gl2d::rgba_color(1, 1, 0, 1); break;
+            case '0': color = gl3d::rgba_color(0, 0, 0, 1); break;
+            case '1': color = gl3d::rgba_color(0, 0, h, 1); break;
+            case '2': color = gl3d::rgba_color(0, h, 0, 1); break;
+            case '3': color = gl3d::rgba_color(0, h, h, 1); break;
+            case '4': color = gl3d::rgba_color(h, 0, 0, 1); break;
+            case '5': color = gl3d::rgba_color(h, 0, h, 1); break;
+            case '6': color = gl3d::rgba_color(h, h, 0, 1); break;
+            case '7': color = gl3d::rgba_color(h, h, h, 1); break;
+            case '8': color = gl3d::rgba_color(q, q, q, 1); break;
+            case '9': color = gl3d::rgba_color(q, h, 1, 1); break;
+            case 'a': color = gl3d::rgba_color(q, 1, q, 1); break;
+            case 'b': color = gl3d::rgba_color(q, 1, 1, 1); break;
+            case 'c': color = gl3d::rgba_color(1, h, q, 1); break;
+            case 'd': color = gl3d::rgba_color(1, q, 1, 1); break;
+            case 'e': color = gl3d::rgba_color(1, 1, 0, 1); break;
 
             default:
-            case 'f': color = gl2d::rgba_color(1, 1, 1, 1); break;
+            case 'f': color = gl3d::rgba_color(1, 1, 1, 1); break;
           }
         }
         else
@@ -729,7 +512,7 @@ public:
 
     // Copy vertices into VBO
     _gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-    _gl->BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
+    _gl->BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
     _gl->BindVertexArray(_vao);
     _gl->UseProgram(_program);
     _gl->BindAttribLocation(_program, 0, "vert_Position");
@@ -762,7 +545,7 @@ public:
   void render(int width, int height) { render(0, 0, width, height); }
 
 private:
-  detail::vertex *alloc_vertices(size_t count)
+  detail::vertex2d *alloc_vertices(size_t count)
   {
     if (_vertexCursor + count > _vertices.size())
       _vertices.resize(_vertexCursor + count);
@@ -773,7 +556,7 @@ private:
     return result;
   }
 
-  void print_substring(float &x, float &y, const gl2d::rgba_color &color, const char *text, size_t length)
+  void print_substring(float &x, float &y, const gl3d::rgba_color &color, const char *text, size_t length)
   {
     if (_drawCalls.back().triangles)
       _drawCalls.back().length += length * 6;
@@ -834,15 +617,16 @@ private:
 
   detail::state _state;
 
+
   GLuint _vbo = 0;
   
   GLuint _vao = 0;
 
-  GLuint _vertShader = 0;
+  detail::gl_resource_shader _vertShader;
 
-  GLuint _fragShader = 0;
+  detail::gl_resource_shader _fragShader;
 
-  GLuint _program = 0;
+  detail::gl_resource_program _program;
 
   GLint _uScreenSize = -1;
 
@@ -850,7 +634,7 @@ private:
 
   GLuint _fontTexture = 0;
 
-  std::vector<detail::vertex> _vertices;
+  std::vector<detail::vertex2d> _vertices;
 
   size_t _vertexCursor = 0;
 
@@ -858,78 +642,78 @@ private:
 };
 
 // Global application instance
-extern context *current_context;
+extern context2d *current_context2d;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(const rgba_color &c)
 {
-  if (current_context)
-    current_context->color(c);
+  if (current_context2d)
+    current_context2d->color(c);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(float r, float g, float b, float a = 1.0f)
 {
-  if (current_context)
-    current_context->color(r, g, b, a);
+  if (current_context2d)
+    current_context2d->color(r, g, b, a);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void color(uint32_t argb)
 {
-  if (current_context)
-    current_context->color(argb);
+  if (current_context2d)
+    current_context2d->color(argb);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(const vec2 &a, const vec2 &b)
 {
-  if (current_context)
-    current_context->line(a, b);
+  if (current_context2d)
+    current_context2d->line(a, b);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(float x1, float y1, float x2, float y2)
 {
-  if (current_context)
-    current_context->line(x1, y1, x2, y2);
+  if (current_context2d)
+    current_context2d->line(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void linei(int x1, int y1, int x2, int y2)
 {
-  if (current_context)
-    current_context->linei(x1, y1, x2, y2);
+  if (current_context2d)
+    current_context2d->linei(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(const vec2 &a, const vec2 &b, bool filled = false)
 {
-  if (current_context)
-    current_context->rectangle(a, b, filled);
+  if (current_context2d)
+    current_context2d->rectangle(a, b, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(float x1, float y1, float x2, float y2, bool filled = false)
 {
-  if (current_context)
-    current_context->rectangle(x1, y1, x2, y2, filled);
+  if (current_context2d)
+    current_context2d->rectangle(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectanglei(int x1, int y1, int x2, int y2, bool filled = false)
 {
-  if (current_context)
-    current_context->rectanglei(x1, y1, x2, y2, filled);
+  if (current_context2d)
+    current_context2d->rectanglei(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void text(const vec2 &pos, const char *fmt, va_list &ap)
 {
-  if (current_context)
-    current_context->text(pos, fmt, ap);
+  if (current_context2d)
+    current_context2d->text(pos, fmt, ap);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -956,7 +740,7 @@ void text(int x, int y, const char *fmt, ...)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef GL2D_IMPLEMENTATION
+#ifdef GL3D_IMPLEMENTATION
 #ifndef __GL2D_H_IMPL__
 #define __GL2D_H_IMPL__
 
@@ -964,11 +748,11 @@ void text(int x, int y, const char *fmt, ...)
 #pragma comment(lib, "opengl32.lib")
 #endif
 
-namespace gl2d {
+namespace gl3d {
   
-static context *current_context = nullptr;
+static context2d *current_context2d = nullptr;
 
 }
 
 #endif // __GL2D_H_IMPL__
-#endif // GL2D_IMPLEMENTATION
+#endif // GL3D_IMPLEMENTATION

@@ -1,8 +1,8 @@
-#define GL2D_IMPLEMENTATION
+#define GL3D_IMPLEMENTATION
 #include <gl2d/gl2d.h>
 #include <gl2d/glu2d.h>
 
-using namespace gl2d;
+using namespace gl3d;
 
 int main()
 {

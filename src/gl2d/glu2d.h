@@ -13,7 +13,7 @@
 #else
 #endif
 
-namespace gl2d {
+namespace gl3d {
 
 typedef int window_id_t;
 
@@ -132,7 +132,7 @@ struct window
   window_id_t id;
   std::string title;
   int width, height;
-  context ctx;
+  context2d ctx;
   int mouse_x = 0, mouse_y = 0;
   int mouse_dx = 0, mouse_dy = 0;
 
@@ -250,7 +250,7 @@ public:
   void set_tick_handler(const tick_handler_t &handler) { _tick_handler = handler; }
   const tick_handler_t &tick_handler() const { return _tick_handler; }
   
-  gl2d::context *get_window_context(window_id_t id) const
+  gl3d::context2d *get_window_context(window_id_t id) const
   {
     auto iter = _windows.find(id);
     if (iter != _windows.end())
@@ -318,9 +318,9 @@ private:
     if (_tick_handler != nullptr)
     {
       if (_main_window_id)
-        current_context = &(_windows[_main_window_id]->ctx);
+        current_context2d = &(_windows[_main_window_id]->ctx);
       else
-        current_context = nullptr;
+        current_context2d = nullptr;
 
       _tick_handler(_delta);
     }
@@ -330,14 +330,14 @@ private:
       auto &w = *kvp.second;
 
       w.make_current();
-      current_context = &(w.ctx);
+      current_context2d = &(w.ctx);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       send({ event_type::render, w.id, _time, _delta });
       w.ctx.render(w.width, w.height);
       w.flip();
     }
 
-    current_context = nullptr;
+    current_context2d = nullptr;
   }
 };
 
@@ -352,11 +352,11 @@ extern detail::application app;
 
 #endif // __GLU2D_H__
 
-#ifdef GL2D_IMPLEMENTATION
+#ifdef GL3D_IMPLEMENTATION
 #ifndef __GLU2D_H_IMPL__
 #define __GLU2D_H_IMPL__
 
-namespace gl2d {
+namespace gl3d {
 
 static detail::application app;
 
