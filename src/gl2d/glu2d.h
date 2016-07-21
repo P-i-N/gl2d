@@ -7,10 +7,9 @@
 
 #include "gl2d.h"
 
-#ifdef _WIN32
+#if defined(WIN32)
 #include <windowsx.h>
 #else
-
 #endif
 
 namespace gl2d {
@@ -74,7 +73,7 @@ enum class mouse_button
 enum class event_type
 {
   unknown = 0,
-  tick,
+  render,
   open, close, resize,
   key_down, key_up,
   mouse_down, mouse_up, mouse_move
@@ -170,6 +169,9 @@ public:
       return invalid_window_id;
     }
 
+    if (!_main_window_id)
+      _main_window_id = id;
+
     _windows[id] = std::move(window);
     return id;
   }
@@ -181,7 +183,11 @@ public:
     {
       send({ event_type::close, iter->second->id, _time, _delta });
       _windows.erase(iter);
-      _should_quit |= _windows.empty();      
+      _should_quit |= _windows.empty();
+
+      if (id == _main_window_id)
+        _main_window_id = 0;
+
       return true;
     }
 
@@ -216,6 +222,11 @@ public:
 
   void set_event_handler(const event_handler_t &handler) { _event_handler = handler; }
   const event_handler_t &event_handler() const { return _event_handler; }
+
+  typedef std::function<void(float)> tick_handler_t;
+
+  void set_tick_handler(const tick_handler_t &handler) { _tick_handler = handler; }
+  const tick_handler_t &tick_handler() const { return _tick_handler; }
   
   gl2d::context *get_window_context(window_id_t id) const
   {
@@ -260,12 +271,14 @@ private:
   bool _should_quit = false;
   unsigned _next_id = 1;
 
-  double _time = 0.0;
-  double _delta = 0.0;
+  float _time = 0.0;
+  float _delta = 0.0;
 
   typedef std::map<window_id_t, std::unique_ptr<platform_window>> windows_t;
   windows_t _windows;
+  window_id_t _main_window_id = 0;
   event_handler_t _event_handler;
+  tick_handler_t _tick_handler;
 
   void update_timer();
 
@@ -280,16 +293,29 @@ private:
   {
     update_timer();
 
+    if (_tick_handler != nullptr)
+    {
+      if (_main_window_id)
+        gl2d::context::current = &(_windows[_main_window_id]->ctx);
+      else
+        gl2d::context::current = nullptr;
+
+      _tick_handler(_delta);
+    }
+
     for (auto &kvp : _windows)
     {
       auto &w = *kvp.second;
 
       w.make_current();
+      gl2d::context::current = &(w.ctx);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      send({ event_type::tick, w.id, _time, _delta });
+      send({ event_type::render, w.id, _time, _delta });
       w.ctx.render(w.width, w.height);
       w.flip();
     }
+
+    gl2d::context::current = nullptr;
   }
 };
 
@@ -399,7 +425,7 @@ inline void application::platform_window::flip()
 //---------------------------------------------------------------------------------------------------------------------
 inline void application::platform_window::set_title(const std::string &text)
 {
-  
+  SetWindowTextA(handle, text.c_str());
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -425,9 +451,10 @@ inline void application::update_timer()
 {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
+  li.QuadPart -= _timer_offset;
 
-  _time = static_cast<double>(li.QuadPart - _timer_offset) / static_cast<double>(_timer_frequency);
-  _delta = static_cast<double>(li.QuadPart - _timer_offset - _last_timer_counter) / static_cast<double>(_timer_frequency);
+  _time = static_cast<float>(static_cast<double>(li.QuadPart) / static_cast<double>(_timer_frequency));
+  _delta = static_cast<float>(static_cast<double>(li.QuadPart - _last_timer_counter) / static_cast<double>(_timer_frequency));
   _last_timer_counter = li.QuadPart;
 }
 
@@ -438,13 +465,11 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
   {
     if (kvp.second->handle == hWnd)
     {
-      gl2d::context::current() = &kvp.second->ctx;
-
       switch (message)
       {
         case WM_MOUSEMOVE:
         {
-          event e(event_type::mouse_move, kvp.second->id, _time, _delta );
+          event e(event_type::mouse_move, kvp.second->id, _time, _delta);
           e.mouse.x = GET_X_LPARAM(lParam);
           e.mouse.y = GET_Y_LPARAM(lParam);
           send(e);

@@ -1,9 +1,7 @@
-#pragma once
+#ifndef __GL2D_H__
+#define __GL2D_H__
 
 #include <vector>
-
-#include <windows.h>
-#include <gl/GL.h>
 
 #if !defined(GL2D_APIENTRY)
 #if defined(WIN32)
@@ -12,6 +10,13 @@
 #define GL2D_APIENTRY
 #endif
 #endif
+
+#if defined(WIN32)
+#include <windows.h>
+#else
+#endif
+
+#include <gl/GL.h>
 
 namespace gl2d {
 
@@ -312,11 +317,7 @@ struct state
 class context
 {
 public:
-  static context *&current()
-  {
-    static context *currentContext = nullptr;
-    return currentContext;
-  }
+  static context *current;
 
   context()
   {
@@ -774,43 +775,43 @@ private:
 //---------------------------------------------------------------------------------------------------------------------
 void line(const vec2 &a, const vec2 &b)
 {
-  context::current()->line(a, b);
+  context::current->line(a, b);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void line(float x1, float y1, float x2, float y2)
 {
-  context::current()->line(x1, y1, x2, y2);
+  context::current->line(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void linei(int x1, int y1, int x2, int y2)
 {
-  context::current()->linei(x1, y1, x2, y2);
+  context::current->linei(x1, y1, x2, y2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(const vec2 &a, const vec2 &b, bool filled = false)
 {
-  context::current()->rectangle(a, b, filled);
+  context::current->rectangle(a, b, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectangle(float x1, float y1, float x2, float y2, bool filled = false)
 {
-  context::current()->rectangle(x1, y1, x2, y2, filled);
+  context::current->rectangle(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void rectanglei(int x1, int y1, int x2, int y2, bool filled = false)
 {
-  context::current()->rectanglei(x1, y1, x2, y2, filled);
+  context::current->rectanglei(x1, y1, x2, y2, filled);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void text(const vec2 &pos, const char *fmt, va_list &ap)
 {
-  context::current()->text(pos, fmt, ap);
+  context::current->text(pos, fmt, ap);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -832,3 +833,20 @@ void text(int x, int y, const char *fmt, ...)
 }
 
 }
+
+#endif // __GL2D_H__
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef GL2D_IMPLEMENTATION
+#ifndef __GL2D_H_IMPL__
+#define __GL2D_H_IMPL__
+
+namespace gl2d {
+  
+context *context::current = nullptr;
+
+}
+
+#endif // __GL2D_H_IMPL__
+#endif // GL2D_IMPLEMENTATION
