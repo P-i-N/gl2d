@@ -38,7 +38,6 @@ Projects =
   {
     dir = "src/test",
     type = "console",
-    windows_links = { "opengl32", "imm32", "winmm", "version" }
   }
 }
 
