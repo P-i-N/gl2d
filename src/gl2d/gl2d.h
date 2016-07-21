@@ -22,47 +22,51 @@ namespace gl2d {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vec2
+template <typename T>
+struct xvec2
 {
-  float x = 0.0f, y = 0.0f;
+  T x = 0.0f, y = 0.0f;
 
-  vec2() { }
-  vec2(const vec2 &copy): x(copy.x), y(copy.y) { }
+  xvec2() { }
+  xvec2(const xvec2 &copy): x(copy.x), y(copy.y) { }
 
-  template <typename T>
-  vec2(T v): x(static_cast<float>(v)), y(static_cast<float>(v)) { }
+  template <typename T2>
+  xvec2(T2 v): x(static_cast<T>(v)), y(static_cast<T>(v)) { }
 
-  template <typename T>
-  vec2(T _x, T _y): x(static_cast<float>(_x)), y(static_cast<float>(_y)) { }
+  template <typename T2>
+  xvec2(T2 _x, T2 _y): x(static_cast<T>(_x)), y(static_cast<T>(_y)) { }
 
-  float *data() { return &x; }
-  const float *data() const { return &x; }
+  T *data() { return &x; }
+  const T *data() const { return &x; }
 
-  vec2 operator+(const vec2 &v) const { return vec2(x + v.x, y + v.y); }
-  vec2 operator-(const vec2 &v) const { return vec2(x - v.x, y - v.y); }
-  vec2 operator*(const vec2 &v) const { return vec2(x * v.x, y * v.y); }
-  vec2 operator/(const vec2 &v) const { return vec2(x / v.x, y / v.y); }
+  xvec2 operator+(const xvec2 &v) const { return xvec2(x + v.x, y + v.y); }
+  xvec2 operator-(const xvec2 &v) const { return xvec2(x - v.x, y - v.y); }
+  xvec2 operator*(const xvec2 &v) const { return xvec2(x * v.x, y * v.y); }
+  xvec2 operator/(const xvec2 &v) const { return xvec2(x / v.x, y / v.y); }
 
-  vec2 operator+(float v) const { return vec2(x + v, y + v); }
-  vec2 operator-(float v) const { return vec2(x - v, y - v); }
-  vec2 operator*(float v) const { return vec2(x * v, y * v); }
-  vec2 operator/(float v) const { return vec2(x / v, y / v); }
+  xvec2 operator+(T v) const { return xvec2(x + v, y + v); }
+  xvec2 operator-(T v) const { return xvec2(x - v, y - v); }
+  xvec2 operator*(T v) const { return xvec2(x * v, y * v); }
+  xvec2 operator/(T v) const { return xvec2(x / v, y / v); }
 
-  friend vec2 operator+(float v, const vec2 &vec) { return vec2(v + vec.x, v + vec.y); }
-  friend vec2 operator-(float v, const vec2 &vec) { return vec2(v - vec.x, v - vec.y); }
-  friend vec2 operator*(float v, const vec2 &vec) { return vec2(v * vec.x, v * vec.y); }
-  friend vec2 operator/(float v, const vec2 &vec) { return vec2(v / vec.x, v / vec.y); }
+  friend xvec2 operator+(T v, const xvec2 &vec) { return xvec2(v + vec.x, v + vec.y); }
+  friend xvec2 operator-(T v, const xvec2 &vec) { return xvec2(v - vec.x, v - vec.y); }
+  friend xvec2 operator*(T v, const xvec2 &vec) { return xvec2(v * vec.x, v * vec.y); }
+  friend xvec2 operator/(T v, const xvec2 &vec) { return xvec2(v / vec.x, v / vec.y); }
 
-  vec2 &operator+=(const vec2 &v) { x += v.x; y += v.y; return *this; }
-  vec2 &operator-=(const vec2 &v) { x -= v.x; y -= v.y; return *this; }
-  vec2 &operator*=(const vec2 &v) { x *= v.x; y *= v.y; return *this; }
-  vec2 &operator/=(const vec2 &v) { x /= v.x; y /= v.y; return *this; }
+  xvec2 &operator+=(const xvec2 &v) { x += v.x; y += v.y; return *this; }
+  xvec2 &operator-=(const xvec2 &v) { x -= v.x; y -= v.y; return *this; }
+  xvec2 &operator*=(const xvec2 &v) { x *= v.x; y *= v.y; return *this; }
+  xvec2 &operator/=(const xvec2 &v) { x /= v.x; y /= v.y; return *this; }
 
-  vec2 &operator+=(float v) { x += v; y += v; return *this; }
-  vec2 &operator-=(float v) { x -= v; y -= v; return *this; }
-  vec2 &operator*=(float v) { x *= v; y *= v; return *this; }
-  vec2 &operator/=(float v) { x /= v; y /= v; return *this; }
+  xvec2 &operator+=(T v) { x += v; y += v; return *this; }
+  xvec2 &operator-=(T v) { x -= v; y -= v; return *this; }
+  xvec2 &operator*=(T v) { x *= v; y *= v; return *this; }
+  xvec2 &operator/=(T v) { x /= v; y /= v; return *this; }
 };
+
+typedef xvec2<float> vec2;
+typedef xvec2<int> ivec2;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -95,23 +99,9 @@ struct rgba_color
 
   rgba_color() { }
 
-  rgba_color(const rgba_color &copy)
-    : r(copy.r)
-    , g(copy.g)
-    , b(copy.b)
-    , a(copy.a)
-  {
-    
-  }
+  rgba_color(const rgba_color &copy): r(copy.r), g(copy.g), b(copy.b), a(copy.a) { }
 
-  rgba_color(float _r, float _g, float _b, float _a = 1.0f)
-    : r(_r)
-    , g(_g)
-    , b(_b)
-    , a(_a)
-  {
-    
-  }
+  rgba_color(float _r, float _g, float _b, float _a = 1.0f): r(_r), g(_g), b(_b), a(_a) { }
 
   rgba_color(uint32_t argb)
     : r(((argb >> 16) & 0xFFu) / 255.0f)
@@ -120,6 +110,12 @@ struct rgba_color
     , a(((argb >> 24) & 0xFFu) / 255.0f)
   {
     
+  }
+
+  rgba_color &operator=(const rgba_color &rhs)
+  {
+    r = rhs.r; g = rhs.g; b = rhs.b; a = rhs.a;
+    return *this;
   }
 };
 
@@ -145,7 +141,7 @@ void main()
   clipPos.y = 1.0 - clipPos.y;
   clipPos = clipPos * 2.0 - 1.0;
 
-  gl_Position = vec4(clipPos, 1, 1);
+  gl_Position = vec4(clipPos, 0, 1);
   Color = vert_Color;
   UV = vert_UV;
 }
@@ -307,7 +303,7 @@ struct gl_api
 struct vertex
 {
   vec2 pos;
-  rgba_color rgba_color;
+  rgba_color color;
   vec2 uv;
 };
 
@@ -332,7 +328,7 @@ struct state
 {
   rect viewport;
   rect scissors;
-  rgba_color rgba_color;
+  rgba_color color;
 };
 
 }
@@ -380,7 +376,7 @@ public:
       _gl->EnableVertexAttribArray(0);
       _gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), 0);
       _gl->EnableVertexAttribArray(1);
-      _gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void *>(offsetof(vertex, rgba_color)));
+      _gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void *>(offsetof(vertex, color)));
       _gl->EnableVertexAttribArray(2);
       _gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void *>(offsetof(vertex, uv)));
       _gl->BindVertexArray(0);
@@ -502,16 +498,16 @@ public:
     _drawCalls.clear();
     _drawCalls.emplace_back(true, 0);
     _vertexCursor = 0;
-    _state.rgba_color = gl2d::rgba_color(1, 1, 1, 1);
+    _state.color = gl2d::rgba_color(1, 1, 1, 1);
   }
 
-  void color(const rgba_color &c) { _state.rgba_color = c; }
+  void color(const rgba_color &c) { _state.color = c; }
 
-  void color(float r, float g, float b, float a = 1.0f) { _state.rgba_color = rgba_color(r, g, b, a); }
+  void color(float r, float g, float b, float a = 1.0f) { _state.color = rgba_color(r, g, b, a); }
 
-  void color(uint32_t argb) { _state.rgba_color = rgba_color(argb); }
+  void color(uint32_t argb) { _state.color = rgba_color(argb); }
 
-  const rgba_color &color() const { return _state.rgba_color; }
+  const rgba_color &color() const { return _state.color; }
 
   void line(const vec2 &a, const vec2 &b)
   {
@@ -522,11 +518,11 @@ public:
     
     auto *v = alloc_vertices(2);
     v->pos = a;
-    v->rgba_color = _state.rgba_color;
+    v->color = _state.color;
     v->uv = vec2(1, 1);
     ++v;
     v->pos = b;
-    v->rgba_color = _state.rgba_color;
+    v->color = _state.color;
     v->uv = vec2(1, 1);
   }
 
@@ -545,15 +541,15 @@ public:
       
       auto *v = alloc_vertices(6);
       v->pos = a;
-      v->rgba_color = _state.rgba_color;
+      v->color = _state.color;
       v->uv = vec2(1, 1);
       ++v;
       v->pos = vec2(b.x, a.y);
-      v->rgba_color = _state.rgba_color;
+      v->color = _state.color;
       v->uv = vec2(1, 1);
       ++v;
       v->pos = vec2(a.x, b.y);
-      v->rgba_color = _state.rgba_color;
+      v->color = _state.color;
       v->uv = vec2(1, 1);
       
       v[1] = *v;
@@ -561,7 +557,7 @@ public:
       v += 3;
 
       v->pos = vec2(b.x, b.y);
-      v->rgba_color = _state.rgba_color;
+      v->color = _state.color;
       v->uv = vec2(1, 1);
     }
     else
@@ -589,7 +585,7 @@ public:
     float y = pos.y;
     const char *text = buff;
     const char *end = text + length;
-    gl2d::rgba_color rgba_color = _state.rgba_color;
+    gl2d::rgba_color color = _state.color;
 
     while (text < end)
     {
@@ -601,7 +597,7 @@ public:
       int partLen = mark - text;
 
       if (partLen)
-        print_substring(x, y, rgba_color, text, partLen);
+        print_substring(x, y, color, text, partLen);
 
       if (mark[0] == '^')
       {
@@ -615,24 +611,24 @@ public:
 
           switch (*colorChar)
           {
-            case '0': rgba_color = gl2d::rgba_color(0, 0, 0, 1); break;
-            case '1': rgba_color = gl2d::rgba_color(0, 0, h, 1); break;
-            case '2': rgba_color = gl2d::rgba_color(0, h, 0, 1); break;
-            case '3': rgba_color = gl2d::rgba_color(0, h, h, 1); break;
-            case '4': rgba_color = gl2d::rgba_color(h, 0, 0, 1); break;
-            case '5': rgba_color = gl2d::rgba_color(h, 0, h, 1); break;
-            case '6': rgba_color = gl2d::rgba_color(h, h, 0, 1); break;
-            case '7': rgba_color = gl2d::rgba_color(h, h, h, 1); break;
-            case '8': rgba_color = gl2d::rgba_color(q, q, q, 1); break;
-            case '9': rgba_color = gl2d::rgba_color(q, h, 1, 1); break;
-            case 'a': rgba_color = gl2d::rgba_color(q, 1, q, 1); break;
-            case 'b': rgba_color = gl2d::rgba_color(q, 1, 1, 1); break;
-            case 'c': rgba_color = gl2d::rgba_color(1, h, q, 1); break;
-            case 'd': rgba_color = gl2d::rgba_color(1, q, 1, 1); break;
-            case 'e': rgba_color = gl2d::rgba_color(1, 1, 0, 1); break;
+            case '0': color = gl2d::rgba_color(0, 0, 0, 1); break;
+            case '1': color = gl2d::rgba_color(0, 0, h, 1); break;
+            case '2': color = gl2d::rgba_color(0, h, 0, 1); break;
+            case '3': color = gl2d::rgba_color(0, h, h, 1); break;
+            case '4': color = gl2d::rgba_color(h, 0, 0, 1); break;
+            case '5': color = gl2d::rgba_color(h, 0, h, 1); break;
+            case '6': color = gl2d::rgba_color(h, h, 0, 1); break;
+            case '7': color = gl2d::rgba_color(h, h, h, 1); break;
+            case '8': color = gl2d::rgba_color(q, q, q, 1); break;
+            case '9': color = gl2d::rgba_color(q, h, 1, 1); break;
+            case 'a': color = gl2d::rgba_color(q, 1, q, 1); break;
+            case 'b': color = gl2d::rgba_color(q, 1, 1, 1); break;
+            case 'c': color = gl2d::rgba_color(1, h, q, 1); break;
+            case 'd': color = gl2d::rgba_color(1, q, 1, 1); break;
+            case 'e': color = gl2d::rgba_color(1, 1, 0, 1); break;
 
             default:
-            case 'f': rgba_color = gl2d::rgba_color(1, 1, 1, 1); break;
+            case 'f': color = gl2d::rgba_color(1, 1, 1, 1); break;
           }
         }
         else
@@ -666,7 +662,7 @@ public:
     glViewport(x, y, width, height);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Copy vertices into VBO
     _gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
@@ -714,7 +710,7 @@ private:
     return result;
   }
 
-  void print_substring(float &x, float &y, const gl2d::rgba_color &rgba_color, const char *text, size_t length)
+  void print_substring(float &x, float &y, const gl2d::rgba_color &color, const char *text, size_t length)
   {
     if (_drawCalls.back().triangles)
       _drawCalls.back().length += length * 6;
@@ -739,15 +735,15 @@ private:
         float uvY = (ch / 16) * uvStepY;
 
         v->pos = vec2(x, y);
-        v->rgba_color = rgba_color;
+        v->color = color;
         v->uv = vec2(uvX, uvY + uvH);
         ++v;
         v->pos = vec2(x + 8, y);
-        v->rgba_color = rgba_color;
+        v->color = color;
         v->uv = vec2(uvX + uvW, uvY + uvH);
         ++v;
         v->pos = vec2(x, y + 8);
-        v->rgba_color = rgba_color;
+        v->color = color;
         v->uv = vec2(uvX, uvY);
 
         v[1] = *v;
@@ -755,7 +751,7 @@ private:
         v += 3;
 
         v->pos = vec2(x + 8, y + 8);
-        v->rgba_color = rgba_color;
+        v->color = color;
         v->uv = vec2(uvX + uvW, uvY);
         ++v;
       }
