@@ -252,7 +252,7 @@ private:
 
 }
 
-extern detail::gl_api *gl;
+static detail::gl_api *get_gl_api();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -291,21 +291,25 @@ class texture : public detail::ref_counted<texture>
 
 #endif // __GL3D_H__
 
-#if defined(GL3D_IMPLEMENTATION) || 1
+#if defined(GL3D_IMPLEMENTATION)
 #ifndef __GL3D_H_IMPL__
 #define __GL3D_H_IMPL__
 
 namespace gl3d {
-  
-static detail::gl_api *gl = nullptr;
+
+detail::gl_api *get_gl_api()
+{
+  static detail::gl_api *gl = new detail::gl_api();
+  return gl;
+}
 
 namespace detail {
 
 //------------------------------------------------------------------------------------------------------------------------
-void gl_resource_buffer::destroy() { if (id > 0) gl->DeleteBuffers(1, &id); id = 0; }
-void gl_resource_vao::destroy() { if (id > 0) gl->DeleteVertexArrays(1, &id); id = 0; }
-void gl_resource_shader::destroy() { if (id > 0) gl->DeleteShader(id); id = 0; }
-void gl_resource_program::destroy() { if (id > 0) gl->DeleteProgram(id); id = 0; }
+void gl_resource_buffer::destroy() { if (id > 0) get_gl_api()->DeleteBuffers(1, &id); id = 0; }
+void gl_resource_vao::destroy() { if (id > 0) get_gl_api()->DeleteVertexArrays(1, &id); id = 0; }
+void gl_resource_shader::destroy() { if (id > 0) get_gl_api()->DeleteShader(id); id = 0; }
+void gl_resource_program::destroy() { if (id > 0) get_gl_api()->DeleteProgram(id); id = 0; }
 void gl_resource_texture::destroy() { if (id > 0) glDeleteTextures(1, &id); id = 0; }
 
 //------------------------------------------------------------------------------------------------------------------------

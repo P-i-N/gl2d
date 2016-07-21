@@ -215,7 +215,7 @@ public:
     if (_initialized)
       return true;
 
-    _gl = new gl_api();
+    _gl = get_gl_api();
 
     if (!_gl->init())
       return false;
