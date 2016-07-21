@@ -222,6 +222,10 @@ struct gl_api
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct gl_api_accessor { gl_api *operator->() const; };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T> class ptr
 {
 public:
@@ -252,7 +256,7 @@ private:
 
 }
 
-static detail::gl_api *get_gl_api();
+extern detail::gl_api_accessor gl;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -295,21 +299,27 @@ class texture : public detail::ref_counted<texture>
 #ifndef __GL3D_H_IMPL__
 #define __GL3D_H_IMPL__
 
+#include <memory>
+
 namespace gl3d {
 
-detail::gl_api *get_gl_api()
-{
-  static detail::gl_api *gl = new detail::gl_api();
-  return gl;
-}
+static std::unique_ptr<detail::gl_api> g_gl;
+static detail::gl_api_accessor gl;
 
 namespace detail {
 
 //------------------------------------------------------------------------------------------------------------------------
-void gl_resource_buffer::destroy() { if (id > 0) get_gl_api()->DeleteBuffers(1, &id); id = 0; }
-void gl_resource_vao::destroy() { if (id > 0) get_gl_api()->DeleteVertexArrays(1, &id); id = 0; }
-void gl_resource_shader::destroy() { if (id > 0) get_gl_api()->DeleteShader(id); id = 0; }
-void gl_resource_program::destroy() { if (id > 0) get_gl_api()->DeleteProgram(id); id = 0; }
+gl_api *gl_api_accessor::operator->() const
+{
+  if (!g_gl) g_gl.reset(new detail::gl_api());
+  return g_gl.get();
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void gl_resource_buffer::destroy() { if (id > 0) g_gl->DeleteBuffers(1, &id); id = 0; }
+void gl_resource_vao::destroy() { if (id > 0) g_gl->DeleteVertexArrays(1, &id); id = 0; }
+void gl_resource_shader::destroy() { if (id > 0) g_gl->DeleteShader(id); id = 0; }
+void gl_resource_program::destroy() { if (id > 0) g_gl->DeleteProgram(id); id = 0; }
 void gl_resource_texture::destroy() { if (id > 0) glDeleteTextures(1, &id); id = 0; }
 
 //------------------------------------------------------------------------------------------------------------------------

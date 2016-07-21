@@ -215,53 +215,48 @@ public:
     if (_initialized)
       return true;
 
-    _gl = get_gl_api();
-
-    if (!_gl->init())
-      return false;
-
     _initialized = true;
 
-    _gl->GenBuffers(1, &_vbo);
-    _gl->GenVertexArrays(1, &_vao);
+    gl->GenBuffers(1, &_vbo);
+    gl->GenVertexArrays(1, &_vao);
 
     // Initialize VBO and VAO
     {
-      _gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-      _gl->BindVertexArray(_vao);
-      _gl->EnableVertexAttribArray(0);
-      _gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), 0);
-      _gl->EnableVertexAttribArray(1);
-      _gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, color)));
-      _gl->EnableVertexAttribArray(2);
-      _gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, uv)));
-      _gl->BindVertexArray(0);
-      _gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
+      gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
+      gl->BindVertexArray(_vao);
+      gl->EnableVertexAttribArray(0);
+      gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), 0);
+      gl->EnableVertexAttribArray(1);
+      gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, color)));
+      gl->EnableVertexAttribArray(2);
+      gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, uv)));
+      gl->BindVertexArray(0);
+      gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
     }
 
-    _vertShader = _gl->compile_shader(gl_api::VERTEX_SHADER, vertex_shader_code);
+    _vertShader = gl->compile_shader(gl_api::VERTEX_SHADER, vertex_shader_code);
     if (!_vertShader)
     {
       done();
       return false;
     }
 
-    _fragShader = _gl->compile_shader(gl_api::FRAGMENT_SHADER, fragment_shader_code);
+    _fragShader = gl->compile_shader(gl_api::FRAGMENT_SHADER, fragment_shader_code);
     if (!_fragShader)
     {
       done();
       return false;
     }
 
-    _program = _gl->link_program(_vertShader, _fragShader);
+    _program = gl->link_program(_vertShader, _fragShader);
     if (!_program)
     {
       done();
       return false;
     }
 
-    _uScreenSize = _gl->GetUniformLocation(_program, "u_ScreenSize");
-    _uFontTexture = _gl->GetUniformLocation(_program, "u_FontTexture");
+    _uScreenSize = gl->GetUniformLocation(_program, "u_ScreenSize");
+    _uFontTexture = gl->GetUniformLocation(_program, "u_FontTexture");
 
     // Initialize font texture
     {
@@ -314,13 +309,13 @@ public:
 
     if (_vbo)
     {
-      _gl->DeleteBuffers(1, &_vbo);
+      gl->DeleteBuffers(1, &_vbo);
       _vbo = 0;
     }
 
     if (_vao)
     {
-      _gl->DeleteVertexArrays(1, &_vao);
+      gl->DeleteVertexArrays(1, &_vao);
       _vao = 0;
     }
 
@@ -334,8 +329,6 @@ public:
       _fontTexture = 0;
     }
 
-    delete _gl;
-    _gl = nullptr;
     _initialized = false;
   }
 
@@ -511,20 +504,20 @@ public:
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Copy vertices into VBO
-    _gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-    _gl->BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
-    _gl->BindVertexArray(_vao);
-    _gl->UseProgram(_program);
-    _gl->BindAttribLocation(_program, 0, "vert_Position");
-    _gl->BindAttribLocation(_program, 1, "vert_Color");
-    _gl->BindAttribLocation(_program, 2, "vert_UV");
+    gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
+    gl->BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
+    gl->BindVertexArray(_vao);
+    gl->UseProgram(_program);
+    gl->BindAttribLocation(_program, 0, "vert_Position");
+    gl->BindAttribLocation(_program, 1, "vert_Color");
+    gl->BindAttribLocation(_program, 2, "vert_UV");
 
-    _gl->ActiveTexture(gl_api::TEXTURE0);
+    gl->ActiveTexture(gl_api::TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _fontTexture);
 
     vec2 screenSize(width, height);
-    _gl->Uniform2fv(_uScreenSize, 1, screenSize.data());
-    _gl->Uniform1i(_uFontTexture, 0);
+    gl->Uniform2fv(_uScreenSize, 1, screenSize.data());
+    gl->Uniform1i(_uFontTexture, 0);
 
     size_t startVertex = 0;
     for (auto &&dc : _drawCalls)
@@ -535,9 +528,9 @@ public:
       startVertex += dc.length;
     }
 
-    _gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
-    _gl->BindVertexArray(0);
-    _gl->UseProgram(0);
+    gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
+    gl->BindVertexArray(0);
+    gl->UseProgram(0);
 
     clear(); 
   }
@@ -612,8 +605,6 @@ private:
   }
 
   bool _initialized = false;
-
-  detail::gl_api *_gl = nullptr;
 
   detail::state _state;
 
