@@ -17,7 +17,9 @@ namespace gl2d {
 
 class application;
 
-typedef unsigned window_id_t;
+typedef int window_id_t;
+
+const window_id_t invalid_window_id = static_cast<window_id_t>(-1);
 
 struct window_flag
 {
@@ -130,6 +132,7 @@ struct window
   window_id_t id;
   std::string title;
   int width, height;
+  context ctx;
 
   window(application *a, window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags)
     : app(a)
@@ -159,7 +162,15 @@ public:
   window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags)
   {
     auto id = _next_id++;
-    _windows[id] = std::make_unique<platform_window>(this, id, title, width, height, flags);
+    auto window = std::make_unique<platform_window>(this, id, title, width, height, flags);
+
+    if (!window->ctx.init())
+    {
+      window_close(id);
+      return invalid_window_id;
+    }
+
+    _windows[id] = std::move(window);
     return id;
   }
 
@@ -206,6 +217,15 @@ public:
   void set_event_handler(const event_handler_t &handler) { _event_handler = handler; }
   const event_handler_t &event_handler() const { return _event_handler; }
   
+  gl2d::context *get_window_context(window_id_t id) const
+  {
+    auto iter = _windows.find(id);
+    if (iter != _windows.end())
+      return &(iter->second->ctx);
+
+    return nullptr;
+  }
+
 protected:
   virtual void on_event(const event &e) { }
   
@@ -221,6 +241,7 @@ private:
     platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_window_flags);
     virtual ~platform_window();
 
+    void make_current();
     void flip();
     void set_title(const std::string &text);
     void set_size(int w, int h);
@@ -261,11 +282,14 @@ private:
 
     for (auto &kvp : _windows)
     {
-      send({ event_type::tick, kvp.second->id, _time, _delta });
-      kvp.second->flip();
+      auto &w = *kvp.second;
+
+      w.make_current();
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      send({ event_type::tick, w.id, _time, _delta });
+      w.ctx.render(w.width, w.height);
+      w.flip();
     }
-    
-    std::this_thread::yield();
   }
 };
 
@@ -279,7 +303,7 @@ inline application::application()
   _window_class = { 0 };
   _window_class.lpfnWndProc = wnd_proc_shared;
   _window_class.hInstance = GetModuleHandle(nullptr);
-  _window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BACKGROUND);
+  _window_class.hbrBackground = GetStockBrush(BLACK_BRUSH);
   _window_class.lpszClassName = TEXT("gl2d_window");
   _window_class.style = CS_OWNDC;
   _window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -312,6 +336,8 @@ inline void application::run()
     }
     else
       tick();
+
+    std::this_thread::yield();
   }
 }
 
@@ -330,25 +356,25 @@ inline application::platform_window::platform_window(application *a, window_id_t
   handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
   SetWindowLongPtr(handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
 
-	PIXELFORMATDESCRIPTOR pfd =
-	{
-		sizeof(PIXELFORMATDESCRIPTOR),
-		1,
-		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
-		PFD_TYPE_RGBA,
-		32, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0,
-		24, 8,
-		0, PFD_MAIN_PLANE, 0, 0, 0, 0
-	};
+  PIXELFORMATDESCRIPTOR pfd =
+  {
+    sizeof(PIXELFORMATDESCRIPTOR),
+    1,
+    PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+    PFD_TYPE_RGBA,
+    32, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
+    24, 8,
+    0, PFD_MAIN_PLANE, 0, 0, 0, 0
+  };
  
-	hdc = GetDC(handle);
+  hdc = GetDC(handle);
 
-	auto pf = ChoosePixelFormat(hdc, &pfd); 
-	SetPixelFormat(hdc, pf, &pfd);
+  auto pf = ChoosePixelFormat(hdc, &pfd); 
+  SetPixelFormat(hdc, pf, &pfd);
  
-	hglrc = wglCreateContext(hdc);
-	wglMakeCurrent(hdc, hglrc);
+  hglrc = wglCreateContext(hdc);
+  make_current();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -356,6 +382,12 @@ inline application::platform_window::~platform_window()
 {
   wglDeleteContext(hglrc);
   DestroyWindow(handle);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline void application::platform_window::make_current()
+{
+  wglMakeCurrent(hdc, hglrc);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -406,11 +438,13 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
   {
     if (kvp.second->handle == hWnd)
     {
+      gl2d::context::current() = &kvp.second->ctx;
+
       switch (message)
       {
         case WM_MOUSEMOVE:
         {
-          event e(event_type::mouse_move, kvp.second->id, _time, _delta);
+          event e(event_type::mouse_move, kvp.second->id, _time, _delta );
           e.mouse.x = GET_X_LPARAM(lParam);
           e.mouse.y = GET_Y_LPARAM(lParam);
           send(e);
@@ -423,6 +457,8 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
           e.resize.width = LOWORD(lParam);
           e.resize.height = HIWORD(lParam);
           send(e);
+          kvp.second->width = LOWORD(lParam);
+          kvp.second->height = HIWORD(lParam);
         }
         break;
 
