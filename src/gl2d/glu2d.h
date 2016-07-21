@@ -132,7 +132,8 @@ struct window
   window_id_t id;
   std::string title;
   int width, height;
-  context2d ctx;
+  context2d ctx2d;
+  context3d ctx3d;
   int mouse_x = 0, mouse_y = 0;
   int mouse_dx = 0, mouse_dy = 0;
 
@@ -176,7 +177,7 @@ public:
     auto id = _next_id++;
     auto window = std::make_unique<platform_window>(this, id, title, width, height, flags);
 
-    if (!window->ctx.init())
+    if (!window->ctx2d.init())
     {
       window_close(id);
       return invalid_window_id;
@@ -254,7 +255,7 @@ public:
   {
     auto iter = _windows.find(id);
     if (iter != _windows.end())
-      return &(iter->second->ctx);
+      return &(iter->second->ctx2d);
 
     return nullptr;
   }
@@ -318,7 +319,7 @@ private:
     if (_tick_handler != nullptr)
     {
       if (_main_window_id)
-        current_context2d = &(_windows[_main_window_id]->ctx);
+        current_context2d = &(_windows[_main_window_id]->ctx2d);
       else
         current_context2d = nullptr;
 
@@ -330,10 +331,10 @@ private:
       auto &w = *kvp.second;
 
       w.make_current();
-      current_context2d = &(w.ctx);
+      current_context2d = &(w.ctx2d);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       send({ event_type::render, w.id, _time, _delta });
-      w.ctx.render(w.width, w.height);
+      w.ctx2d.render(w.width, w.height);
       w.flip();
     }
 

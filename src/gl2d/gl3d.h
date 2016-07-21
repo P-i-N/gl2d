@@ -75,15 +75,9 @@ struct rgba_color
   rgba_color() { }
   rgba_color(const rgba_color &copy): r(copy.r), g(copy.g), b(copy.b), a(copy.a) { }
   rgba_color(float _r, float _g, float _b, float _a = 1.0f): r(_r), g(_g), b(_b), a(_a) { }
-
   rgba_color(uint32_t argb)
-    : r(((argb >> 16) & 0xFFu) / 255.0f)
-    , g(((argb >>  8) & 0xFFu) / 255.0f)
-    , b(((argb      ) & 0xFFu) / 255.0f)
-    , a(((argb >> 24) & 0xFFu) / 255.0f)
-  {
-    
-  }
+    : r(((argb >> 16) & 0xFFu) / 255.0f), g(((argb >> 8) & 0xFFu) / 255.0f)
+    , b((argb & 0xFFu) / 255.0f), a(((argb >> 24) & 0xFFu) / 255.0f) { }
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,6 +175,11 @@ template <typename T> class ptr
 public:
   ptr() { }
   ptr(T *p): _ptr(p) { if (p) p->ref(); }
+  ptr(const ptr &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
+  ptr(ptr &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
+  ~ptr() { if (_ptr) _ptr->unref(); }
+
+  T *operator->() const { return _ptr; }
 
 private:
   T *_ptr = nullptr;
@@ -191,6 +190,8 @@ private:
 template <typename T> class ref_counted
 {
   friend class ptr<T>;
+public:
+  typedef ptr<T> ptr;
 
 protected:
   virtual ~ref_counted() { }
@@ -210,11 +211,63 @@ extern detail::gl_api_accessor gl;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex3d
+namespace detail
+{
+
+template <typename T> struct init_vao_arg { };
+
+#define INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
+  template <> struct init_vao_arg<_Type> { \
+    static void apply(GLuint index, size_t size, const void *offset) { \
+      gl->VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, size, offset); } };
+
+INIT_VAO_ARG(vec2, 2, GL_FLOAT)
+INIT_VAO_ARG(vec3, 3, GL_FLOAT)
+INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
+
+#undef INIT_VAO_ARG
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename... T> struct layout
+{
+  template <typename Head, typename... Tail> struct helper
+  {
+    Head head;
+    helper<Tail...> tail;
+
+    void init_vao(GLuint index, size_t size, size_t offset)
+    {
+      gl->EnableVertexAttribArray(index);
+      detail::init_vao_arg<Head>::apply(index, size, reinterpret_cast<const void *>(offset));
+      tail.init_vao(index + 1, size, offset + offsetof(std::remove_pointer_t<decltype(this)>, tail));
+    }
+  };
+
+  template <typename Head> struct helper<Head>
+  {
+    Head head;
+
+    void init_vao(GLuint index, size_t size, size_t offset)
+    {
+      gl->EnableVertexAttribArray(index);
+      detail::init_vao_arg<Head>::apply(index, size, reinterpret_cast<const void *>(offset));
+    }
+  };
+
+  static void init_vao() { helper<T...> h; h.init_vao(0, sizeof(h), 0); }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct vertex3d : layout<vec3, vec3, rgba_color, vec2>
 {
   vec3 pos;
   vec3 normal;
   rgba_color color;
+  vec2 uv;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,6 +293,12 @@ class texture : public detail::ref_counted<texture>
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class context3d
+{
+public:
+
+};
 
 }
 

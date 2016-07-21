@@ -158,7 +158,7 @@ std::vector<uint8_t> base64_decode(const char *encoded_string)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex2d
+struct vertex2d : layout<vec2, rgba_color, vec2>
 {
   vec2 pos;
   rgba_color color;
@@ -224,12 +224,15 @@ public:
     {
       gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
       gl->BindVertexArray(_vao);
+      vertex2d::init_vao();
+      /*
       gl->EnableVertexAttribArray(0);
       gl->VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), 0);
       gl->EnableVertexAttribArray(1);
       gl->VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, color)));
       gl->EnableVertexAttribArray(2);
       gl->VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex2d), reinterpret_cast<const void *>(offsetof(vertex2d, uv)));
+      */
       gl->BindVertexArray(0);
       gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
     }
@@ -508,9 +511,6 @@ public:
     gl->BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
     gl->BindVertexArray(_vao);
     gl->UseProgram(_program);
-    gl->BindAttribLocation(_program, 0, "vert_Position");
-    gl->BindAttribLocation(_program, 1, "vert_Color");
-    gl->BindAttribLocation(_program, 2, "vert_UV");
 
     gl->ActiveTexture(gl_api::TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _fontTexture);

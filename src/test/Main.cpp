@@ -8,6 +8,8 @@ int main()
 {
   auto id = app.window_open("Example", 400, 300);
 
+  geometry::ptr g = new geometry();
+
   app.set_tick_handler([&](float delta)
   {
     text(8, 8, "Hello, world!");
