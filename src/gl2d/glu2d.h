@@ -59,7 +59,7 @@ enum class key
 
 enum class mouse_button
 {
-  none = 0,
+  unknown = 0,
   left, right, middle,
   wheel_up, wheel_down,
   wheel_left, wheel_right,
@@ -109,7 +109,7 @@ struct event
   {
     struct { bool down; key key; int key_char; } keyboard;
     struct { int width, height; } resize;
-    struct { int x, y, dx, dy; mouse_button button; } mouse;
+    struct { bool down; int x, y, dx, dy; mouse_button button; } mouse;
   };
 
   event(event_type et, window_id_t id, double t, double d)
@@ -133,6 +133,8 @@ struct window
   std::string title;
   int width, height;
   context ctx;
+  int mouse_x = 0, mouse_y = 0;
+  int mouse_dx = 0, mouse_dy = 0;
 
   window(application *a, window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags)
     : app(a)
@@ -145,6 +147,14 @@ struct window
   }
 
   virtual ~window() { }
+
+  void fill_mouse_event(event &e)
+  {
+    e.mouse.x = mouse_x;
+    e.mouse.y = mouse_y;
+    e.mouse.dx = mouse_dx;
+    e.mouse.dy = mouse_dy;
+  }
 };
 
 }
@@ -158,6 +168,10 @@ public:
   virtual ~application();
 
   void run();
+
+  float time() const { return _time; }
+
+  float delta() const { return _delta; }
 
   window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags)
   {
@@ -460,7 +474,7 @@ inline void application::update_timer()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-key vkToKey(WPARAM vk)
+key vk_to_key(WPARAM vk)
 {
   static const std::map<unsigned, key> vkToKeyMap =
   {
@@ -489,6 +503,20 @@ key vkToKey(WPARAM vk)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+mouse_button xbutton_to_mouse_button(WPARAM xb)
+{
+  auto lo = LOWORD(xb);
+
+  if (lo == 32)
+    return mouse_button::back;
+  
+  if (lo == 64)
+    return mouse_button::forward;
+
+  return mouse_button::unknown;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   for (auto &kvp : _windows)
@@ -500,9 +528,77 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
         case WM_MOUSEMOVE:
         {
           event e(event_type::mouse_move, kvp.second->id, _time, _delta);
+          e.mouse.down = false;
+          e.mouse.button = mouse_button::unknown;
           e.mouse.x = GET_X_LPARAM(lParam);
           e.mouse.y = GET_Y_LPARAM(lParam);
+          kvp.second->mouse_dx = e.mouse.dx = e.mouse.x - kvp.second->mouse_x;
+          kvp.second->mouse_dy = e.mouse.dy = e.mouse.y - kvp.second->mouse_y;
+          kvp.second->mouse_x = e.mouse.x;
+          kvp.second->mouse_y = e.mouse.y;
           send(e);
+        }
+        return 0;
+
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        {
+          event e(event_type::mouse_down, kvp.second->id, _time, _delta);
+          e.mouse.down = true;
+          if (message == WM_LBUTTONDOWN)
+            e.mouse.button = mouse_button::left;
+          else if (message == WM_RBUTTONDOWN)
+            e.mouse.button = mouse_button::right;
+          else if (message == WM_MBUTTONDOWN)
+            e.mouse.button = mouse_button::middle;
+
+          kvp.second->fill_mouse_event(e);
+          send(e);
+        }
+        return 0;
+
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+        {
+          event e(event_type::mouse_up, kvp.second->id, _time, _delta);
+          e.mouse.down = false;
+          if (message == WM_LBUTTONUP)
+            e.mouse.button = mouse_button::left;
+          else if (message == WM_RBUTTONUP)
+            e.mouse.button = mouse_button::right;
+          else if (message == WM_MBUTTONUP)
+            e.mouse.button = mouse_button::middle;
+
+          kvp.second->fill_mouse_event(e);
+          send(e);
+        }
+        return 0;
+
+        case WM_XBUTTONDOWN:
+        {
+          auto button = xbutton_to_mouse_button(wParam);
+          if (button != mouse_button::unknown)
+          {
+            event e(event_type::mouse_down, kvp.second->id, _time, _delta);
+            e.mouse.button = button;
+            kvp.second->fill_mouse_event(e);
+            send(e);
+          }
+        }
+        return 0;
+
+        case WM_XBUTTONUP:
+        {
+          auto button = xbutton_to_mouse_button(wParam);
+          if (button != mouse_button::unknown)
+          {
+            event e(event_type::mouse_up, kvp.second->id, _time, _delta);
+            e.mouse.button = button;
+            kvp.second->fill_mouse_event(e);
+            send(e);
+          }
         }
         return 0;
 
@@ -513,7 +609,7 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
           {
             event e(event_type::key_down, kvp.second->id, _time, _delta);
             e.keyboard.down = true;
-            e.keyboard.key = vkToKey(wParam);
+            e.keyboard.key = vk_to_key(wParam);
             e.keyboard.key_char = 0;
             send(e);
           }
@@ -524,7 +620,7 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
         {
           event e(event_type::key_up, kvp.second->id, _time, _delta);
           e.keyboard.down = false;
-          e.keyboard.key = vkToKey(wParam);
+          e.keyboard.key = vk_to_key(wParam);
           e.keyboard.key_char = 0;
           send(e);
         }
