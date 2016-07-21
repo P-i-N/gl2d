@@ -75,7 +75,7 @@ enum class event_type
   unknown = 0,
   render,
   open, close, resize,
-  key_down, key_up,
+  key_down, key_up, key_press,
   mouse_down, mouse_up, mouse_move
 };
 
