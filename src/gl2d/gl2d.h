@@ -184,6 +184,81 @@ static const unsigned long long ibm_font[96] =
   0x000063361C366300ull, 0x00003333333E301Full, 0x00003F190C263F00ull, 0x380C0C070C0C3800ull, 0x1818180018181800ull, 0x070C0C380C0C0700ull, 0x6E3B000000000000ull, 0x0000000000000000ull
 };
 
+//---------------------------------------------------------------------------------------------------------------------
+static const int font_width = 288;
+static const int font_height = 42;
+static const int font_char_width = 9;
+static const int font_char_height = 14;
+
+static const char *font_base64 =
+  "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";
+
+//---------------------------------------------------------------------------------------------------------------------
+static bool is_base64(uint8_t c) { return (isalnum(c) || (c == '+') || (c == '/')); }
+
+//---------------------------------------------------------------------------------------------------------------------
+std::vector<uint8_t> base64_decode(const char *encoded_string)
+{
+  static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  size_t len = strlen(encoded_string);
+  int i = 0, cursor = 0;
+  uint8_t char_array_4[4], char_array_3[3];
+  std::vector<uint8_t> result;
+
+  while (len-- && (encoded_string[cursor] != '=') && is_base64(encoded_string[cursor]))
+  {
+    char_array_4[i++] = encoded_string[cursor++];
+
+    if (i == 4)
+    {
+      for (i = 0; i < 4; ++i) char_array_4[i] = static_cast<uint8_t>(base64_chars.find(char_array_4[i]));
+
+      char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+      char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+      char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+      for (i = 0; (i < 3); ++i) result.push_back(char_array_3[i]);
+
+      i = 0;
+    }
+  }
+
+  if (i)
+  {
+    for (int j = i; j < 4; j++) char_array_4[j] = 0;
+    for (int j = 0; j < 4; j++) char_array_4[j] = static_cast<uint8_t>(base64_chars.find(char_array_4[j]));
+
+    char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+    char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+    char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+    for (int j = 0; (j < i - 1); j++) result.push_back(char_array_3[j]);
+  }
+
+  return result;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define GL2D_API_FUNC(retValue, name, ...) \
@@ -409,9 +484,31 @@ public:
 
     // Initialize font texture
     {
-      uint32_t *image = new uint32_t[256 * 128];
-      memset(image, 0, 256 * 128 * sizeof(uint32_t));
+      auto fontImage = base64_decode(detail::font_base64);
+
+      uint32_t *image = new uint32_t[detail::font_width * detail::font_height];
+      memset(image, 0, detail::font_width * detail::font_height * sizeof(uint32_t));
       
+      uint32_t *cursorOutput = image;
+      const uint8_t *cursorInput = fontImage.data();
+
+      for (int y = 0; y < detail::font_height; ++y)
+      {
+        for (int x = 0; x < detail::font_width; x += 8, ++cursorInput)
+        {
+          auto byte = *cursorInput;
+
+          for (int i = 0; i < 8; ++i, ++cursorOutput, byte >>= 1)
+          {
+            if (byte & 1)
+            {
+              *cursorOutput = 0xFFFFFFFFu;
+            }
+          }
+        }
+      }
+      
+      /*
       for (int ch = 0; ch < 96; ++ch)
       {
         uint32_t *charPixel = image + ((ch % 16) * 16) + ((ch / 16) * 16 * 256);
@@ -429,12 +526,13 @@ public:
           }
         }
       }
+      */
 
-      image[256 * 128 - 1] = 0xFFFFFFFFu;
+      image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
 
       glGenTextures(1, &_fontTexture);
       glBindTexture(GL_TEXTURE_2D, _fontTexture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, detail::font_width, detail::font_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_api::CLAMP_TO_EDGE);
@@ -720,10 +818,8 @@ private:
     size_t skippedChars = 0;
     auto *v = alloc_vertices(length * 6);
 
-    const float uvStepX = 16.0f / 256.0f;
-    const float uvStepY = 16.0f / 128.0f;
-    const float uvW = 8.0f / 256.0f;
-    const float uvH = 8.0f / 128.0f;
+    const float uvW = static_cast<float>(detail::font_char_width) / detail::font_width;
+    const float uvH = static_cast<float>(detail::font_char_height) / detail::font_height;
 
     while (length)
     {
@@ -731,34 +827,34 @@ private:
       if (ch > 32)
       {
         ch -= 32;
-        float uvX = (ch % 16) * uvStepX;
-        float uvY = (ch / 16) * uvStepY;
+        float uvX = (ch % (detail::font_width / detail::font_char_width)) * uvW;
+        float uvY = (ch / (detail::font_width / detail::font_char_width)) * uvH;
 
         v->pos = vec2(x, y);
         v->color = color;
-        v->uv = vec2(uvX, uvY + uvH);
-        ++v;
-        v->pos = vec2(x + 8, y);
-        v->color = color;
-        v->uv = vec2(uvX + uvW, uvY + uvH);
-        ++v;
-        v->pos = vec2(x, y + 8);
-        v->color = color;
         v->uv = vec2(uvX, uvY);
+        ++v;
+        v->pos = vec2(x + detail::font_char_width, y);
+        v->color = color;
+        v->uv = vec2(uvX + uvW, uvY);
+        ++v;
+        v->pos = vec2(x, y + detail::font_char_height);
+        v->color = color;
+        v->uv = vec2(uvX, uvY + uvH);
 
         v[1] = *v;
         v[2] = v[-1];
         v += 3;
 
-        v->pos = vec2(x + 8, y + 8);
+        v->pos = vec2(x + detail::font_char_width, y + detail::font_char_height);
         v->color = color;
-        v->uv = vec2(uvX + uvW, uvY);
+        v->uv = vec2(uvX + uvW, uvY + uvH);
         ++v;
       }
       else
         ++skippedChars;
 
-      x += 8;
+      x += detail::font_char_width;
       ++text;
       --length;
     }
