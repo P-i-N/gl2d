@@ -761,7 +761,7 @@ private:
   detail::state _state;
 
   GLuint _vbo = 0;
-    
+  
   GLuint _vao = 0;
 
   GLuint _vertShader = 0;
