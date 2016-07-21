@@ -61,8 +61,6 @@ enum class mouse_button
 {
   unknown = 0,
   left, right, middle,
-  wheel_up, wheel_down,
-  wheel_left, wheel_right,
   special_0, special_1,
   back, forward,
 
@@ -77,7 +75,7 @@ enum class event_type
   render,
   open, close, resize,
   key_down, key_up, key_press,
-  mouse_down, mouse_up, mouse_move
+  mouse_down, mouse_up, mouse_move, mouse_wheel
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +108,7 @@ struct event
     struct { bool down; key key; int key_char; } keyboard;
     struct { int width, height; } resize;
     struct { bool down; int x, y, dx, dy; mouse_button button; } mouse;
+    struct { int dx, dy; } wheel;
   };
 
   event(event_type et, window_id_t id, double t, double d)
@@ -582,6 +581,7 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
           if (button != mouse_button::unknown)
           {
             event e(event_type::mouse_down, kvp.second->id, _time, _delta);
+            e.mouse.down = true;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
             send(e);
@@ -595,10 +595,29 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
           if (button != mouse_button::unknown)
           {
             event e(event_type::mouse_up, kvp.second->id, _time, _delta);
+            e.mouse.down = false;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
             send(e);
           }
+        }
+        return 0;
+
+        case WM_MOUSEWHEEL:
+        {
+          event e(event_type::mouse_wheel, kvp.second->id, _time, _delta);
+          e.wheel.dx = 0;
+          e.wheel.dy = GET_WHEEL_DELTA_WPARAM(wParam);
+          send(e);
+        }
+        return 0;
+
+        case WM_MOUSEHWHEEL:
+        {
+          event e(event_type::mouse_wheel, kvp.second->id, _time, _delta);
+          e.wheel.dx = GET_WHEEL_DELTA_WPARAM(wParam);
+          e.wheel.dy = 0;
+          send(e);
         }
         return 0;
 
