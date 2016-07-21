@@ -66,6 +66,22 @@ struct vec2
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct mat3
+{
+  float m[9];
+
+  mat3() { m[0] = m[1] = m[2] = m[3] = m[4] = m[5] = m[6] = m[7] = m[8] = 0.0f; }
+
+  template <typename T>
+  mat3(T diag)
+  {
+    m[0] = m[4] = m[8] = static_cast<float>(diag);
+    m[1] = m[2] = m[3] = m[5] = m[6] = m[7] = 0.0f;
+  }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct rect
 {
   vec2 min, max;
@@ -752,6 +768,7 @@ private:
     }
 
     _vertexCursor -= skippedChars * 6;
+    _drawCalls.back().length -= skippedChars * 6;
   }
 
   bool _initialized = false;
