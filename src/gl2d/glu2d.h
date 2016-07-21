@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __GLU2D_H__
+#define __GLU2D_H__
 
 #include <functional>
 #include <map>
@@ -13,8 +14,6 @@
 #endif
 
 namespace gl2d {
-
-class application;
 
 typedef int window_id_t;
 
@@ -125,6 +124,8 @@ struct event
 
 namespace detail {
 
+class application;
+
 struct window
 {
   application *app;
@@ -155,8 +156,6 @@ struct window
     e.mouse.dy = mouse_dy;
   }
 };
-
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -319,9 +318,9 @@ private:
     if (_tick_handler != nullptr)
     {
       if (_main_window_id)
-        gl2d::context::current = &(_windows[_main_window_id]->ctx);
+        current_context = &(_windows[_main_window_id]->ctx);
       else
-        gl2d::context::current = nullptr;
+        current_context = nullptr;
 
       _tick_handler(_delta);
     }
@@ -331,23 +330,42 @@ private:
       auto &w = *kvp.second;
 
       w.make_current();
-      gl2d::context::current = &(w.ctx);
+      current_context = &(w.ctx);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       send({ event_type::render, w.id, _time, _delta });
       w.ctx.render(w.width, w.height);
       w.flip();
     }
 
-    gl2d::context::current = nullptr;
+    current_context = nullptr;
   }
 };
 
+}
+
+// Global application instance
+extern detail::application app;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+}
+
+#endif // __GLU2D_H__
+
+#ifdef GL2D_IMPLEMENTATION
+#ifndef __GLU2D_H_IMPL__
+#define __GLU2D_H_IMPL__
+
+namespace gl2d {
+
+static detail::application app;
+
+namespace detail {
 
 #ifdef _WIN32
 
 //---------------------------------------------------------------------------------------------------------------------
-inline application::application()
+application::application()
 {
   _window_class = { 0 };
   _window_class.lpfnWndProc = wnd_proc_shared;
@@ -360,13 +378,13 @@ inline application::application()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline application::~application()
+application::~application()
 {
   UnregisterClass(TEXT("gl2d_window"), _window_class.hInstance);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline void application::run()
+void application::run()
 {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
@@ -391,7 +409,7 @@ inline void application::run()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline application::platform_window::platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
+application::platform_window::platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
   : window(a, win_id, title, width, height, flags)
 {
   style =  WS_OVERLAPPEDWINDOW | WS_VISIBLE;
@@ -427,32 +445,32 @@ inline application::platform_window::platform_window(application *a, window_id_t
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline application::platform_window::~platform_window()
+application::platform_window::~platform_window()
 {
   wglDeleteContext(hglrc);
   DestroyWindow(handle);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline void application::platform_window::make_current()
+void application::platform_window::make_current()
 {
   wglMakeCurrent(hdc, hglrc);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline void application::platform_window::flip()
+void application::platform_window::flip()
 {
   SwapBuffers(hdc);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline void application::platform_window::set_title(const std::string &text)
+void application::platform_window::set_title(const std::string &text)
 {
   SetWindowTextA(handle, text.c_str());
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline void application::platform_window::set_size(int w, int h)
+void application::platform_window::set_size(int w, int h)
 {
   if (width != w || height != h)
   {
@@ -470,7 +488,7 @@ inline void application::platform_window::set_size(int w, int h)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline void application::update_timer()
+void application::update_timer()
 {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
@@ -525,7 +543,7 @@ mouse_button xbutton_to_mouse_button(WPARAM xb)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   for (auto &kvp : _windows)
   {
@@ -695,7 +713,7 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-inline LRESULT CALLBACK application::wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK application::wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   auto app = reinterpret_cast<application *>(GetWindowLongPtr(hWnd, GWL_USERDATA));
   return app ? app->wnd_proc(hWnd, message, wParam, lParam) : DefWindowProc(hWnd, message, wParam, lParam);
@@ -708,3 +726,8 @@ inline LRESULT CALLBACK application::wnd_proc_shared(HWND hWnd, UINT message, WP
 #endif
 
 }
+
+}
+
+#endif // __GLU2D_H_IMPL__
+#endif // GL2D_IMPLEMENTATION
