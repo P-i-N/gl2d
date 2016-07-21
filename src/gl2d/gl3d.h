@@ -39,31 +39,6 @@ template <typename T> struct xvec2
 
   T *data() { return &x; }
   const T *data() const { return &x; }
-
-  xvec2 operator+(const xvec2 &v) const { return xvec2(x + v.x, y + v.y); }
-  xvec2 operator-(const xvec2 &v) const { return xvec2(x - v.x, y - v.y); }
-  xvec2 operator*(const xvec2 &v) const { return xvec2(x * v.x, y * v.y); }
-  xvec2 operator/(const xvec2 &v) const { return xvec2(x / v.x, y / v.y); }
-
-  xvec2 operator+(T v) const { return xvec2(x + v, y + v); }
-  xvec2 operator-(T v) const { return xvec2(x - v, y - v); }
-  xvec2 operator*(T v) const { return xvec2(x * v, y * v); }
-  xvec2 operator/(T v) const { return xvec2(x / v, y / v); }
-
-  friend xvec2 operator+(T v, const xvec2 &vec) { return xvec2(v + vec.x, v + vec.y); }
-  friend xvec2 operator-(T v, const xvec2 &vec) { return xvec2(v - vec.x, v - vec.y); }
-  friend xvec2 operator*(T v, const xvec2 &vec) { return xvec2(v * vec.x, v * vec.y); }
-  friend xvec2 operator/(T v, const xvec2 &vec) { return xvec2(v / vec.x, v / vec.y); }
-
-  xvec2 &operator+=(const xvec2 &v) { x += v.x; y += v.y; return *this; }
-  xvec2 &operator-=(const xvec2 &v) { x -= v.x; y -= v.y; return *this; }
-  xvec2 &operator*=(const xvec2 &v) { x *= v.x; y *= v.y; return *this; }
-  xvec2 &operator/=(const xvec2 &v) { x /= v.x; y /= v.y; return *this; }
-
-  xvec2 &operator+=(T v) { x += v; y += v; return *this; }
-  xvec2 &operator-=(T v) { x -= v; y -= v; return *this; }
-  xvec2 &operator*=(T v) { x *= v; y *= v; return *this; }
-  xvec2 &operator/=(T v) { x /= v; y /= v; return *this; }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -82,31 +57,6 @@ template <typename T> struct xvec3
 
   T *data() { return &x; }
   const T *data() const { return &x; }
-
-  xvec3 operator+(const xvec3 &v) const { return xvec3(x + v.x, y + v.y, z + v.z); }
-  xvec3 operator-(const xvec3 &v) const { return xvec3(x - v.x, y - v.y, z - v.z); }
-  xvec3 operator*(const xvec3 &v) const { return xvec3(x * v.x, y * v.y, z * v.z); }
-  xvec3 operator/(const xvec3 &v) const { return xvec3(x / v.x, y / v.y, z / v.z); }
-
-  xvec3 operator+(T v) const { return xvec3(x + v, y + v, z + v); }
-  xvec3 operator-(T v) const { return xvec3(x - v, y - v, z - v); }
-  xvec3 operator*(T v) const { return xvec3(x * v, y * v, z * v); }
-  xvec3 operator/(T v) const { return xvec3(x / v, y / v, z / v); }
-
-  friend xvec3 operator+(T v, const xvec3 &vec) { return xvec3(v + vec.x, v + vec.y, v + vec.z); }
-  friend xvec3 operator-(T v, const xvec3 &vec) { return xvec3(v - vec.x, v - vec.y, v - vec.z); }
-  friend xvec3 operator*(T v, const xvec3 &vec) { return xvec3(v * vec.x, v * vec.y, v * vec.z); }
-  friend xvec3 operator/(T v, const xvec3 &vec) { return xvec3(v / vec.x, v / vec.y, v / vec.z); }
-
-  xvec3 &operator+=(const xvec3 &v) { x += v.x; y += v.y; z += v.z; return *this; }
-  xvec3 &operator-=(const xvec3 &v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
-  xvec3 &operator*=(const xvec3 &v) { x *= v.x; y *= v.y; z *= v.z; return *this; }
-  xvec3 &operator/=(const xvec3 &v) { x /= v.x; y /= v.y; z /= v.z; return *this; }
-
-  xvec3 &operator+=(T v) { x += v; y += v; z += v; return *this; }
-  xvec3 &operator-=(T v) { x -= v; y -= v; z -= v; return *this; }
-  xvec3 &operator*=(T v) { x *= v; y *= v; z *= v; return *this; }
-  xvec3 &operator/=(T v) { x /= v; y /= v; z /= v; return *this; }
 };
 
 }
