@@ -4,15 +4,13 @@
 
 using namespace gl2d;
 
-application app;
-
 int main()
 {
-  auto id = app.window_open("Example", 800, 600);
+  auto id = app.window_open("Example", 400, 300);
 
   app.set_tick_handler([&](float delta)
   {
-    text(4, 4, "Hello, world!");
+    text(8, 8, "Hello, world!");
   });
 
   app.run();
