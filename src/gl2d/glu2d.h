@@ -44,12 +44,13 @@ enum class key
   space = ' ',
   a = 'A', b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
   num_0 = '0', num_1, num_2, num_3, num_4, num_5, num_6, num_7, num_8, num_9,
-  numpad_0, numpad_1, numpad_2, numpad_3, numapad_4, numpad_5, numpad_6, numpad_7, numpad_8, numpad_9,
+  numpad_0, numpad_1, numpad_2, numpad_3, numpad_4, numpad_5, numpad_6, numpad_7, numpad_8, numpad_9,
   up, right, down, left,
   insert, del,
   home, end,
   page_up, page_down,
   f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
+  ctrl, alt, shift,
 
   last
 };
@@ -106,7 +107,7 @@ struct event
 
   union
   {
-    struct { key key; char key_char; } keyboard;
+    struct { bool down; key key; int key_char; } keyboard;
     struct { int width, height; } resize;
     struct { int x, y, dx, dy; mouse_button button; } mouse;
   };
@@ -459,6 +460,35 @@ inline void application::update_timer()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+key vkToKey(WPARAM vk)
+{
+  static const std::map<unsigned, key> vkToKeyMap =
+  {
+    { VK_RETURN, key::enter }, { VK_TAB, key::tab }, { VK_BACK, key::backspace }, { VK_ESCAPE, key::escape }, { VK_SPACE, key::space },
+    { 0x41, key::a }, { 0x42, key::b }, { 0x43, key::c }, { 0x44, key::d }, { 0x45, key::e }, { 0x46, key::f }, { 0x47, key::g }, { 0x48, key::h },
+    { 0x49, key::i }, { 0x4a, key::j }, { 0x4b, key::k }, { 0x4c, key::l }, { 0x4d, key::m }, { 0x4e, key::n }, { 0x4f, key::o }, { 0x50, key::p },
+    { 0x51, key::q }, { 0x52, key::r }, { 0x53, key::s }, { 0x54, key::t }, { 0x55, key::u }, { 0x56, key::v }, { 0x57, key::w }, { 0x58, key::x },
+    { 0x59, key::y }, { 0x5a, key::z },
+    { 0x30, key::num_0 }, { 0x31, key::num_1 }, { 0x32, key::num_2 }, { 0x33, key::num_3 }, { 0x34, key::num_4 },
+    { 0x35, key::num_5 }, { 0x36, key::num_6 }, { 0x37, key::num_7 }, { 0x38, key::num_8 }, { 0x39, key::num_9 },
+    { VK_NUMPAD0, key::numpad_0 }, { VK_NUMPAD1, key::numpad_1 }, { VK_NUMPAD2, key::numpad_2 }, { VK_NUMPAD3, key::numpad_3 }, { VK_NUMPAD4, key::numpad_4 },
+    { VK_NUMPAD5, key::numpad_5 }, { VK_NUMPAD6, key::numpad_6 }, { VK_NUMPAD7, key::numpad_7 }, { VK_NUMPAD8, key::numpad_8 }, { VK_NUMPAD9, key::numpad_9 },
+    { VK_UP, key::up }, { VK_RIGHT, key::right }, { VK_DOWN, key::down }, { VK_LEFT, key::left },
+    { VK_INSERT, key::insert }, { VK_DELETE, key::del }, { VK_HOME, key::home }, { VK_END, key::end },
+    { VK_PRIOR, key::page_up }, { VK_NEXT, key::page_down },
+    { VK_F1, key::f1 }, { VK_F2, key::f2 }, { VK_F3, key::f3 }, { VK_F4, key::f4 }, { VK_F5, key::f5 }, { VK_F6, key::f6 },
+    { VK_F7, key::f7 }, { VK_F8, key::f8 }, { VK_F9, key::f9 }, { VK_F10, key::f10 }, { VK_F11, key::f11 }, { VK_F12, key::f12 },
+    { VK_CONTROL, key::ctrl }, { VK_MENU, key::alt }, { VK_SHIFT, key::shift }
+  };
+
+  auto iter = vkToKeyMap.find(vk);
+  if (iter != vkToKeyMap.end())
+    return iter->second;
+
+  return key::unknown;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   for (auto &kvp : _windows)
@@ -472,6 +502,40 @@ inline LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wP
           event e(event_type::mouse_move, kvp.second->id, _time, _delta);
           e.mouse.x = GET_X_LPARAM(lParam);
           e.mouse.y = GET_Y_LPARAM(lParam);
+          send(e);
+        }
+        return 0;
+
+        case WM_KEYDOWN:
+        {
+          bool isKeyPress = (lParam & (1 << 30)) != 0;
+          if (!isKeyPress)
+          {
+            event e(event_type::key_down, kvp.second->id, _time, _delta);
+            e.keyboard.down = true;
+            e.keyboard.key = vkToKey(wParam);
+            e.keyboard.key_char = 0;
+            send(e);
+          }
+        }
+        return 0;
+
+        case WM_KEYUP:
+        {
+          event e(event_type::key_up, kvp.second->id, _time, _delta);
+          e.keyboard.down = false;
+          e.keyboard.key = vkToKey(wParam);
+          e.keyboard.key_char = 0;
+          send(e);
+        }
+        return 0;
+
+        case WM_CHAR:
+        {
+          event e(event_type::key_press, kvp.second->id, _time, _delta);
+          e.keyboard.down = true;
+          e.keyboard.key = key::unknown;
+          e.keyboard.key_char = wParam;
           send(e);
         }
         return 0;
