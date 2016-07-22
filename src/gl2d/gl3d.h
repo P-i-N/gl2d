@@ -95,9 +95,19 @@ struct gl_resource
 
 struct gl_resource_buffer : gl_resource { void destroy(); };
 struct gl_resource_vao : gl_resource { void destroy(); };
-struct gl_resource_shader : gl_resource { void destroy(); };
-struct gl_resource_program : gl_resource { void destroy(); };
 struct gl_resource_texture : gl_resource { void destroy(); };
+
+struct gl_resource_shader : gl_resource
+{
+  void destroy();
+  bool compile(GLenum shaderType, const std::string &source);
+};
+
+struct gl_resource_program : gl_resource
+{
+  void destroy();
+  bool link(const std::initializer_list<gl_resource_shader> &shaders);
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -168,14 +178,6 @@ public:
   static const GLenum GEOMETRY_SHADER = 0x8DD9;
 
   bool init();
-
-  gl_resource_shader compile_shader(GLenum shaderType, const char *source);
-
-  gl_resource_program link_program(const gl_resource_shader &vert, const gl_resource_shader &geom, const gl_resource_shader &frag);
-  gl_resource_program link_program(const gl_resource_shader &vert, const gl_resource_shader &frag)
-  {
-    return link_program(vert, gl_resource_shader(), frag);
-  }
 };
 
 #undef GL3D_API_FUNC
@@ -522,48 +524,40 @@ bool gl_api::init()
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-gl_resource_shader gl_api::compile_shader(GLenum shaderType, const char *source)
+bool gl_resource_shader::compile(GLenum shaderType, const std::string &source)
 {
-  gl_resource_shader result;
-  result.id = CreateShader(shaderType);
-  ShaderSource(result, 1, &source, nullptr);
-  CompileShader(result);
+  if (!id) id = gl.CreateShader(shaderType);
+  auto srcPtr = source.c_str();
+  gl.ShaderSource(id, 1, &srcPtr, nullptr);
+  gl.CompileShader(id);
 
-  GLint status;
-  GetShaderiv(result, COMPILE_STATUS, &status);
+  GLint status; gl.GetShaderiv(id, gl.COMPILE_STATUS, &status);
   if (status == GL_FALSE)
   {
-    DeleteShader(result);
-    return gl_resource_shader();
+    gl.DeleteShader(id); id = 0;
+    return false;
   }
 
-  return result;
+  return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-gl_resource_program gl_api::link_program(const gl_resource_shader &vert, const gl_resource_shader &geom, const gl_resource_shader &frag)
+bool gl_resource_program::link(const std::initializer_list<gl_resource_shader> &shaders)
 {
-  gl_resource_program result;
-  result.id = CreateProgram();
-  AttachShader(result, vert);
-  if (geom.id) AttachShader(result, geom);
-  AttachShader(result, frag);
-  LinkProgram(result);
+  if (!id) id = gl.CreateProgram();
 
-  GLint status;
-  GetProgramiv(result, LINK_STATUS, &status);
+  for (auto &&s : shaders) gl.AttachShader(id, s);
+  gl.LinkProgram(id);
 
-  DetachShader(result, vert);
-  if (geom.id) DetachShader(result, geom);
-  DetachShader(result, frag);
-
+  GLint status; gl.GetProgramiv(id, gl.LINK_STATUS, &status);
+  for (auto &&s : shaders) gl.DetachShader(id, s);
   if (status == GL_FALSE)
   {
-    DeleteProgram(result);
-    return gl_resource_program();
+    gl.DeleteProgram(id); id = 0;
+    return false;
   }
 
-  return result;
+  return true;
 }
 
 }
@@ -573,12 +567,30 @@ bool technique::bind()
 {
   if (dirty())
   {
+    std::string macroString = "";
+    for (auto &&kvp : _macros)
+      macroString += "#define " + kvp.first + " " + kvp.second + "\n";
 
+    if (!_vertSource.empty())
+      _vertShader.compile(gl.VERTEX_SHADER, macroString + _vertSource);
+    else
+      _vertShader.destroy();
 
-    set_dirty(false);    
+    if (!_geomSource.empty())
+      _geomShader.compile(gl.GEOMETRY_SHADER, macroString + _geomSource);
+    else
+      _geomShader.destroy();
+
+    if (!_fragSource.empty())
+      _fragShader.compile(gl.FRAGMENT_SHADER, macroString + _fragSource);
+    else
+      _fragShader.destroy();
+    
+    _program.link({ _vertShader, _geomShader, _fragShader });
+    set_dirty(false);
   }
 
-  return true;
+  return _program.id != 0;
 }
 
 }

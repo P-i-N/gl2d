@@ -233,26 +233,9 @@ public:
     _technique->set_vert_source(vertex_shader_code);
     _technique->set_frag_source(fragment_shader_code);
 
-    _vertShader = gl.compile_shader(gl_api::VERTEX_SHADER, vertex_shader_code);
-    if (!_vertShader)
-    {
-      done();
-      return false;
-    }
-
-    _fragShader = gl.compile_shader(gl_api::FRAGMENT_SHADER, fragment_shader_code);
-    if (!_fragShader)
-    {
-      done();
-      return false;
-    }
-
-    _program = gl.link_program(_vertShader, _fragShader);
-    if (!_program)
-    {
-      done();
-      return false;
-    }
+    if (!_vertShader.compile(gl.VERTEX_SHADER, vertex_shader_code)) { done(); return false; }
+    if (!_fragShader.compile(gl.FRAGMENT_SHADER, fragment_shader_code)) { done(); return false; }
+    if (!_program.link({ _vertShader, _fragShader })) { done(); return false; }
 
     _uScreenSize = gl.GetUniformLocation(_program, "u_ScreenSize");
     _uFontTexture = gl.GetUniformLocation(_program, "u_FontTexture");
