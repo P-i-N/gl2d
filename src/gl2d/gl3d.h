@@ -69,6 +69,11 @@ typedef detail::xvec3<int> ivec3;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <typename T> T maximum(T a, T b) { return a > b ? a : b; }
+template <typename T> T minimum(T a, T b) { return a < b ? a : b; }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct rgba_color
 {
   float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
@@ -141,6 +146,7 @@ public:
     
   static const GLenum CLAMP_TO_EDGE = 0x812F;
   static const GLenum TEXTURE0 = 0x84C0;
+  static const GLenum TEXTURE_CUBE_MAP = 0x8513;
   static const GLenum ARRAY_BUFFER = 0x8892;
   static const GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
   static const GLenum STREAM_DRAW = 0x88E0;
@@ -158,7 +164,9 @@ public:
   static const GLenum VERTEX_SHADER = 0x8B31;
   static const GLenum COMPILE_STATUS = 0x8B81;
   static const GLenum LINK_STATUS = 0x8B82;
+  static const GLenum TEXTURE_2D_ARRAY = 0x8C1A;
   static const GLenum GEOMETRY_SHADER = 0x8DD9;
+  static const GLenum TEXTURE_CUBE_MAP_ARRAY = 0x9009;
   static const GLenum COMPUTE_SHADER = 0x91B9;
 
   bool init();
@@ -176,6 +184,15 @@ extern detail::gl_api gl;
 
 namespace detail
 {
+
+ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
+{
+  return ivec2(
+    maximum(1.0f, floor(width / pow(2.0f, static_cast<float>(mipLevel)))),
+    maximum(1.0f, floor(height / pow(2.0f, static_cast<float>(mipLevel)))));
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct gl_resource
 {
@@ -409,7 +426,25 @@ GL3D_INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
 
 #undef GL3D_INIT_VAO_ARG
 
-}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct gl_format_descriptor
+{
+  size_t pixel_size;
+  GLenum layout;
+  GLenum element_format;
+
+  static gl_format_descriptor get(GLenum format)
+  {
+    switch (format)
+    {
+      case GL_RGBA: return { 4, GL_RGBA, GL_UNSIGNED_BYTE };
+      default: return { 0, GL_NONE, GL_NONE };
+    }
+  }
+};
+
+} // namespace detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -586,34 +621,42 @@ protected:
 class texture : public detail::compiled_object
 {
 public:
-  texture(GLenum textureType = GL_TEXTURE_2D): _type(textureType)
-  {
-    
-  }
+  texture(GLenum textureType = GL_TEXTURE_2D): _type(textureType) { }
 
   GLenum type() const { return _type; }
   GLuint id() const { return _texture.id; }
 
   struct part
   {
-    int layer_index = 0;   // texture layer index
-    int mip_level = 0;     // layer mip level
-    ivec2 size;            // width and height in pixels
-    size_t offset = 0;     // byte offset from start of the buffer
-    size_t row_stride = 0; // row size in bytes
-    size_t length = 0;     // total part size in bytes
+    size_t layer_index = 0;   // texture layer index
+    size_t mip_level = 0;     // layer mip level
+    ivec2 size;               // width and height in pixels
+    size_t offset = 0;        // byte offset from start of the buffer
+    size_t row_stride = 0;    // row size in bytes
+    size_t length = 0;        // total part size in bytes
   };
 
-  void set_params(int width, int height, GLenum format, size_t sizeLayers);
+  const part *find_part(size_t layerIndex, size_t mipLevel) const
+  {
+    for (auto &&p : _parts) if (p.layer_index == layerIndex && p.mip_level == mipLevel) return &p;
+    return nullptr;
+  }
 
-  void set_format(GLenum format) { set_params(_size.x, _size.y, format, _sizeLayers); }
+  void set_params(int width, int height, GLenum format, size_t sizeLayers, size_t sizeMipLevels);
+
+  void set_format(GLenum format) { set_params(_size.x, _size.y, format, _sizeLayers, _sizeMipLevels); }
   GLenum format() const { return _format; }
 
-  void set_size(int width, int height) { set_params(width, height, _format, _sizeLayers); }
-  ivec2 size(size_t mipLevel = 0) const;
+  void set_size(int width, int height) { set_params(width, height, _format, _sizeLayers, _sizeMipLevels); }
+  ivec2 size(size_t mipLevel) const { return detail::calculate_mip_size(_size.x, _size.y, mipLevel); }
   
-  void set_size_layers(size_t count) { set_params(_size.x, _size.y, _format, count); }
+  void set_size_layers(size_t count) { set_params(_size.x, _size.y, _format, count, _sizeMipLevels); }
   size_t size_layers() const { return _sizeLayers; }
+
+  void set_size_mip_levels(size_t count) { set_params(_size.x, _size.y, _format, _sizeLayers, count); }
+  size_t size_mip_levels(bool calculate = false) const;
+  
+  size_t size_bytes() const { return _sizeBytes; }
 
   void set_pixel_buffer(detail::buffer *pb) { _pbo = pb; set_dirty(); }
   detail::buffer *pixel_buffer() const { return _pbo; }
@@ -633,6 +676,8 @@ protected:
   GLenum _format = GL_RGBA;
   ivec2 _size;
   size_t _sizeLayers = 1;
+  size_t _sizeMipLevels = 1;
+  size_t _sizeBytes = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -863,22 +908,49 @@ void compute::dispatch(int numGroupsX, int numGroupsY, int numGroupsZ)
 void texture::update_parts()
 {
   set_dirty();
+  _parts.clear();
+  _sizeBytes = 0;
+  size_t numMips = size_mip_levels(true);
+  size_t pixelSize = detail::gl_format_descriptor::get(_format).pixel_size;
+  for (size_t i = 0; i < _sizeLayers; ++i)
+  {
+    for (size_t mip = 0; mip < numMips; ++mip)
+    {
+      part p;
+      p.layer_index = i;
+      p.mip_level = mip;
+      p.size = size(mip);
+      p.offset = _sizeBytes;
+      p.row_stride = p.size.x * pixelSize;
+      _sizeBytes += p.length = p.row_stride * p.size.y;
+      _parts.push_back(p);
+    }
+  }
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void texture::set_params(int width, int height, GLenum format, size_t sizeLayers)
+void texture::set_params(int width, int height, GLenum format, size_t sizeLayers, size_t sizeMipLevels)
 {
-  if (_size.x != width || _size.y != height || _format != format || _sizeLayers != sizeLayers)
+  if (_size.x != width || _size.y != height || _format != format || _sizeLayers != sizeLayers || _sizeMipLevels != sizeMipLevels)
   {
+    if (_type == GL_TEXTURE_1D || _type == GL_TEXTURE_2D) sizeLayers = 1;
+    else if (_type == gl.TEXTURE_CUBE_MAP) sizeLayers = 6;
     _size = ivec2(width, height); _format = format; _sizeLayers = sizeLayers;
     update_parts();
   }
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-ivec2 texture::size(size_t mipLevel) const
+size_t texture::size_mip_levels(bool calculate) const
 {
-  return _size;
+  if (calculate && _sizeMipLevels == 0)
+  {
+    size_t num = 1;
+    while (true) { ivec2 s = size(num - 1); if (s.x == 1 && s.y == 1) break; ++num; }
+    return num;
+  }
+
+  return _sizeMipLevels;
 }
 
 //------------------------------------------------------------------------------------------------------------------------

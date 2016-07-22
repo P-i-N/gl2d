@@ -240,7 +240,7 @@ public:
         }
       }
 
-      _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1);
+      _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1, 1);
       
       image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
 
