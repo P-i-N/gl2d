@@ -133,7 +133,6 @@ struct window
   std::string title;
   int width, height;
   context2d ctx2d;
-  context3d ctx3d;
   int mouse_x = 0, mouse_y = 0;
   int mouse_dx = 0, mouse_dy = 0;
 
