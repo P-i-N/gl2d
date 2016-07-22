@@ -316,9 +316,9 @@ public:
 
   void clear()
   {
+    _geometry->clear();
     _drawCalls.clear();
     _drawCalls.emplace_back(true, 0);
-    _vertexCursor = 0;
     _state.color = gl3d::rgba_color(1, 1, 1, 1);
   }
 
@@ -337,7 +337,7 @@ public:
     else
       _drawCalls.emplace_back(false, 2);
     
-    auto *v = alloc_vertices(2);
+    auto *v = _geometry->alloc_vertices(2);
     v->pos = a;
     v->color = _state.color;
     v->uv = vec2(1, 1);
@@ -360,7 +360,7 @@ public:
       else
         _drawCalls.emplace_back(true, 6);
       
-      auto *v = alloc_vertices(6);
+      auto *v = _geometry->alloc_vertices(6);
       v->pos = a;
       v->color = _state.color;
       v->uv = vec2(1, 1);
@@ -486,9 +486,10 @@ public:
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Copy vertices into VBO
-    gl.BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-    gl.BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
-    gl.BindVertexArray(_vao);
+    _geometry->bind();
+    //gl.BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
+    //gl.BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
+    //gl.BindVertexArray(_vao);
     gl.UseProgram(_program);
 
     gl.ActiveTexture(gl_api::TEXTURE0);
@@ -517,17 +518,6 @@ public:
   void render(int width, int height) { render(0, 0, width, height); }
 
 private:
-  detail::vertex2d *alloc_vertices(size_t count)
-  {
-    if (_vertexCursor + count > _vertices.size())
-      _vertices.resize(_vertexCursor + count);
-
-    auto result = _vertices.data() + _vertexCursor;
-    _vertexCursor += count;
-
-    return result;
-  }
-
   void print_substring(float &x, float &y, const gl3d::rgba_color &color, const char *text, size_t length)
   {
     if (_drawCalls.back().triangles)
@@ -536,7 +526,7 @@ private:
       _drawCalls.emplace_back(true, length * 6);
 
     size_t skippedChars = 0;
-    auto *v = alloc_vertices(length * 6);
+    auto *v = _geometry->alloc_vertices(length * 6);
 
     const float uvW = static_cast<float>(detail::font_char_width) / detail::font_width;
     const float uvH = static_cast<float>(detail::font_char_height) / detail::font_height;
@@ -579,14 +569,13 @@ private:
       --length;
     }
 
-    _vertexCursor -= skippedChars * 6;
+    _geometry->pop_vertices(skippedChars * 6);
     _drawCalls.back().length -= skippedChars * 6;
   }
 
   bool _initialized = false;
 
   detail::state _state;
-
 
   GLuint _vbo = 0;
   
@@ -600,15 +589,19 @@ private:
 
   detail::ptr<technique> _technique = new technique();
 
+  detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
+
   GLint _uScreenSize = -1;
 
   GLint _uFontTexture = -1;
 
   GLuint _fontTexture = 0;
 
+  /*
   std::vector<detail::vertex2d> _vertices;
 
   size_t _vertexCursor = 0;
+  */
 
   std::vector<detail::draw_call> _drawCalls;
 };
