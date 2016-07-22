@@ -46,7 +46,7 @@ out vec2 UV;
 
 void main()
 {
-  vec2 clipPos = (vert_Position / u_ScreenSize);
+  vec2 clipPos = ((vert_Position + vec2(0.375)) / u_ScreenSize);
   clipPos.y = 1.0 - clipPos.y;
   clipPos = clipPos * 2.0 - 1.0;
 
@@ -240,6 +240,8 @@ public:
         }
       }
 
+      _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1);
+      
       image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
 
       glGenTextures(1, &_fontTexture);
@@ -341,10 +343,11 @@ public:
     }
     else
     {
-      line(a.x, a.y, b.x, a.y);
-      line(b.x, a.y, b.x, b.y);
-      line(b.x, b.y, a.x, b.y);
-      line(a.x, b.y, a.x, a.y);
+      vec2 c(b.x - 1.0f, b.y - 1.0f);
+      line(a.x, a.y, c.x, a.y);
+      line(c.x, a.y, c.x, c.y);
+      line(c.x, c.y, a.x, c.y);
+      line(a.x, c.y, a.x, a.y);
     }
   }
 
@@ -529,8 +532,10 @@ private:
   detail::state _state;
 
   context3d _context3d;
+
   detail::ptr<technique> _technique = new technique();
   detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
+  detail::ptr<texture> _texture = new texture();
 
   GLuint _fontTexture = 0;
 
