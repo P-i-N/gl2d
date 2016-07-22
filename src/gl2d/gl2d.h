@@ -237,7 +237,7 @@ public:
       image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
 
       _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1, 1);
-      _texture->alloc_pixels(image);
+      _texture->alloc_pixels(nullptr);
 
       glGenTextures(1, &_fontTexture);
       glBindTexture(GL_TEXTURE_2D, _fontTexture);
@@ -450,7 +450,7 @@ public:
     glBindTexture(GL_TEXTURE_2D, _fontTexture);
 
     _context3d.set_uniform("u_ScreenSize", vec2(width, height));
-    _context3d.set_uniform("u_FontTexture", 0);
+    _context3d.set_uniform("u_FontTexture", _texture);
 
     size_t startVertex = 0;
     for (auto &&dc : _drawCalls)
