@@ -333,12 +333,14 @@ public:
   {
     if (_owner && _data) { delete [] _data; _data = nullptr; }
 
-    _size = 0;
     _keepData = false;
+    _owner = false;
+    _data = nullptr;
+    _size = 0;
     set_dirty();
   }
 
-  void alloc_data(const void *ptr, size_t size, bool keep = true)
+  void *alloc_data(const void *ptr, size_t size, bool keep = false)
   {
     if (_owner && _size != size)
       clear();
@@ -347,17 +349,18 @@ public:
     {
       _size = size;
       if (!_data) _data = new uint8_t[_size];
-      if (ptr) memcpy(const_cast<uint8_t *>(_data), ptr, _size);
+      if (ptr) memcpy(_data, ptr, _size);
     }
 
     _owner = true;
     _keepData = keep;
+    return _data;
   }
 
   void set_data(const void *ptr, size_t size)
   {
     clear();
-    _data = static_cast<const uint8_t *>(ptr);
+    _data = const_cast<uint8_t *>(static_cast<const uint8_t *>(ptr));
     _size = size;
   }
 
@@ -377,7 +380,7 @@ protected:
 
   bool _keepData = false;
   bool _owner = false;
-  const uint8_t *_data = nullptr;
+  uint8_t *_data = nullptr;
   size_t _size = 0;
   gl_resource_buffer _buffer;
 };
@@ -628,12 +631,12 @@ public:
 
   struct part
   {
-    size_t layer_index = 0;   // texture layer index
-    size_t mip_level = 0;     // layer mip level
-    ivec2 size;               // width and height in pixels
-    size_t offset = 0;        // byte offset from start of the buffer
-    size_t row_stride = 0;    // row size in bytes
-    size_t length = 0;        // total part size in bytes
+    size_t layer_index = 0; // texture layer index
+    size_t mip_level = 0;   // layer mip level
+    ivec2 size;             // width and height in pixels
+    size_t offset = 0;      // byte offset from start of the buffer
+    size_t row_stride = 0;  // row size in bytes
+    size_t length = 0;      // total part size in bytes
   };
 
   const part *find_part(size_t layerIndex, size_t mipLevel) const
@@ -660,6 +663,12 @@ public:
 
   void set_pixel_buffer(detail::buffer *pb) { _pbo = pb; set_dirty(); }
   detail::buffer *pixel_buffer() const { return _pbo; }
+
+  void *alloc_pixels(const void *ptr, bool keep = false)
+  {
+    if (!_pbo || !_sizeBytes) return nullptr;
+    return _pbo->alloc_data(ptr, _sizeBytes, keep);
+  }
 
 protected:
   virtual ~texture()

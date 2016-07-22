@@ -223,26 +223,21 @@ public:
       uint32_t *cursorOutput = image;
       const uint8_t *cursorInput = fontImage.data();
 
-      for (int y = 0; y < detail::font_height; ++y)
+      for (int xy = 0; xy < detail::font_width * detail::font_height; xy += 8, ++cursorInput)
       {
-        for (int x = 0; x < detail::font_width; x += 8, ++cursorInput)
-        {
-          auto byte = *cursorInput;
-
-          for (int i = 0; i < 8; ++i, ++cursorOutput, byte >>= 1)
+        auto byte = *cursorInput;
+        for (int i = 0; i < 8; ++i, ++cursorOutput, byte >>= 1)
+          if (byte & 1)
           {
-            if (byte & 1)
-            {
-              *cursorOutput = 0xFFFFFFFFu;
-              *(cursorOutput + detail::font_width + 1) = 0xFF000000u; // Remove this to get rid of black font shadow
-            }
+            *cursorOutput = 0xFFFFFFFFu;
+            *(cursorOutput + detail::font_width + 1) = 0xFF000000u; // Remove this to get rid of black font shadow
           }
-        }
       }
-
-      _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1, 1);
       
       image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
+
+      _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1, 1);
+      _texture->alloc_pixels(image);
 
       glGenTextures(1, &_fontTexture);
       glBindTexture(GL_TEXTURE_2D, _fontTexture);
