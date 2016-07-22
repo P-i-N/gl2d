@@ -657,15 +657,8 @@ protected:
 class context3d
 {
 public:
-  context3d()
-  {
-    
-  }
-
-  ~context3d()
-  {
-    
-  }
+  context3d() { }
+  virtual ~context3d() { }
 
   void clear();
 
@@ -694,8 +687,6 @@ private:
 #ifdef _MSC_VER
 #pragma comment(lib, "opengl32.lib")
 #endif
-
-#include <memory>
 
 namespace gl3d {
 
