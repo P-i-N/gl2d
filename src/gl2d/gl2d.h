@@ -35,8 +35,6 @@ namespace detail {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static const char *vertex_shader_code = R"GLSHADER(
-#version 330
-
 layout(location = 0) in vec2 vert_Position;
 layout(location = 1) in vec4 vert_Color;
 layout(location = 2) in vec2 vert_UV;
@@ -61,8 +59,6 @@ void main()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static const char *fragment_shader_code = R"GLSHADER(
-#version 330
-
 uniform sampler2D u_FontTexture;
 
 in vec4 Color;
@@ -172,12 +168,7 @@ struct draw_call
   bool triangles; // true for triangles, false for lines
   size_t length;  // number of vertices
 
-  draw_call(bool tris, size_t len)
-    : triangles(tris)
-    , length(len)
-  {
-    
-  }
+  draw_call(bool tris, size_t len): triangles(tris), length(len) { }
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -250,7 +241,7 @@ public:
             if (byte & 1)
             {
               *cursorOutput = 0xFFFFFFFFu;
-              *(cursorOutput + detail::font_width + 1) = 0xFF000000u;
+              *(cursorOutput + detail::font_width + 1) = 0xFF000000u; // Remove this to get rid of black font shadow
             }
           }
         }
@@ -561,13 +552,10 @@ private:
   detail::gl_resource_program _program;
 
   detail::ptr<technique> _technique = new technique();
-
   detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
 
   GLint _uScreenSize = -1;
-
   GLint _uFontTexture = -1;
-
   GLuint _fontTexture = 0;
 
   std::vector<detail::draw_call> _drawCalls;
