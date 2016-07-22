@@ -354,7 +354,7 @@ protected:
   bool _keepData = false;
   bool _owner = false;
   const uint8_t *_data = nullptr;
-  size_t _size;
+  size_t _size = 0;
   gl_resource_buffer _buffer;
 };
 
@@ -478,24 +478,24 @@ public:
     return result;
   }
 
+  void pop_vertices(size_t count) { _vertexCursor = (count > _vertexCursor) ? 0 : (_vertexCursor - count); }
+  void pop_indices(size_t count) { _indexCursor = (count > _indexCursor) ? 0 : (_indexCursor - count); }
+
   bool bind() override
   {
-    if (!_vao.id)
+    if (dirty())
     {
+      if (_vertexBuffer) _vertexBuffer->set_data(_vertices.data(), _vertexCursor * sizeof(T));
+      if (_indexBuffer) _indexBuffer->set_data(_indices.data(), _indexCursor * sizeof(int));
+      set_dirty(false);
+    }
+
+    if (!_vao.id && _vertexBuffer)
+    {
+      _vertexBuffer->bind();
       gl.GenVertexArrays(1, &_vao.id);
       gl.BindVertexArray(_vao);
       T::init_vao();
-    }
-
-    if (dirty())
-    {
-      if (_vertexBuffer)
-        _vertexBuffer->set_data(_vertices.data(), _vertexCursor * sizeof(T));
-
-      if (_indexBuffer)
-        _indexBuffer->set_data(_indices.data(), _indexCursor * sizeof(int));
-
-      set_dirty(false);
     }
 
     return detail::base_geometry::bind();
@@ -698,7 +698,7 @@ bool buffer::bind()
     gl.BindBuffer(_type, _buffer.id);
     gl.BufferData(_type, _size, _data, gl.STREAM_DRAW);
 
-    if (!_keepData && _data) { delete [] _data; _data = nullptr; }
+    if (_owner && !_keepData && _data) { delete [] _data; _data = nullptr; }
     set_dirty(false);
   }
   else
