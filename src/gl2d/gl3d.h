@@ -119,10 +119,6 @@ struct gl_resource_program : gl_resource
     *ptr = wglGetProcAddress("gl" ## #name); return (*ptr) != nullptr; }); \
   public:
 
-#define GL3D_API_FUNC_INIT(name) \
-  name = reinterpret_cast<gl_ ## name ## _ptr_t>(get_gl_proc_address("gl" ## #name)); \
-  if (name == nullptr) return false
-
 //---------------------------------------------------------------------------------------------------------------------
 class gl_api
 {
@@ -176,12 +172,12 @@ public:
   static const GLenum COMPILE_STATUS = 0x8B81;
   static const GLenum LINK_STATUS = 0x8B82;
   static const GLenum GEOMETRY_SHADER = 0x8DD9;
+  static const GLenum COMPUTE_SHADER = 0x91B9;
 
   bool init();
 };
 
 #undef GL3D_API_FUNC
-#undef GL3D_API_FUNC_INIT
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -262,6 +258,60 @@ protected:
   detail::gl_resource_buffer _verticesVBO;
 
   detail::gl_resource_buffer _indicesVBO;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class compiled_program : public compiled_object
+{
+public:
+  const std::string &last_error() const { return _lastError; }
+
+  void define(const std::string &name, const std::string &value)
+  {
+    _macros[name] = value;
+    set_dirty();
+  }
+
+  bool undef(const std::string &name)
+  {
+    auto iter = _macros.find(name);
+    if (iter != _macros.end())
+    {
+      _macros.erase(iter);
+      set_dirty();
+      return true;
+    }
+
+    return false;
+  }
+
+  void undef_all()
+  {
+    if (!_macros.empty())
+    {
+      _macros.clear();
+      set_dirty();
+    }
+  }
+
+  std::string get_macro_string() const
+  {
+    std::string macroString = "";
+    for (auto &&kvp : _macros)
+      macroString += "#define " + kvp.first + " " + kvp.second + "\n";
+
+    return macroString;
+  }
+  
+protected:
+  virtual ~compiled_program()
+  {
+    _program.destroy();    
+  }
+
+  std::map<std::string, std::string> _macros;
+  detail::gl_resource_program _program;
+  std::string _lastError;
 };
 
 }
@@ -349,44 +399,11 @@ typedef custom_geometry<vertex3d> geometry;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class technique : public detail::compiled_object
+class technique : public detail::compiled_program
 {
 public:
-  technique()
-  {
-    
-  }
-
-  const std::string &last_error() const { return _lastError; }
-
-  void define(const std::string &name, const std::string &value)
-  {
-    _macros[name] = value;
-    set_dirty();
-  }
-
-  bool undef(const std::string &name)
-  {
-    auto iter = _macros.find(name);
-    if (iter != _macros.end())
-    {
-      _macros.erase(iter);
-      set_dirty();
-      return true;
-    }
-
-    return false;
-  }
-
-  void undef_all()
-  {
-    if (!_macros.empty())
-    {
-      _macros.clear();
-      set_dirty();
-    }
-  }
-
+  technique() { }
+  
   void set_vert_source(const std::string &code) { _vertSource = code; set_dirty(); }
   const std::string &vert_source() const { return _vertSource; }
 
@@ -404,20 +421,36 @@ protected:
     _vertShader.destroy();
     _geomShader.destroy();
     _fragShader.destroy();
-    _program.destroy();
   }
-
-  std::map<std::string, std::string> _macros;
 
   std::string _vertSource;
   std::string _geomSource;
   std::string _fragSource;
-  std::string _lastError;
-
   detail::gl_resource_shader _vertShader;
   detail::gl_resource_shader _geomShader;
   detail::gl_resource_shader _fragShader;
-  detail::gl_resource_program _program;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class compute : public detail::compiled_program
+{
+public:
+  compute() { }
+
+  void set_source(const std::string &code) { _source = code; set_dirty(); }
+  const std::string &source() const { return _source; }
+
+  bool bind();
+
+protected:
+  virtual ~compute()
+  {
+    _shader.destroy();
+  }
+
+  std::string _source;
+  detail::gl_resource_shader _shader;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -458,32 +491,6 @@ protected:
   {
     
   }
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class context3d
-{
-public:
-  context3d()
-  {
-    
-  }
-
-  void set_technique(technique *tech) { }
-
-  void set_uniform(const char *name, const vec2 &value) { }
-  void set_uniform(const char *name, const ivec2 &value) { }
-  void set_uniform(const char *name, const vec3 &value) { }
-  void set_uniform(const char *name, const ivec3 &value) { }
-  void set_uniform(const char *name, const texture *value) { }
-
-  void draw(detail::base_geometry *geom, GLenum primitiveType = GL_NONE, size_t start = 0, size_t length = static_cast<size_t>(-1), size_t instanceCount = 1)
-  {
-    
-  }
-
-protected:
 };
 
 }
@@ -567,9 +574,7 @@ bool technique::bind()
 {
   if (dirty())
   {
-    std::string macroString = "";
-    for (auto &&kvp : _macros)
-      macroString += "#define " + kvp.first + " " + kvp.second + "\n";
+    std::string macroString = get_macro_string();
 
     if (!_vertSource.empty())
       _vertShader.compile(gl.VERTEX_SHADER, macroString + _vertSource);
@@ -587,6 +592,25 @@ bool technique::bind()
       _fragShader.destroy();
     
     _program.link({ _vertShader, _geomShader, _fragShader });
+    set_dirty(false);
+  }
+
+  return _program.id != 0;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool compute::bind()
+{
+  if (dirty())
+  {
+    std::string macroString = get_macro_string();
+
+    if (!_source.empty())
+      _shader.compile(gl.COMPUTE_SHADER, macroString + _source);
+    else
+      _shader.destroy();
+    
+    _program.link({ _shader });
     set_dirty(false);
   }
 
