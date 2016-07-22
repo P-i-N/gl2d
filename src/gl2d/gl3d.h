@@ -87,30 +87,6 @@ namespace detail {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct gl_resource
-{
-  GLuint id = 0;
-  operator GLuint() const { return id; }
-};
-
-struct gl_resource_buffer : gl_resource { void destroy(); };
-struct gl_resource_vao : gl_resource { void destroy(); };
-struct gl_resource_texture : gl_resource { void destroy(); };
-
-struct gl_resource_shader : gl_resource
-{
-  void destroy();
-  bool compile(GLenum shaderType, const std::string &source);
-};
-
-struct gl_resource_program : gl_resource
-{
-  void destroy();
-  bool link(const std::initializer_list<gl_resource_shader> &shaders);
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #define GL3D_API_FUNC(retValue, name, ...) \
   public: typedef retValue(GL3D_APIENTRY *gl_ ## name ## _ptr_t)(__VA_ARGS__); \
   gl_ ## name ## _ptr_t name = nullptr; \
@@ -179,8 +155,42 @@ public:
 
 #undef GL3D_API_FUNC
 
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern detail::gl_api gl;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail
+{
+
+struct gl_resource
+{
+  GLuint id = 0;
+  operator GLuint() const { return id; }
+};
+
+struct gl_resource_buffer : gl_resource { void destroy(); };
+struct gl_resource_vao : gl_resource { void destroy(); };
+struct gl_resource_texture : gl_resource { void destroy(); };
+
+struct gl_resource_shader : gl_resource
+{
+  void destroy();
+  bool compile(GLenum shaderType, const std::string &source);
+};
+
+struct gl_resource_program : gl_resource
+{
+  void destroy();
+  bool link(const std::initializer_list<gl_resource_shader> &shaders);
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
 class ref_counted
 {
   mutable std::atomic_int _refCount = { 0 };
@@ -193,8 +203,36 @@ protected:
   virtual ~ref_counted() { }
 };
 
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> class ptr
+{
+public:
+  ptr() { }
+  ptr(T *p): _ptr(p) { if (p) p->ref(); }
+  ptr(const ptr &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
+  ptr(ptr &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
+  ~ptr() { if (_ptr) _ptr->unref(); }
+
+  T *operator->() const { return _ptr; }
+  operator T*() const { return _ptr; }
+  ptr &operator=(T *p) { assign(p); return *this; }
+
+private:
+  void assign(T *p)
+  {
+    if (p == _ptr) return;
+    T *oldPtr = _ptr;
+    if (p) p->ref();
+    if (oldPtr) oldPtr->unref();
+    _ptr = p;
+  }
+
+  T *_ptr = nullptr;
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//---------------------------------------------------------------------------------------------------------------------
 class compiled_object : public ref_counted
 {
 public:
@@ -203,61 +241,6 @@ public:
 
 protected:
   bool _dirty = true;
-};
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-extern detail::gl_api gl;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace detail
-{
-
-//---------------------------------------------------------------------------------------------------------------------
-template <typename T> struct init_vao_arg { };
-
-//---------------------------------------------------------------------------------------------------------------------
-#define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
-  template <> struct init_vao_arg<_Type> { \
-    static void apply(GLuint index, size_t size, const void *offset) { \
-      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, size, offset); } };
-
-GL3D_INIT_VAO_ARG(int, 1, GL_INT)
-GL3D_INIT_VAO_ARG(float, 1, GL_FLOAT)
-GL3D_INIT_VAO_ARG(vec2, 2, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec2, 2, GL_INT)
-GL3D_INIT_VAO_ARG(vec3, 3, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec3, 3, GL_INT)
-GL3D_INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
-
-#undef GL3D_INIT_VAO_ARG
-
-//---------------------------------------------------------------------------------------------------------------------
-class base_geometry : public compiled_object
-{
-public:
-  void set_use_indices(bool use) { _useIndices = use; }
-
-protected:
-  virtual ~base_geometry()
-  {
-    _vao.destroy();
-    _verticesVBO.destroy();
-    _indicesVBO.destroy();
-  }
-
-  bool _useIndices = false;
-
-  std::vector<int> _indices;
-
-  detail::gl_resource_vao _vao;
-
-  detail::gl_resource_buffer _verticesVBO;
-
-  detail::gl_resource_buffer _indicesVBO;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -314,28 +297,118 @@ protected:
   std::string _lastError;
 };
 
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename T> class ptr
+//---------------------------------------------------------------------------------------------------------------------
+class buffer : public compiled_object
 {
 public:
-  ptr() { }
-  ptr(T *p): _ptr(p) { if (p) p->ref(); }
-  ptr(const ptr &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
-  ptr(ptr &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
-  ~ptr() { if (_ptr) _ptr->unref(); }
+  buffer(GLenum type): _type(type) { }
 
-  T *operator->() const { return _ptr; }
+  GLenum type() const { return _type; }
 
-private:
-  T *_ptr = nullptr;
+  void clear()
+  {
+    if (_data) { delete [] _data; _data = nullptr; }
+
+    _size = 0;
+    _keepData = false;
+    set_dirty();
+  }
+
+  void alloc_data(const void *ptr, size_t size, bool keep = true)
+  {
+    if (_size != size)
+    {
+      clear();
+      _size = size;
+    }
+
+    if (ptr && size)
+    {
+      if (!_data && ptr) _data = new uint8_t[_size];
+      if (ptr) memcpy(_data, ptr, _size);
+    }
+
+    _keepData = keep;
+  }
+
+  void set_data(const void *ptr, size_t size)
+  {
+    
+  }
+
+  uint8_t *data() const { return _data; }
+
+  size_t size() const { return _size; }
+
+  bool bind();
+
+protected:
+  virtual ~buffer()
+  {
+    clear();
+    _buffer.destroy();
+  }
+
+  GLenum _type;
+
+  bool _keepData = false;
+
+  uint8_t *_data = nullptr;
+
+  size_t _size;
+
+  gl_resource_buffer _buffer;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class base_geometry : public compiled_object
+{
+public:
+  void set_vertex_buffer(buffer *vb) { _vertexBuffer = vb; set_dirty(); }
+
+  buffer *vertex_buffer() const { return _vertexBuffer; }
+
+  void set_index_buffer(buffer *ib) { _indexBuffer = ib; set_dirty(); }
+
+  buffer *index_buffer() const { return _indexBuffer; }
+  
+protected:
+  virtual ~base_geometry()
+  {
+    _vao.destroy();
+  }
+
+  detail::gl_resource_vao _vao;
+
+  ptr<buffer> _vertexBuffer = new buffer(gl.ARRAY_BUFFER);
+
+  ptr<buffer> _indexBuffer;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename... T> struct layout
+template <typename T> struct init_vao_arg { };
+
+#define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
+  template <> struct init_vao_arg<_Type> { \
+    static void apply(GLuint index, size_t size, const void *offset) { \
+      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, size, offset); } };
+
+GL3D_INIT_VAO_ARG(int, 1, GL_INT)
+GL3D_INIT_VAO_ARG(float, 1, GL_FLOAT)
+GL3D_INIT_VAO_ARG(vec2, 2, GL_FLOAT)
+GL3D_INIT_VAO_ARG(ivec2, 2, GL_INT)
+GL3D_INIT_VAO_ARG(vec3, 3, GL_FLOAT)
+GL3D_INIT_VAO_ARG(ivec3, 3, GL_INT)
+GL3D_INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
+
+#undef GL3D_INIT_VAO_ARG
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename... T> class layout
 {
   template <typename Head, typename... Tail> struct helper
   {
@@ -361,6 +434,7 @@ template <typename... T> struct layout
     }
   };
 
+public:
   static void init_vao() { helper<T...> h; h.init_vao(0, sizeof(h), 0); }
 };
 
@@ -385,13 +459,28 @@ public:
     
   }
 
+  size_t size_vertices() const { return _vertexBuffer ? (_vertexBuffer->size() / sizeof(T)) : 0; }
+
+  size_t size_indices() const { return _indexBuffer ? (_indexBuffer->size() / sizeof(T)) : 0; }
+
+  T *alloc_vertices(size_t count)
+  {
+    if (!_vertexBuffer)
+      return nullptr;
+
+    if (_vertexCursor + count > size_vertices())
+      _vertexBuffer->set_data
+  }
+
 protected:
   virtual ~custom_geometry()
   {
 
   }
 
-  std::vector<T> _vertices;
+  size_t _vertexCursor = 0;
+
+  size_t _indexCursor = 0;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -442,6 +531,7 @@ public:
   const std::string &source() const { return _source; }
 
   bool bind();
+  void dispatch(int numGroupsX, int numGroupsY, int numGroupsZ = 1);
 
 protected:
   virtual ~compute()
@@ -567,6 +657,26 @@ bool gl_resource_program::link(const std::initializer_list<gl_resource_shader> &
   return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------
+bool buffer::bind()
+{
+  if (dirty())
+  {
+    if (!_buffer.id)
+      gl.GenBuffers(1, &_buffer.id);
+
+    gl.BindBuffer(_type, _buffer.id);
+    gl.BufferData(_type, _size, _data, gl.STREAM_DRAW);
+
+    if (!_keepData && _data) { delete [] _data; _data = nullptr; }
+    set_dirty(false);
+  }
+  else
+    gl.BindBuffer(_type, _buffer.id);
+
+  return _buffer.id > 0;
+}
+
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -595,6 +705,7 @@ bool technique::bind()
     set_dirty(false);
   }
 
+  gl.UseProgram(_program.id);
   return _program.id != 0;
 }
 
@@ -614,7 +725,14 @@ bool compute::bind()
     set_dirty(false);
   }
 
+  gl.UseProgram(_program.id);
   return _program.id != 0;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void compute::dispatch(int numGroupsX, int numGroupsY, int numGroupsZ)
+{
+  
 }
 
 }
