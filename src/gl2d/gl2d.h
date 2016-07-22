@@ -217,41 +217,45 @@ public:
 
     _initialized = true;
 
-    gl->GenBuffers(1, &_vbo);
-    gl->GenVertexArrays(1, &_vao);
+    gl.init();
+    gl.GenBuffers(1, &_vbo);
+    gl.GenVertexArrays(1, &_vao);
 
     // Initialize VBO and VAO
     {
-      gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-      gl->BindVertexArray(_vao);
+      gl.BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
+      gl.BindVertexArray(_vao);
       vertex2d::init_vao();
-      gl->BindVertexArray(0);
-      gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
+      gl.BindVertexArray(0);
+      gl.BindBuffer(gl_api::ARRAY_BUFFER, 0);
     }
 
-    _vertShader = gl->compile_shader(gl_api::VERTEX_SHADER, vertex_shader_code);
+    _technique->set_vert_source(vertex_shader_code);
+    _technique->set_frag_source(fragment_shader_code);
+
+    _vertShader = gl.compile_shader(gl_api::VERTEX_SHADER, vertex_shader_code);
     if (!_vertShader)
     {
       done();
       return false;
     }
 
-    _fragShader = gl->compile_shader(gl_api::FRAGMENT_SHADER, fragment_shader_code);
+    _fragShader = gl.compile_shader(gl_api::FRAGMENT_SHADER, fragment_shader_code);
     if (!_fragShader)
     {
       done();
       return false;
     }
 
-    _program = gl->link_program(_vertShader, _fragShader);
+    _program = gl.link_program(_vertShader, _fragShader);
     if (!_program)
     {
       done();
       return false;
     }
 
-    _uScreenSize = gl->GetUniformLocation(_program, "u_ScreenSize");
-    _uFontTexture = gl->GetUniformLocation(_program, "u_FontTexture");
+    _uScreenSize = gl.GetUniformLocation(_program, "u_ScreenSize");
+    _uFontTexture = gl.GetUniformLocation(_program, "u_FontTexture");
 
     // Initialize font texture
     {
@@ -304,13 +308,13 @@ public:
 
     if (_vbo)
     {
-      gl->DeleteBuffers(1, &_vbo);
+      gl.DeleteBuffers(1, &_vbo);
       _vbo = 0;
     }
 
     if (_vao)
     {
-      gl->DeleteVertexArrays(1, &_vao);
+      gl.DeleteVertexArrays(1, &_vao);
       _vao = 0;
     }
 
@@ -499,17 +503,17 @@ public:
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Copy vertices into VBO
-    gl->BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-    gl->BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
-    gl->BindVertexArray(_vao);
-    gl->UseProgram(_program);
+    gl.BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
+    gl.BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
+    gl.BindVertexArray(_vao);
+    gl.UseProgram(_program);
 
-    gl->ActiveTexture(gl_api::TEXTURE0);
+    gl.ActiveTexture(gl_api::TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _fontTexture);
 
     vec2 screenSize(width, height);
-    gl->Uniform2fv(_uScreenSize, 1, screenSize.data());
-    gl->Uniform1i(_uFontTexture, 0);
+    gl.Uniform2fv(_uScreenSize, 1, screenSize.data());
+    gl.Uniform1i(_uFontTexture, 0);
 
     size_t startVertex = 0;
     for (auto &&dc : _drawCalls)
@@ -520,9 +524,9 @@ public:
       startVertex += dc.length;
     }
 
-    gl->BindBuffer(gl_api::ARRAY_BUFFER, 0);
-    gl->BindVertexArray(0);
-    gl->UseProgram(0);
+    gl.BindBuffer(gl_api::ARRAY_BUFFER, 0);
+    gl.BindVertexArray(0);
+    gl.UseProgram(0);
 
     clear(); 
   }
@@ -610,6 +614,8 @@ private:
   detail::gl_resource_shader _fragShader;
 
   detail::gl_resource_program _program;
+
+  ptr<technique> _technique = new technique();
 
   GLint _uScreenSize = -1;
 
