@@ -249,6 +249,9 @@ class compiled_program : public compiled_object
 public:
   const std::string &last_error() const { return _lastError; }
 
+  void set_glsl_version(const std::string &verString) { _glslVersion = verString; set_dirty(); }
+  const std::string &glsl_version() const { return _glslVersion; }
+
   void define(const std::string &name, const std::string &value)
   {
     _macros[name] = value;
@@ -279,10 +282,8 @@ public:
 
   std::string get_macro_string() const
   {
-    std::string macroString = "";
-    for (auto &&kvp : _macros)
-      macroString += "#define " + kvp.first + " " + kvp.second + "\n";
-
+    std::string macroString = "#version " + _glslVersion + "\n";
+    for (auto &&kvp : _macros) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
     return macroString;
   }
   
@@ -294,6 +295,7 @@ protected:
 
   std::map<std::string, std::string> _macros;
   detail::gl_resource_program _program;
+  std::string _glslVersion = "330";
   std::string _lastError;
 };
 
