@@ -598,7 +598,7 @@ private:
 
   detail::gl_resource_program _program;
 
-  ptr<technique> _technique = new technique();
+  detail::ptr<technique> _technique = new technique();
 
   GLint _uScreenSize = -1;
 
