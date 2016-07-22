@@ -307,7 +307,7 @@ public:
 
   void clear()
   {
-    if (_data) { delete [] _data; _data = nullptr; }
+    if (_owner && _data) { delete [] _data; _data = nullptr; }
 
     _size = 0;
     _keepData = false;
@@ -316,27 +316,28 @@ public:
 
   void alloc_data(const void *ptr, size_t size, bool keep = true)
   {
-    if (_size != size)
-    {
+    if (_owner && _size != size)
       clear();
-      _size = size;
-    }
 
-    if (ptr && size)
+    if (size)
     {
-      if (!_data && ptr) _data = new uint8_t[_size];
-      if (ptr) memcpy(_data, ptr, _size);
+      _size = size;
+      if (!_data) _data = new uint8_t[_size];
+      if (ptr) memcpy(const_cast<uint8_t *>(_data), ptr, _size);
     }
 
+    _owner = true;
     _keepData = keep;
   }
 
   void set_data(const void *ptr, size_t size)
   {
-    
+    clear();
+    _data = static_cast<const uint8_t *>(ptr);
+    _size = size;
   }
 
-  uint8_t *data() const { return _data; }
+  const uint8_t *data() const { return _data; }
 
   size_t size() const { return _size; }
 
@@ -350,13 +351,10 @@ protected:
   }
 
   GLenum _type;
-
   bool _keepData = false;
-
-  uint8_t *_data = nullptr;
-
+  bool _owner = false;
+  const uint8_t *_data = nullptr;
   size_t _size;
-
   gl_resource_buffer _buffer;
 };
 
@@ -371,6 +369,8 @@ public:
   void set_index_buffer(buffer *ib) { _indexBuffer = ib; set_dirty(); }
 
   buffer *index_buffer() const { return _indexBuffer; }
+
+  virtual bool bind();
   
 protected:
   virtual ~base_geometry()
@@ -379,9 +379,7 @@ protected:
   }
 
   detail::gl_resource_vao _vao;
-
   ptr<buffer> _vertexBuffer = new buffer(gl.ARRAY_BUFFER);
-
   ptr<buffer> _indexBuffer;
 };
 
@@ -459,9 +457,12 @@ public:
     
   }
 
-  size_t size_vertices() const { return _vertexBuffer ? (_vertexBuffer->size() / sizeof(T)) : 0; }
+  void clear_vertices() { _vertexCursor = 0; set_dirty(); }
+  void clear_indices() { _indexCursor = 0; set_dirty(); }
+  void clear() { _vertexCursor = _indexCursor = 0; set_dirty(); }
 
-  size_t size_indices() const { return _indexBuffer ? (_indexBuffer->size() / sizeof(T)) : 0; }
+  size_t size_vertices() const { return _vertexCursor; }
+  size_t size_indices() const { return _indexCursor; }
 
   T *alloc_vertices(size_t count)
   {
@@ -469,7 +470,35 @@ public:
       return nullptr;
 
     if (_vertexCursor + count > size_vertices())
-      _vertexBuffer->set_data
+      _vertices.resize(_vertexCursor + count);
+
+    auto result = _vertices.data() + _vertexCursor;
+    _vertexCursor += count;
+    set_dirty();
+    return result;
+  }
+
+  bool bind() override
+  {
+    if (!_vao.id)
+    {
+      gl.GenVertexArrays(1, &_vao.id);
+      gl.BindVertexArray(_vao);
+      T::init_vao();
+    }
+
+    if (dirty())
+    {
+      if (_vertexBuffer)
+        _vertexBuffer->set_data(_vertices.data(), _vertexCursor * sizeof(T));
+
+      if (_indexBuffer)
+        _indexBuffer->set_data(_indices.data(), _indexCursor * sizeof(int));
+
+      set_dirty(false);
+    }
+
+    return detail::base_geometry::bind();
   }
 
 protected:
@@ -478,8 +507,10 @@ protected:
 
   }
 
+  std::vector<T> _vertices;
   size_t _vertexCursor = 0;
 
+  std::vector<int> _indices;
   size_t _indexCursor = 0;
 };
 
@@ -562,7 +593,6 @@ protected:
   }
 
   detail::gl_resource_texture _texture;
-
   ivec2 _size;
 };
 
@@ -675,6 +705,21 @@ bool buffer::bind()
     gl.BindBuffer(_type, _buffer.id);
 
   return _buffer.id > 0;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool base_geometry::bind()
+{
+  if (!_vertexBuffer || !_vao.id)
+    return false;
+
+  _vertexBuffer->bind();
+  gl.BindVertexArray(_vao);
+
+  if (_indexBuffer)
+    _indexBuffer->bind();
+  
+  return true;
 }
 
 }
