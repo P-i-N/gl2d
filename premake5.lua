@@ -23,6 +23,8 @@
 --
 --     include ({ }) - include directories
 --
+--     defines ({ }) - project specific defines
+--
 --     configure_callback (nil) - function called when this project is being configured
 --
 -----------------------------------------------------------------------------------------------------------------------
@@ -31,7 +33,8 @@ Projects =
   -- gl2d
   {
     dir = "src/gl2d",
-    type = "static"
+    type = "static",
+    defines = { "GL3D_IMPLEMENTATION" }
   },
 
   -- test
@@ -78,6 +81,7 @@ function generateProject(params)
   local _windows_links = getParam("windows_links", { })
   local _linux_links = getParam("linux_links", { })
   local _include = getParam("include", { })
+  local _defines = getParam("defines", { })
   local _configure_callback = getParam("configure_callback", nil)
 
   language(_language)
@@ -114,6 +118,7 @@ function generateProject(params)
   
   links(_links)
   includedirs(_include)
+  defines(_defines)
   
   filter { "system:windows" }
     links(_windows_links)
