@@ -153,6 +153,7 @@ public:
   static const GLenum DYNAMIC_READ = 0x88E9;
   static const GLenum DYNAMIC_COPY = 0x88EA;
   static const GLenum PIXEL_PACK_BUFFER = 0x88EB;
+  static const GLenum PIXEL_UNPACK_BUFFER = 0x88EC;
   static const GLenum FRAGMENT_SHADER = 0x8B30;
   static const GLenum VERTEX_SHADER = 0x8B31;
   static const GLenum COMPILE_STATUS = 0x8B81;
@@ -273,24 +274,13 @@ public:
   bool undef(const std::string &name)
   {
     auto iter = _macros.find(name);
-    if (iter != _macros.end())
-    {
-      _macros.erase(iter);
-      set_dirty();
-      return true;
-    }
-
-    return false;
+    if (iter == _macros.end()) return false;
+    _macros.erase(iter);
+    set_dirty();
+    return true;
   }
 
-  void undef_all()
-  {
-    if (!_macros.empty())
-    {
-      _macros.clear();
-      set_dirty();
-    }
-  }
+  void undef_all() { if (!_macros.empty()) { _macros.clear(); set_dirty(); } }
 
   std::string get_macro_string() const
   {
@@ -318,9 +308,8 @@ protected:
 class buffer : public compiled_object
 {
 public:
-  buffer(GLenum type): _type(type) { }
+  buffer() { }
 
-  GLenum type() const { return _type; }
   GLuint id() const { return _buffer.id; }
 
   void clear()
@@ -359,8 +348,8 @@ public:
 
   size_t size() const { return _size; }
 
-  bool bind();
-  void unbind();
+  bool bind(GLenum type);
+  void unbind(GLenum type);
 
 protected:
   virtual ~buffer()
@@ -369,7 +358,6 @@ protected:
     _buffer.destroy();
   }
 
-  GLenum _type;
   bool _keepData = false;
   bool _owner = false;
   const uint8_t *_data = nullptr;
@@ -398,7 +386,7 @@ protected:
   }
 
   detail::gl_resource_vao _vao;
-  ptr<buffer> _vertexBuffer = new buffer(gl.ARRAY_BUFFER);
+  ptr<buffer> _vertexBuffer = new buffer();
   ptr<buffer> _indexBuffer;
 };
 
@@ -511,7 +499,7 @@ public:
 
     if (!_vao.id && _vertexBuffer)
     {
-      _vertexBuffer->bind();
+      _vertexBuffer->bind(gl.ARRAY_BUFFER);
       gl.GenVertexArrays(1, &_vao.id);
       gl.BindVertexArray(_vao);
       T::init_vao();
@@ -595,27 +583,56 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class texture : public detail::ref_counted
+class texture : public detail::compiled_object
 {
 public:
-  texture()
+  texture(GLenum textureType = GL_TEXTURE_2D): _type(textureType)
   {
     
   }
 
+  GLenum type() const { return _type; }
   GLuint id() const { return _texture.id; }
 
-  const ivec2 &size() const { return _size; }
+  struct part
+  {
+    int layer_index = 0;   // texture layer index
+    int mip_level = 0;     // layer mip level
+    ivec2 size;            // width and height in pixels
+    size_t offset = 0;     // byte offset from start of the buffer
+    size_t row_stride = 0; // row size in bytes
+    size_t length = 0;     // total part size in bytes
+  };
+
+  void set_params(int width, int height, GLenum format, size_t sizeLayers);
+
+  void set_format(GLenum format) { set_params(_size.x, _size.y, format, _sizeLayers); }
+  GLenum format() const { return _format; }
+
+  void set_size(int width, int height) { set_params(width, height, _format, _sizeLayers); }
+  ivec2 size(size_t mipLevel = 0) const;
+  
+  void set_size_layers(size_t count) { set_params(_size.x, _size.y, _format, count); }
+  size_t size_layers() const { return _sizeLayers; }
+
+  void set_pixel_buffer(detail::buffer *pb) { _pbo = pb; set_dirty(); }
+  detail::buffer *pixel_buffer() const { return _pbo; }
 
 protected:
   virtual ~texture()
   {
-    
+    _texture.destroy();
   }
 
+  void update_parts();
+
+  GLenum _type;
   detail::gl_resource_texture _texture;
-  detail::ptr<detail::buffer> _pbo = new detail::buffer(gl.PIXEL_PACK_BUFFER);
+  detail::ptr<detail::buffer> _pbo = new detail::buffer();
+  std::vector<part> _parts;
+  GLenum _format = GL_RGBA;
   ivec2 _size;
+  size_t _sizeLayers = 1;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -741,29 +758,29 @@ bool gl_resource_program::link(const std::initializer_list<gl_resource_shader> &
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool buffer::bind()
+bool buffer::bind(GLenum type)
 {
   if (dirty())
   {
     if (!_buffer.id)
       gl.GenBuffers(1, &_buffer.id);
 
-    gl.BindBuffer(_type, _buffer.id);
-    gl.BufferData(_type, _size, _data, gl.STREAM_DRAW);
+    gl.BindBuffer(type, _buffer.id);
+    gl.BufferData(type, _size, _data, gl.STREAM_DRAW);
 
     if (_owner && !_keepData && _data) { delete [] _data; _data = nullptr; }
     set_dirty(false);
   }
   else
-    gl.BindBuffer(_type, _buffer.id);
+    gl.BindBuffer(type, _buffer.id);
 
   return _buffer.id > 0;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void buffer::unbind()
+void buffer::unbind(GLenum type)
 {
-  gl.BindBuffer(_type, 0);
+  gl.BindBuffer(type, 0);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -772,11 +789,11 @@ bool base_geometry::bind()
   if (!_vertexBuffer || !_vao.id)
     return false;
 
-  _vertexBuffer->bind();
+  _vertexBuffer->bind(gl.ARRAY_BUFFER);
   gl.BindVertexArray(_vao);
 
   if (_indexBuffer)
-    _indexBuffer->bind();
+    _indexBuffer->bind(gl.ELEMENT_ARRAY_BUFFER);
   
   return true;
 }
@@ -785,12 +802,12 @@ bool base_geometry::bind()
 void base_geometry::unbind()
 {
   if (_vertexBuffer)
-    _vertexBuffer->unbind();
+    _vertexBuffer->unbind(gl.ARRAY_BUFFER);
   
   gl.BindVertexArray(0);
 
   if (_indexBuffer)
-    _indexBuffer->unbind();
+    _indexBuffer->unbind(gl.ELEMENT_ARRAY_BUFFER);
 }
 
 }
@@ -849,6 +866,28 @@ bool compute::bind()
 void compute::dispatch(int numGroupsX, int numGroupsY, int numGroupsZ)
 {
   
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void texture::update_parts()
+{
+  set_dirty();
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void texture::set_params(int width, int height, GLenum format, size_t sizeLayers)
+{
+  if (_size.x != width || _size.y != height || _format != format || _sizeLayers != sizeLayers)
+  {
+    _size = ivec2(width, height); _format = format; _sizeLayers = sizeLayers;
+    update_parts();
+  }
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+ivec2 texture::size(size_t mipLevel) const
+{
+  return _size;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
