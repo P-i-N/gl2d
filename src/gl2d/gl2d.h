@@ -218,17 +218,6 @@ public:
     _initialized = true;
 
     gl.init();
-    gl.GenBuffers(1, &_vbo);
-    gl.GenVertexArrays(1, &_vao);
-
-    // Initialize VBO and VAO
-    {
-      gl.BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-      gl.BindVertexArray(_vao);
-      vertex2d::init_vao();
-      gl.BindVertexArray(0);
-      gl.BindBuffer(gl_api::ARRAY_BUFFER, 0);
-    }
 
     _technique->set_vert_source(vertex_shader_code);
     _technique->set_frag_source(fragment_shader_code);
@@ -288,18 +277,6 @@ public:
   {
     if (!_initialized)
       return;
-
-    if (_vbo)
-    {
-      gl.DeleteBuffers(1, &_vbo);
-      _vbo = 0;
-    }
-
-    if (_vao)
-    {
-      gl.DeleteVertexArrays(1, &_vao);
-      _vao = 0;
-    }
 
     _vertShader.destroy();
     _fragShader.destroy();
@@ -577,10 +554,6 @@ private:
 
   detail::state _state;
 
-  GLuint _vbo = 0;
-  
-  GLuint _vao = 0;
-
   detail::gl_resource_shader _vertShader;
 
   detail::gl_resource_shader _fragShader;
@@ -596,12 +569,6 @@ private:
   GLint _uFontTexture = -1;
 
   GLuint _fontTexture = 0;
-
-  /*
-  std::vector<detail::vertex2d> _vertices;
-
-  size_t _vertexCursor = 0;
-  */
 
   std::vector<detail::draw_call> _drawCalls;
 };
