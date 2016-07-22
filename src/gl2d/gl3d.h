@@ -33,9 +33,6 @@ template <typename T> struct xvec2
   xvec2(const xvec2 &copy): x(copy.x), y(copy.y) { }
 
   template <typename T2>
-  xvec2(T2 v): x(static_cast<T>(v)), y(static_cast<T>(v)) { }
-
-  template <typename T2>
   xvec2(T2 _x, T2 _y): x(static_cast<T>(_x)), y(static_cast<T>(_y)) { }
 
   T *data() { return &x; }
@@ -49,9 +46,6 @@ template <typename T> struct xvec3
 
   xvec3() { }
   xvec3(const xvec3 &copy): x(copy.x), y(copy.y), z(copy.z) { }
-
-  template <typename T2>
-  xvec3(T2 v): x(static_cast<T>(v)), y(static_cast<T>(v)), z(static_cast<T>(v)) { }
 
   template <typename T2>
   xvec3(T2 _x, T2 _y, T2 _z): x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)) { }
@@ -249,6 +243,8 @@ public:
   ptr &operator=(const ptr &p) { assign(p._ptr); return *this; }
   template <typename T2> ptr &operator=(T2 *p) { assign(p); return *this; }
   template <typename T2> ptr &operator=(const ptr<T2> &p) { assign(p._ptr); return *this; }
+
+  bool empty() const { return _ptr == nullptr; }
 
 private:
   template <typename T2> void assign(T2 *p)
@@ -738,8 +734,10 @@ public:
 
   bool set_uniform(const char *name, int value);
   bool set_uniform(const char *name, const vec2 &value);
-  bool set_uniform(const char *name, detail::ptr<texture> value);
+  bool set_uniform(const char *name, texture *value);
     
+  int get_free_texture_slot() const { for (int i = 0; i < 16; ++i) if (_textures[i].empty()) return i; return -1; }
+
 private:
   detail::ptr<detail::base_geometry> _geometry;
   detail::ptr<detail::compiled_program> _program;
@@ -1045,7 +1043,8 @@ bool context3d::bind(texture *tex, int slot)
 bool context3d::set_uniform(const char *name, int value)
 {
   if (!_program) return false;
-  if (auto id = gl.GetUniformLocation(_program->id(), name))
+  auto id = gl.GetUniformLocation(_program->id(), name);
+  if (id >= 0)
   {
     gl.Uniform1i(id, value);
     return true;      
@@ -1057,7 +1056,8 @@ bool context3d::set_uniform(const char *name, int value)
 bool context3d::set_uniform(const char *name, const vec2 &value)
 {
   if (!_program) return false;
-  if (auto id = gl.GetUniformLocation(_program->id(), name))
+  auto id = gl.GetUniformLocation(_program->id(), name);
+  if (id >= 0)
   {
     gl.Uniform2fv(id, 1, value.data());
     return true;      
@@ -1066,8 +1066,16 @@ bool context3d::set_uniform(const char *name, const vec2 &value)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::set_uniform(const char *name, detail::ptr<texture> value)
+bool context3d::set_uniform(const char *name, texture *value)
 {
+  if (!_program) return false;
+  auto id = gl.GetUniformLocation(_program->id(), name);
+  if (id >= 0)
+  {
+    auto slot = get_free_texture_slot(); if (slot < 0) return false;
+    value->bind(slot);
+    return true;
+  }
   return false;
 }
 
