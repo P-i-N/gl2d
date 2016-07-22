@@ -142,7 +142,17 @@ public:
   static const GLenum CLAMP_TO_EDGE = 0x812F;
   static const GLenum TEXTURE0 = 0x84C0;
   static const GLenum ARRAY_BUFFER = 0x8892;
+  static const GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
   static const GLenum STREAM_DRAW = 0x88E0;
+  static const GLenum STREAM_READ = 0x88E1;
+  static const GLenum STREAM_COPY = 0x88E2;
+  static const GLenum STATIC_DRAW = 0x88E4;
+  static const GLenum STATIC_READ = 0x88E5;
+  static const GLenum STATIC_COPY = 0x88E6;
+  static const GLenum DYNAMIC_DRAW = 0x88E8;
+  static const GLenum DYNAMIC_READ = 0x88E9;
+  static const GLenum DYNAMIC_COPY = 0x88EA;
+  static const GLenum PIXEL_PACK_BUFFER = 0x88EB;
   static const GLenum FRAGMENT_SHADER = 0x8B30;
   static const GLenum VERTEX_SHADER = 0x8B31;
   static const GLenum COMPILE_STATUS = 0x8B81;
@@ -247,6 +257,8 @@ protected:
 class compiled_program : public compiled_object
 {
 public:
+  GLuint id() const { return _program.id; }
+
   const std::string &last_error() const { return _lastError; }
 
   void set_glsl_version(const std::string &verString) { _glslVersion = verString; set_dirty(); }
@@ -286,6 +298,9 @@ public:
     for (auto &&kvp : _macros) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
     return macroString;
   }
+
+  virtual bool bind() = 0;
+  virtual void unbind() { gl.UseProgram(0); }
   
 protected:
   virtual ~compiled_program()
@@ -306,6 +321,7 @@ public:
   buffer(GLenum type): _type(type) { }
 
   GLenum type() const { return _type; }
+  GLuint id() const { return _buffer.id; }
 
   void clear()
   {
@@ -344,6 +360,7 @@ public:
   size_t size() const { return _size; }
 
   bool bind();
+  void unbind();
 
 protected:
   virtual ~buffer()
@@ -364,15 +381,15 @@ protected:
 class base_geometry : public compiled_object
 {
 public:
+  GLuint id() const { return _vao.id; }
+
   void set_vertex_buffer(buffer *vb) { _vertexBuffer = vb; set_dirty(); }
-
   buffer *vertex_buffer() const { return _vertexBuffer; }
-
   void set_index_buffer(buffer *ib) { _indexBuffer = ib; set_dirty(); }
-
   buffer *index_buffer() const { return _indexBuffer; }
 
   virtual bool bind();
+  virtual void unbind();
   
 protected:
   virtual ~base_geometry()
@@ -535,7 +552,7 @@ public:
   void set_frag_source(const std::string &code) { _fragSource = code; set_dirty(); }
   const std::string &frag_source() const { return _fragSource; }
 
-  bool bind();
+  bool bind() override;
 
 protected:
   virtual ~technique()
@@ -563,7 +580,7 @@ public:
   void set_source(const std::string &code) { _source = code; set_dirty(); }
   const std::string &source() const { return _source; }
 
-  bool bind();
+  bool bind() override;
   void dispatch(int numGroupsX, int numGroupsY, int numGroupsZ = 1);
 
 protected:
@@ -586,6 +603,8 @@ public:
     
   }
 
+  GLuint id() const { return _texture.id; }
+
   const ivec2 &size() const { return _size; }
 
 protected:
@@ -595,6 +614,7 @@ protected:
   }
 
   detail::gl_resource_texture _texture;
+  detail::ptr<detail::buffer> _pbo = new detail::buffer(gl.PIXEL_PACK_BUFFER);
   ivec2 _size;
 };
 
@@ -613,6 +633,37 @@ protected:
   {
     
   }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class context3d
+{
+public:
+  context3d()
+  {
+    
+  }
+
+  ~context3d()
+  {
+    
+  }
+
+  void clear();
+
+  bool bind(detail::base_geometry *geometry);
+  bool bind(detail::compiled_program *prog);
+  bool bind(texture *tex, int slot = 0);
+
+  bool set_uniform(const char *name, int value);
+  bool set_uniform(const char *name, const vec2 &value);
+  bool set_uniform(const char *name, texture *value);
+    
+private:
+  detail::ptr<detail::base_geometry> _geometry;
+  detail::ptr<detail::compiled_program> _program;
+  detail::ptr<texture> _textures[16];
 };
 
 }
@@ -710,6 +761,12 @@ bool buffer::bind()
 }
 
 //------------------------------------------------------------------------------------------------------------------------
+void buffer::unbind()
+{
+  gl.BindBuffer(_type, 0);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
 bool base_geometry::bind()
 {
   if (!_vertexBuffer || !_vao.id)
@@ -722,6 +779,18 @@ bool base_geometry::bind()
     _indexBuffer->bind();
   
   return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void base_geometry::unbind()
+{
+  if (_vertexBuffer)
+    _vertexBuffer->unbind();
+  
+  gl.BindVertexArray(0);
+
+  if (_indexBuffer)
+    _indexBuffer->unbind();
 }
 
 }
@@ -780,6 +849,81 @@ bool compute::bind()
 void compute::dispatch(int numGroupsX, int numGroupsY, int numGroupsZ)
 {
   
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void context3d::clear()
+{
+  if (_geometry) _geometry->unbind();
+  _geometry = nullptr;
+
+  if (_program) _program->unbind();
+  _program = nullptr;
+
+  for (size_t i = 0; i < 16; ++i)
+  {
+    _textures[i] = nullptr;
+  }
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::bind(detail::base_geometry *geometry)
+{
+  if (geometry != _geometry)
+  {
+    if (_geometry) _geometry->unbind();
+    if (_geometry = geometry) return _geometry->bind();
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::bind(detail::compiled_program *prog)
+{
+  if (prog != _program)
+  {
+    if (_program) _program->unbind();
+    if (_program = prog) return _program->bind();
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::bind(texture *tex, int slot)
+{
+  return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::set_uniform(const char *name, int value)
+{
+  if (!_program) return false;
+  if (auto id = gl.GetUniformLocation(_program->id(), name))
+  {
+    gl.Uniform1i(id, value);
+    return true;      
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::set_uniform(const char *name, const vec2 &value)
+{
+  if (!_program) return false;
+  if (auto id = gl.GetUniformLocation(_program->id(), name))
+  {
+    gl.Uniform2fv(id, 1, value.data());
+    return true;      
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::set_uniform(const char *name, texture *value)
+{
+  return false;
 }
 
 }

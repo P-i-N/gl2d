@@ -213,13 +213,6 @@ public:
     _technique->set_vert_source(vertex_shader_code);
     _technique->set_frag_source(fragment_shader_code);
 
-    if (!_vertShader.compile(gl.VERTEX_SHADER, vertex_shader_code)) { done(); return false; }
-    if (!_fragShader.compile(gl.FRAGMENT_SHADER, fragment_shader_code)) { done(); return false; }
-    if (!_program.link({ _vertShader, _fragShader })) { done(); return false; }
-
-    _uScreenSize = gl.GetUniformLocation(_program, "u_ScreenSize");
-    _uFontTexture = gl.GetUniformLocation(_program, "u_FontTexture");
-
     // Initialize font texture
     {
       auto fontImage = base64_decode(detail::font_base64);
@@ -269,10 +262,6 @@ public:
     if (!_initialized)
       return;
 
-    _vertShader.destroy();
-    _fragShader.destroy();
-    _program.destroy();
-
     if (_fontTexture)
     {
       glDeleteTextures(1, &_fontTexture);
@@ -284,6 +273,7 @@ public:
 
   void clear()
   {
+    _context3d.clear();
     _geometry->clear();
     _drawCalls.clear();
     _drawCalls.emplace_back(true, 0);
@@ -448,24 +438,21 @@ public:
   {
     using namespace detail;
 
+    _context3d.clear();
+
     glViewport(x, y, width, height);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Copy vertices into VBO
-    _geometry->bind();
-    //gl.BindBuffer(gl_api::ARRAY_BUFFER, _vbo);
-    //gl.BufferData(gl_api::ARRAY_BUFFER, sizeof(vertex2d) * _vertexCursor, _vertices.data(), gl_api::STREAM_DRAW);
-    //gl.BindVertexArray(_vao);
-    gl.UseProgram(_program);
+    _context3d.bind(_geometry);
+    _context3d.bind(_technique);
 
     gl.ActiveTexture(gl_api::TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _fontTexture);
 
-    vec2 screenSize(width, height);
-    gl.Uniform2fv(_uScreenSize, 1, screenSize.data());
-    gl.Uniform1i(_uFontTexture, 0);
+    _context3d.set_uniform("u_ScreenSize", vec2(width, height));
+    _context3d.set_uniform("u_FontTexture", 0);
 
     size_t startVertex = 0;
     for (auto &&dc : _drawCalls)
@@ -475,10 +462,6 @@ public:
       glDrawArrays(dc.triangles ? GL_TRIANGLES : GL_LINES, static_cast<GLint>(startVertex), static_cast<GLsizei>(dc.length));
       startVertex += dc.length;
     }
-
-    gl.BindBuffer(gl_api::ARRAY_BUFFER, 0);
-    gl.BindVertexArray(0);
-    gl.UseProgram(0);
 
     clear(); 
   }
@@ -545,17 +528,10 @@ private:
 
   detail::state _state;
 
-  detail::gl_resource_shader _vertShader;
-
-  detail::gl_resource_shader _fragShader;
-
-  detail::gl_resource_program _program;
-
+  context3d _context3d;
   detail::ptr<technique> _technique = new technique();
   detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
 
-  GLint _uScreenSize = -1;
-  GLint _uFontTexture = -1;
   GLuint _fontTexture = 0;
 
   std::vector<detail::draw_call> _drawCalls;
