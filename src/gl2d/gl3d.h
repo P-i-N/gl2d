@@ -235,18 +235,23 @@ protected:
 template <typename T> class ptr
 {
 public:
-  ptr() { }
+  ptr(): _ptr(nullptr) { }
   ptr(T *p): _ptr(p) { if (p) p->ref(); }
   ptr(const ptr &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
   ptr(ptr &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
+  template <typename T2> ptr(const ptr<T2> &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
+  template <typename T2> ptr(ptr<T2> &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
   ~ptr() { if (_ptr) _ptr->unref(); }
 
   T *operator->() const { return _ptr; }
   operator T*() const { return _ptr; }
   ptr &operator=(T *p) { assign(p); return *this; }
+  ptr &operator=(const ptr &p) { assign(p._ptr); return *this; }
+  template <typename T2> ptr &operator=(T2 *p) { assign(p); return *this; }
+  template <typename T2> ptr &operator=(const ptr<T2> &p) { assign(p._ptr); return *this; }
 
 private:
-  void assign(T *p)
+  template <typename T2> void assign(T2 *p)
   {
     if (p == _ptr) return;
     T *oldPtr = _ptr;
@@ -255,7 +260,8 @@ private:
     _ptr = p;
   }
 
-  T *_ptr = nullptr;
+  template <typename T2> friend class ptr;
+  T *_ptr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -667,8 +673,18 @@ public:
   void *alloc_pixels(const void *ptr, bool keep = false)
   {
     if (!_pbo || !_sizeBytes) return nullptr;
+    set_dirty();
     return _pbo->alloc_data(ptr, _sizeBytes, keep);
   }
+
+  void set_pixels(const void *ptr)
+  {
+    if (!_pbo || !_sizeBytes) return;
+    set_dirty();
+    _pbo->set_data(ptr, _sizeBytes);
+  }
+
+  bool bind(int slot = 0);
 
 protected:
   virtual ~texture()
@@ -716,13 +732,13 @@ public:
 
   void clear();
 
-  bool bind(detail::base_geometry *geometry);
+  bool bind(detail::base_geometry *geom);
   bool bind(detail::compiled_program *prog);
   bool bind(texture *tex, int slot = 0);
 
   bool set_uniform(const char *name, int value);
   bool set_uniform(const char *name, const vec2 &value);
-  bool set_uniform(const char *name, texture *value);
+  bool set_uniform(const char *name, detail::ptr<texture> value);
     
 private:
   detail::ptr<detail::base_geometry> _geometry;
@@ -807,9 +823,7 @@ bool buffer::bind(GLenum type)
 {
   if (dirty())
   {
-    if (!_buffer.id)
-      gl.GenBuffers(1, &_buffer.id);
-
+    if (!_buffer.id) gl.GenBuffers(1, &_buffer.id);
     gl.BindBuffer(type, _buffer.id);
     gl.BufferData(type, _size, _data, gl.STREAM_DRAW);
 
@@ -963,6 +977,26 @@ size_t texture::size_mip_levels(bool calculate) const
 }
 
 //------------------------------------------------------------------------------------------------------------------------
+bool texture::bind(int slot)
+{
+  if (dirty())
+  {
+    if (!_texture.id) glGenTextures(1, &_texture.id);
+    gl.ActiveTexture(gl.TEXTURE0 + slot);
+    glBindTexture(GL_TEXTURE_2D, _texture.id);
+
+    set_dirty(false);
+  }
+  else
+  {
+    gl.ActiveTexture(gl.TEXTURE0 + slot);
+    glBindTexture(GL_TEXTURE_2D, _texture.id);
+  }
+
+  return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
 void context3d::clear()
 {
   if (_geometry) _geometry->unbind();
@@ -978,12 +1012,12 @@ void context3d::clear()
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind(detail::base_geometry *geometry)
+bool context3d::bind(detail::base_geometry *geom)
 {
-  if (geometry != _geometry)
+  if (geom != _geometry)
   {
     if (_geometry) _geometry->unbind();
-    if (_geometry = geometry) return _geometry->bind();
+    if (_geometry = geom) return _geometry->bind();
   }
 
   return true;
@@ -1032,7 +1066,7 @@ bool context3d::set_uniform(const char *name, const vec2 &value)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::set_uniform(const char *name, texture *value)
+bool context3d::set_uniform(const char *name, detail::ptr<texture> value)
 {
   return false;
 }
