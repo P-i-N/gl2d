@@ -206,8 +206,6 @@ public:
     if (_initialized)
       return true;
 
-    _initialized = true;
-
     gl.init();
 
     _technique->set_vert_source(vertex_shader_code);
@@ -237,20 +235,13 @@ public:
       image[detail::font_width * detail::font_height - 1] = 0xFFFFFFFFu;
 
       _texture->set_params(detail::font_width, detail::font_height, GL_RGBA, 1, 1);
-      _texture->alloc_pixels(nullptr);
-
-      glGenTextures(1, &_fontTexture);
-      glBindTexture(GL_TEXTURE_2D, _fontTexture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, detail::font_width, detail::font_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_api::CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl_api::CLAMP_TO_EDGE);
-      glBindTexture(GL_TEXTURE_2D, 0);
+      _texture->alloc_pixels(image);
+      _texture->set_wrap(gl.CLAMP_TO_EDGE);
 
       delete [] image;
     }
     
+    _initialized = true;
     return true;
   }
 
@@ -258,12 +249,6 @@ public:
   {
     if (!_initialized)
       return;
-
-    if (_fontTexture)
-    {
-      glDeleteTextures(1, &_fontTexture);
-      _fontTexture = 0;
-    }
 
     _initialized = false;
   }
@@ -445,10 +430,6 @@ public:
 
     _context3d.bind(_geometry);
     _context3d.bind(_technique);
-
-    gl.ActiveTexture(gl_api::TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _fontTexture);
-
     _context3d.set_uniform("u_ScreenSize", vec2(width, height));
     _context3d.set_uniform("u_FontTexture", _texture);
 
@@ -523,17 +504,11 @@ private:
   }
 
   bool _initialized = false;
-
   detail::state _state;
-
   context3d _context3d;
-
   detail::ptr<technique> _technique = new technique();
   detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
   detail::ptr<texture> _texture = new texture();
-
-  GLuint _fontTexture = 0;
-
   std::vector<detail::draw_call> _drawCalls;
 };
 

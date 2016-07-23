@@ -666,6 +666,13 @@ public:
   void set_pixel_buffer(detail::buffer *pb) { _pbo = pb; set_dirty(); }
   detail::buffer *pixel_buffer() const { return _pbo; }
 
+  void set_filter(GLenum minFilter, GLenum magFilter);
+  GLenum min_filter() const { return _minFilter; }
+  GLenum mag_filter() const { return _magFilter; }
+
+  void set_wrap(GLenum wrap) { if (wrap != _wrap) { _wrap = wrap; set_dirty(); } }
+  GLenum wrap() const { return _wrap; }
+
   void *alloc_pixels(const void *ptr, bool keep = false)
   {
     if (!_pbo || !_sizeBytes) return nullptr;
@@ -679,7 +686,7 @@ public:
     set_dirty();
     _pbo->set_data(ptr, _sizeBytes);
   }
-
+  
   bool bind(int slot = 0);
 
 protected:
@@ -699,6 +706,8 @@ protected:
   size_t _sizeLayers = 1;
   size_t _sizeMipLevels = 1;
   size_t _sizeBytes = 0;
+  GLenum _minFilter = GL_NEAREST, _magFilter = GL_NEAREST;
+  GLenum _wrap = GL_REPEAT;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -981,8 +990,24 @@ bool texture::bind(int slot)
   {
     if (!_texture.id) glGenTextures(1, &_texture.id);
     gl.ActiveTexture(gl.TEXTURE0 + slot);
-    glBindTexture(GL_TEXTURE_2D, _texture.id);
+    glBindTexture(_type, _texture.id);
 
+    if (_pbo->dirty())
+    {
+      _pbo->bind(gl.PIXEL_UNPACK_BUFFER);
+      auto desc = detail::gl_format_descriptor::get(_format);
+      if (_type == GL_TEXTURE_1D || _type == GL_TEXTURE_2D)
+      {
+        for (auto &&p : _parts)
+          glTexImage2D(_type, p.mip_level, desc.layout, p.size.x, p.size.y, 0, _format, desc.element_format, reinterpret_cast<const GLvoid *>(p.offset));
+      }
+      _pbo->unbind(gl.PIXEL_UNPACK_BUFFER);
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, _minFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, _magFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, _wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, _wrap);
     set_dirty(false);
   }
   else
@@ -992,6 +1017,16 @@ bool texture::bind(int slot)
   }
 
   return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void texture::set_filter(GLenum minFilter, GLenum magFilter)
+{
+  if (minFilter != _minFilter || magFilter != _magFilter) 
+  {
+    _minFilter = minFilter; _magFilter = magFilter;
+    set_dirty();
+  }
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1074,6 +1109,7 @@ bool context3d::set_uniform(const char *name, texture *value)
   {
     auto slot = get_free_texture_slot(); if (slot < 0) return false;
     value->bind(slot);
+    gl.Uniform1i(id, slot);
     return true;
   }
   return false;
