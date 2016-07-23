@@ -21,13 +21,16 @@
 #include <gl/GL.h>
 
 namespace gl3d {
-  
+
+#pragma region Math
+
 namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T> struct xvec2
 {
   T x = 0, y = 0;
+  const T *data() const { return &x; }
 
   xvec2() { }
   xvec2(const xvec2 &copy): x(copy.x), y(copy.y) { }
@@ -35,14 +38,19 @@ template <typename T> struct xvec2
   template <typename T2>
   xvec2(T2 _x, T2 _y): x(static_cast<T>(_x)), y(static_cast<T>(_y)) { }
 
-  T *data() { return &x; }
-  const T *data() const { return &x; }
+  T length_sq() const { return x*x + y*y; }
+  T length() const { return sqrt(length_sq()); }
+
+  static const xvec2 &unit_x() { static xvec2 v(1, 0); return v; }
+  static const xvec2 &unit_y() { static xvec2 v(0, 1); return v; }
+  static const xvec2 &one()    { static xvec2 v(1, 1); return v; }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T> struct xvec3
 {
   T x = 0, y = 0, z = 0;
+  const T *data() const { return &x; }
 
   xvec3() { }
   xvec3(const xvec3 &copy): x(copy.x), y(copy.y), z(copy.z) { }
@@ -50,16 +58,147 @@ template <typename T> struct xvec3
   template <typename T2>
   xvec3(T2 _x, T2 _y, T2 _z): x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)) { }
 
-  T *data() { return &x; }
+  T length_sq() const { return x*x + y*y + z*z; }
+  T length() const { return sqrt(length_sq()); }
+
+  static const xvec3 &unit_x() { static xvec3 v(1, 0, 0); return v; }
+  static const xvec3 &unit_y() { static xvec3 v(0, 1, 0); return v; }
+  static const xvec3 &unit_z() { static xvec3 v(0, 0, 1); return v; }
+  static const xvec3 &one()    { static xvec3 v(1, 1, 1); return v; }
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct xvec4
+{
+  T x = 0, y = 0, z = 0, w = 0;
   const T *data() const { return &x; }
+
+  xvec4() { }
+  xvec4(const xvec4 &copy): x(copy.x), y(copy.y), z(copy.z), w(copy.w) { }
+
+  template <typename T2>
+  xvec4(T2 _x, T2 _y, T2 _z, T2 _w)
+    : x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)), w(static_cast<T>(_w)) { }
+
+  T length_sq() const { return x*x + y*y + z*z + w*w; }
+  T length() const { return sqrt(length_sq()); }
+
+  static const xvec4 &unit_x() { static xvec4 v(1, 0, 0, 0); return v; }
+  static const xvec4 &unit_y() { static xvec4 v(0, 1, 0, 0); return v; }
+  static const xvec4 &unit_z() { static xvec4 v(0, 0, 1, 0); return v; }
+  static const xvec4 &unit_w() { static xvec4 v(0, 0, 0, 1); return v; }
+  static const xvec4 &one()    { static xvec4 v(1, 1, 1, 1); return v; }
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct xmat4
+{
+  T m[16];
+  const T *data() const { return m; }
+  T operator[](size_t index) const { return m[index]; }
+
+  xmat4()
+  {
+    m[0] = m[5] = m[10] = m[15] = static_cast<T>(1);
+    m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = m[11] = m[12] = m[13] = m[14] = 0;
+  }
+
+  xmat4(const xmat4 &copy) { memcpy(m, copy.m, sizeof(T) * 16); }
+  xmat4(T m0, T m1, T m2, T m3, T m4, T m5, T m6, T m7, T m8, T m9, T m10, T m11, T m12, T m13, T m14, T m15)
+  {
+    m[0] = m0; m[1] = m1; m[2] = m2; m[3] = m3; m[4] = m4; m[5] = m5; m[6] = m6; m[7] = m7;
+    m[8] = m8; m[9] = m9; m[10] = m10; m[11] = m11; m[12] = m12; m[13] = m13; m[14] = m14; m[15] = m15;
+  }
+
+  xmat4 &operator=(const xmat4 &rhs) { memcpy(m, rhs.m, sizeot(T) * 16); return *this; }
+
+  xmat4 operator*(const xmat4 &n) const
+  {
+    return xmat4(m[0]*n[0]  + m[4]*n[1]  + m[8]*n[2]  + m[12]*n[3],   m[1]*n[0]  + m[5]*n[1]  + m[9]*n[2]  + m[13]*n[3],   m[2]*n[0]  + m[6]*n[1]  + m[10]*n[2]  + m[14]*n[3],   m[3]*n[0]  + m[7]*n[1]  + m[11]*n[2]  + m[15]*n[3],
+                 m[0]*n[4]  + m[4]*n[5]  + m[8]*n[6]  + m[12]*n[7],   m[1]*n[4]  + m[5]*n[5]  + m[9]*n[6]  + m[13]*n[7],   m[2]*n[4]  + m[6]*n[5]  + m[10]*n[6]  + m[14]*n[7],   m[3]*n[4]  + m[7]*n[5]  + m[11]*n[6]  + m[15]*n[7],
+                 m[0]*n[8]  + m[4]*n[9]  + m[8]*n[10] + m[12]*n[11],  m[1]*n[8]  + m[5]*n[9]  + m[9]*n[10] + m[13]*n[11],  m[2]*n[8]  + m[6]*n[9]  + m[10]*n[10] + m[14]*n[11],  m[3]*n[8]  + m[7]*n[9]  + m[11]*n[10] + m[15]*n[11],
+                 m[0]*n[12] + m[4]*n[13] + m[8]*n[14] + m[12]*n[15],  m[1]*n[12] + m[5]*n[13] + m[9]*n[14] + m[13]*n[15],  m[2]*n[12] + m[6]*n[13] + m[10]*n[14] + m[14]*n[15],  m[3]*n[12] + m[7]*n[13] + m[11]*n[14] + m[15]*n[15]);
+  }
+
+  template <typename T2> xvec3<T2> operator*(const xvec3<T2> &rhs) const
+  {
+    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[8]*rhs.z + m[12],
+                 m[1]*rhs.x + m[5]*rhs.y + m[9]*rhs.z + m[13],
+                 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z+ m[14]);
+  }
+
+  template <typename T2> friend xvec3<T2> operator*(const xvec3<T2> &lhs, const xmat4 &rhs) { return rhs * lhs; }
+
+  template <typename T2>
+  static xmat4 translation(T2 x, T2 y, T2 z) { return xmat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1); }
+  template <typename T2> static xmat4 translation(const xvec3<T2> &pos) { return translation(pos.x, pos.y, pos.z); }
+
+  template <typename T2>
+  static xmat4 scale(T2 x, T2 y, T2 z) { return xmat4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1); }
+  template <typename T2> static xmat4 scale(T2 xyz) { return scale(xyz, xyz, xyz); }
+  template <typename T2> static xmat4 scale(const xvec3<T2> &xyz) { return scale(xyz.x, xyz.y, xyz.z); }
+
+  template <typename T2>
+  static xmat4 rotate(T2 angleDeg, T2 x, T2 y, T2 z)
+  {
+    T c = static_cast<T>(cos(angleDeg / (static_cast<T2>(180) * 3.14159265358)));
+    T s = static_cast<T>(sin(angleDeg / (static_cast<T2>(180) * 3.14159265358)));
+    T c1 = 1 - c;
+
+    return xmat4(x * x * c1 + c, x * y * c1 + z * s, x * z * c1 - y * s, 0,
+                 x * y * c1 - z * s, y * y * c1 + c, y * z * c1 + x * s, 0,
+                 x * z * c1 + y * s, y * z * c1 - x * s, z * z * c1 + c, 0,
+                 0, 0, 0, 1);
+  }
+
+  template <typename T2, typename T3>
+  static xmat4 rotate(T2 angleDeg, const xvec3<T3> &axis) { return rotate<T3>(angleDeg, axis.x, axis.y, axis.z); }
+
+  template <typename T2>
+  static xmat4 look_at(T2 eyeX, T2 eyeY, T2 eyeZ, T2 targetX, T2 targetY, T2 targetZ, T2 upX = 0, T2 upY = 1, T2 upZ = 0)
+  {
+    return xmat4();
+  }
+
+  template <typename T2> static xmat4 perspective(T2 l, T2 r, T2 b, T2 t, T2 n, T2 f)
+  {
+    return xmat4(2 * n / (r - l), 0, 0, 0,
+                 0, 2 * n / (t - b), 0, 0,
+                 (r + l) / (r - l), (t + b) / (t - b), -(f + n) / (f - n), -1,
+                 0, 0, -(2 * f * n) / (f - n), 0);
+  }
+
+  template <typename T2> static xmat4 perspective(T2 fovYDeg, T2 aspectRatio, T2 nearClip, T2 farClip)
+  {
+    T tangent = tan((fovYDeg / 2) / (static_cast<T2>(180) * 3.14159265358));
+    T height = nearClip * tangent, width = height * aspectRatio;
+    return setFrustum(-width, width, -height, height, nearClip, farClip);
+  }
+
+  template <typename T2> static xmat4 ortho(T2 l, T2 r, T2 b, T2 t, T2 n, T2 f)
+  {
+    return xmat4(2 / (r - l), 0, 0, 0,
+                 0, 2 / (t - b), 0, 0,
+                 0, 0, -2 / (f - n), 0,
+                 -(r + l) / (r - l), -(t + b) / (t - b), -(f + n) / (f - n), 1);
+  }
 };
 
 }
 
+//---------------------------------------------------------------------------------------------------------------------
 typedef detail::xvec2<float> vec2;
 typedef detail::xvec2<int> ivec2;
 typedef detail::xvec3<float> vec3;
 typedef detail::xvec3<int> ivec3;
+typedef detail::xmat4<float> mat4;
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> T dot(const detail::xvec3<T> &a, const detail::xvec3<T> &b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> detail::xvec3<T> cross(const detail::xvec3<T> &a, const detail::xvec3<T> &b)
+{ return { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x }; }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -80,7 +219,11 @@ struct rgba_color
     , b((argb & 0xFFu) / 255.0f), a(((argb >> 24) & 0xFFu) / 255.0f) { }
 };
 
+#pragma endregion
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#pragma region OpenGL API
 
 namespace detail {
 
@@ -136,6 +279,7 @@ public:
   GL3D_API_FUNC(GLint, GetUniformLocation, GLuint, const char *)
   GL3D_API_FUNC(void, Uniform1i, GLint, GLint)
   GL3D_API_FUNC(void, Uniform2fv, GLint, GLsizei, const GLfloat *)
+  GL3D_API_FUNC(void, UniformMatrix4fv, GLint, GLsizei, GLboolean, const GLfloat *)
   GL3D_API_FUNC(void, ActiveTexture, GLenum)
     
   static const GLenum CLAMP_TO_EDGE = 0x812F;
@@ -174,11 +318,16 @@ public:
 
 extern detail::gl_api gl;
 
+#pragma endregion
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace detail
 {
 
+#pragma region Utilities
+
+//---------------------------------------------------------------------------------------------------------------------
 ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
 {
   return ivec2(
@@ -186,7 +335,46 @@ ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
     maximum(1.0f, floor(height / pow(2.0f, static_cast<float>(mipLevel)))));
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct init_vao_arg { };
+
+#define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
+  template <> struct init_vao_arg<_Type> { \
+    static void apply(GLuint index, size_t size, const void *offset) { \
+      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, size, offset); } };
+
+GL3D_INIT_VAO_ARG(int, 1, GL_INT)
+GL3D_INIT_VAO_ARG(float, 1, GL_FLOAT)
+GL3D_INIT_VAO_ARG(vec2, 2, GL_FLOAT)
+GL3D_INIT_VAO_ARG(ivec2, 2, GL_INT)
+GL3D_INIT_VAO_ARG(vec3, 3, GL_FLOAT)
+GL3D_INIT_VAO_ARG(ivec3, 3, GL_INT)
+GL3D_INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
+
+#undef GL3D_INIT_VAO_ARG
+
+//---------------------------------------------------------------------------------------------------------------------
+struct gl_format_descriptor
+{
+  size_t pixel_size;
+  GLenum layout;
+  GLenum element_format;
+
+  static gl_format_descriptor get(GLenum format)
+  {
+    switch (format)
+    {
+      case GL_RGBA: return { 4, GL_RGBA, GL_UNSIGNED_BYTE };
+      default: return { 0, GL_NONE, GL_NONE };
+    }
+  }
+};
+
+#pragma endregion
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#pragma region Base GL resources
 
 struct gl_resource
 {
@@ -210,7 +398,11 @@ struct gl_resource_program : gl_resource
   bool link(const std::initializer_list<gl_resource_shader> &shaders);
 };
 
+#pragma endregion
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#pragma region Reference counting
 
 //---------------------------------------------------------------------------------------------------------------------
 class ref_counted
@@ -260,7 +452,11 @@ private:
   T *_ptr;
 };
 
+#pragma endregion
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#pragma region Base classes
 
 //---------------------------------------------------------------------------------------------------------------------
 class compiled_object : public ref_counted
@@ -412,42 +608,9 @@ protected:
   ptr<buffer> _indexBuffer;
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename T> struct init_vao_arg { };
-
-#define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
-  template <> struct init_vao_arg<_Type> { \
-    static void apply(GLuint index, size_t size, const void *offset) { \
-      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, size, offset); } };
-
-GL3D_INIT_VAO_ARG(int, 1, GL_INT)
-GL3D_INIT_VAO_ARG(float, 1, GL_FLOAT)
-GL3D_INIT_VAO_ARG(vec2, 2, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec2, 2, GL_INT)
-GL3D_INIT_VAO_ARG(vec3, 3, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec3, 3, GL_INT)
-GL3D_INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
-
-#undef GL3D_INIT_VAO_ARG
+#pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct gl_format_descriptor
-{
-  size_t pixel_size;
-  GLenum layout;
-  GLenum element_format;
-
-  static gl_format_descriptor get(GLenum format)
-  {
-    switch (format)
-    {
-      case GL_RGBA: return { 4, GL_RGBA, GL_UNSIGNED_BYTE };
-      default: return { 0, GL_NONE, GL_NONE };
-    }
-  }
-};
 
 } // namespace detail
 
@@ -743,6 +906,7 @@ public:
 
   bool set_uniform(const char *name, int value);
   bool set_uniform(const char *name, const vec2 &value);
+  bool set_uniform(const char *name, const mat4 &value);
   bool set_uniform(const char *name, texture *value);
     
   int get_free_texture_slot() const { for (int i = 0; i < 16; ++i) if (_textures[i].empty()) return i; return -1; }
@@ -1095,6 +1259,19 @@ bool context3d::set_uniform(const char *name, const vec2 &value)
   if (id >= 0)
   {
     gl.Uniform2fv(id, 1, value.data());
+    return true;      
+  }
+  return false;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::set_uniform(const char *name, const mat4 &value)
+{
+  if (!_program) return false;
+  auto id = gl.GetUniformLocation(_program->id(), name);
+  if (id >= 0)
+  {
+    gl.UniformMatrix4fv(id, 1, GL_FALSE, value.data());
     return true;      
   }
   return false;
