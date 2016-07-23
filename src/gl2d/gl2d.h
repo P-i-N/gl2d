@@ -7,20 +7,6 @@ namespace gl3d {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct mat3
-{
-  float m[9];
-
-  mat3() { m[0] = m[1] = m[2] = m[3] = m[4] = m[5] = m[6] = m[7] = m[8] = 0.0f; }
-
-  template <typename T>
-  mat3(T diag)
-  {
-    m[0] = m[4] = m[8] = static_cast<float>(diag);
-    m[1] = m[2] = m[3] = m[5] = m[6] = m[7] = 0.0f;
-  }
-};
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct rect
@@ -512,114 +498,8 @@ private:
   std::vector<detail::draw_call> _drawCalls;
 };
 
-// Global application instance
-extern context2d *current_context2d;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//---------------------------------------------------------------------------------------------------------------------
-void color(const rgba_color &c)
-{
-  if (current_context2d)
-    current_context2d->color(c);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void color(float r, float g, float b, float a = 1.0f)
-{
-  if (current_context2d)
-    current_context2d->color(r, g, b, a);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void color(uint32_t argb)
-{
-  if (current_context2d)
-    current_context2d->color(argb);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void line(const vec2 &a, const vec2 &b)
-{
-  if (current_context2d)
-    current_context2d->line(a, b);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void line(float x1, float y1, float x2, float y2)
-{
-  if (current_context2d)
-    current_context2d->line(x1, y1, x2, y2);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void linei(int x1, int y1, int x2, int y2)
-{
-  if (current_context2d)
-    current_context2d->linei(x1, y1, x2, y2);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void rectangle(const vec2 &a, const vec2 &b, bool filled = false)
-{
-  if (current_context2d)
-    current_context2d->rectangle(a, b, filled);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void rectangle(float x1, float y1, float x2, float y2, bool filled = false)
-{
-  if (current_context2d)
-    current_context2d->rectangle(x1, y1, x2, y2, filled);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void rectanglei(int x1, int y1, int x2, int y2, bool filled = false)
-{
-  if (current_context2d)
-    current_context2d->rectanglei(x1, y1, x2, y2, filled);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void text(const vec2 &pos, const char *fmt, va_list &ap)
-{
-  if (current_context2d)
-    current_context2d->text(pos, fmt, ap);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void text(float x, float y, const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  text(vec2(x, y), fmt, ap);
-  va_end(ap);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void text(int x, int y, const char *fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  text(vec2(x, y), fmt, ap);
-  va_end(ap);
-}
 
 }
 
 #endif // __GL2D_H__
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef GL3D_IMPLEMENTATION
-#ifndef __GL2D_H_IMPL__
-#define __GL2D_H_IMPL__
-
-namespace gl3d {
-  
-static context2d *current_context2d = nullptr;
-
-}
-
-#endif // __GL2D_H_IMPL__
-#endif // GL3D_IMPLEMENTATION

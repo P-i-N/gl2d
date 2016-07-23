@@ -15,8 +15,8 @@
 
 namespace gl3d {
 
+class context2d;
 typedef int window_id_t;
-
 const window_id_t invalid_window_id = static_cast<window_id_t>(-1);
 
 struct window_flag
@@ -122,6 +122,11 @@ struct event
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern context2d *current_context2d;
+extern context3d *current_context3d;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace detail {
 
 class application;
@@ -133,6 +138,7 @@ struct window
   std::string title;
   int width, height;
   context2d ctx2d;
+  context3d ctx3d;
   int mouse_x = 0, mouse_y = 0;
   int mouse_dx = 0, mouse_dy = 0;
 
@@ -359,6 +365,8 @@ extern detail::application app;
 namespace gl3d {
 
 static detail::application app;
+static context2d *current_context2d = nullptr;
+static context3d *current_context3d = nullptr;
 
 namespace detail {
 
