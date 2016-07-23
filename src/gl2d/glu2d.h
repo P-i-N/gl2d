@@ -323,11 +323,8 @@ private:
 
     if (_tick_handler != nullptr)
     {
-      if (_main_window_id)
-        current_context2d = &(_windows[_main_window_id]->ctx2d);
-      else
-        current_context2d = nullptr;
-
+      current_context2d = _main_window_id ? &(_windows[_main_window_id]->ctx2d) : nullptr;
+      current_context3d = nullptr;
       _tick_handler(_delta);
     }
 
@@ -337,13 +334,16 @@ private:
 
       w.make_current();
       current_context2d = &(w.ctx2d);
+      current_context3d = &(w.ctx3d);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      current_context3d->clear();
       send({ event_type::render, w.id, _time, _delta });
       w.ctx2d.render(w.width, w.height);
       w.flip();
     }
 
     current_context2d = nullptr;
+    current_context3d = nullptr;
   }
 };
 
