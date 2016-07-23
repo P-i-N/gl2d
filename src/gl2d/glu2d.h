@@ -71,7 +71,7 @@ enum class mouse_button
 enum class event_type
 {
   unknown = 0,
-  render,
+  paint,
   open, close, resize,
   key_down, key_up, key_press,
   mouse_down, mouse_up, mouse_move, mouse_wheel
@@ -337,7 +337,7 @@ private:
       current_context3d = &(w.ctx3d);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       current_context3d->clear();
-      send({ event_type::render, w.id, _time, _delta });
+      send({ event_type::paint, w.id, _time, _delta });
       w.ctx2d.render(w.width, w.height);
       w.flip();
     }
@@ -450,6 +450,8 @@ application::platform_window::platform_window(application *a, window_id_t win_id
  
   hglrc = wglCreateContext(hdc);
   make_current();
+
+  ctx2d.init();
 }
 
 //---------------------------------------------------------------------------------------------------------------------

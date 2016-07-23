@@ -20,7 +20,7 @@ namespace detail {
   
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const char *vertex_shader_code = R"GLSHADER(
+static const char *vertex_shader_code2d = R"GLSHADER(
 layout(location = 0) in vec2 vert_Position;
 layout(location = 1) in vec4 vert_Color;
 layout(location = 2) in vec2 vert_UV;
@@ -44,7 +44,7 @@ void main()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const char *fragment_shader_code = R"GLSHADER(
+static const char *fragment_shader_code2d = R"GLSHADER(
 uniform sampler2D u_FontTexture;
 
 in vec4 Color;
@@ -140,10 +140,10 @@ std::vector<uint8_t> base64_decode(const char *encoded_string)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex2d : layout<vec2, rgba_color, vec2>
+struct vertex2d : layout<vec2, vec4, vec2>
 {
   vec2 pos;
-  rgba_color color;
+  vec4 color;
   vec2 uv;
 };
 
@@ -163,7 +163,7 @@ struct state
 {
   rect viewport;
   rect scissors;
-  gl3d::rgba_color color;
+  vec4 color;
 };
 
 }
@@ -175,7 +175,7 @@ class context2d
 public:
   context2d()
   {
-    clear();
+
   }
 
   virtual ~context2d()
@@ -194,8 +194,8 @@ public:
 
     gl.init();
 
-    _technique->set_vert_source(vertex_shader_code);
-    _technique->set_frag_source(fragment_shader_code);
+    _technique->set_vert_source(vertex_shader_code2d);
+    _technique->set_frag_source(fragment_shader_code2d);
 
     // Initialize font texture
     {
@@ -228,6 +228,7 @@ public:
     }
     
     _initialized = true;
+    clear();
     return true;
   }
 
@@ -245,16 +246,16 @@ public:
     _geometry->clear();
     _drawCalls.clear();
     _drawCalls.emplace_back(true, 0);
-    _state.color = gl3d::rgba_color(1, 1, 1, 1);
+    _state.color = vec4::one();
   }
 
-  void color(const rgba_color &c) { _state.color = c; }
+  void color(const vec4 &c) { _state.color = c; }
 
-  void color(float r, float g, float b, float a = 1.0f) { _state.color = rgba_color(r, g, b, a); }
+  void color(float r, float g, float b, float a = 1.0f) { _state.color = vec4(r, g, b, a); }
 
-  void color(uint32_t argb) { _state.color = rgba_color(argb); }
+  void color(uint32_t argb) { _state.color = vec4(argb); }
 
-  const rgba_color &color() const { return _state.color; }
+  const vec4 &color() const { return _state.color; }
 
   void line(const vec2 &a, const vec2 &b)
   {
@@ -333,7 +334,7 @@ public:
     float y = pos.y;
     const char *text = buff;
     const char *end = text + length;
-    gl3d::rgba_color color = _state.color;
+    vec4 color = _state.color;
 
     while (text < end)
     {
@@ -359,24 +360,24 @@ public:
 
           switch (*colorChar)
           {
-            case '0': color = gl3d::rgba_color(0, 0, 0, 1); break;
-            case '1': color = gl3d::rgba_color(0, 0, h, 1); break;
-            case '2': color = gl3d::rgba_color(0, h, 0, 1); break;
-            case '3': color = gl3d::rgba_color(0, h, h, 1); break;
-            case '4': color = gl3d::rgba_color(h, 0, 0, 1); break;
-            case '5': color = gl3d::rgba_color(h, 0, h, 1); break;
-            case '6': color = gl3d::rgba_color(h, h, 0, 1); break;
-            case '7': color = gl3d::rgba_color(h, h, h, 1); break;
-            case '8': color = gl3d::rgba_color(q, q, q, 1); break;
-            case '9': color = gl3d::rgba_color(q, h, 1, 1); break;
-            case 'a': color = gl3d::rgba_color(q, 1, q, 1); break;
-            case 'b': color = gl3d::rgba_color(q, 1, 1, 1); break;
-            case 'c': color = gl3d::rgba_color(1, h, q, 1); break;
-            case 'd': color = gl3d::rgba_color(1, q, 1, 1); break;
-            case 'e': color = gl3d::rgba_color(1, 1, 0, 1); break;
+            case '0': color = vec4(0xFF000000); break;
+            case '1': color = vec4(0xFF000080); break;
+            case '2': color = vec4(0xFF008000); break;
+            case '3': color = vec4(0xFF008080); break;
+            case '4': color = vec4(0xFF800000); break;
+            case '5': color = vec4(0xFF800080); break;
+            case '6': color = vec4(0xFF808000); break;
+            case '7': color = vec4(0xFF404040); break;
+            case '8': color = vec4(0xFF808080); break;
+            case '9': color = vec4(0xFF4080FF); break;
+            case 'a': color = vec4(0xFF40FF40); break;
+            case 'b': color = vec4(0xFF40FFFF); break;
+            case 'c': color = vec4(0xFFFF8040); break;
+            case 'd': color = vec4(0xFFFF40FF); break;
+            case 'e': color = vec4(0xFFFFFF40); break;
 
             default:
-            case 'f': color = gl3d::rgba_color(1, 1, 1, 1); break;
+            case 'f': color = vec4(0xFFFFFFFF); break;
           }
         }
         else
@@ -434,7 +435,7 @@ public:
   void render(int width, int height) { render(0, 0, width, height); }
 
 private:
-  void print_substring(float &x, float &y, const gl3d::rgba_color &color, const char *text, size_t length)
+  void print_substring(float &x, float &y, const vec4 &color, const char *text, size_t length)
   {
     if (_drawCalls.back().triangles)
       _drawCalls.back().length += length * 6;
