@@ -20,8 +20,12 @@
 
 #include <gl/GL.h>
 
+#define GL3D_UNIFORM_PROJECTION_MATRIX "u_ProjectionMatrix"
+#define GL3D_UNIFORM_MODELVIEW_MATRIX "u_ModelviewMatrix"
+
 namespace gl3d {
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region Math
 
 namespace detail {
@@ -37,6 +41,8 @@ template <typename T> struct xvec2
 
   template <typename T2>
   xvec2(T2 _x, T2 _y): x(static_cast<T>(_x)), y(static_cast<T>(_y)) { }
+
+  xvec2 &operator=(const xvec2 &rhs) { x = rhs.x; y = rhs.y; return *this; }
 
   T length_sq() const { return x*x + y*y; }
   T length() const { return sqrt(length_sq()); }
@@ -57,6 +63,8 @@ template <typename T> struct xvec3
 
   template <typename T2>
   xvec3(T2 _x, T2 _y, T2 _z): x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)) { }
+
+  xvec3 &operator=(const xvec3 &rhs) { x = rhs.x; y = rhs.y; z = rhs.z; return *this; }
 
   T length_sq() const { return x*x + y*y + z*z; }
   T length() const { return sqrt(length_sq()); }
@@ -80,6 +88,12 @@ template <typename T> struct xvec4
   xvec4(T2 _x, T2 _y, T2 _z, T2 _w)
     : x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)), w(static_cast<T>(_w)) { }
 
+  explicit xvec4(uint32_t argb)
+    : x(((argb >> 16) & 0xFFu) / 255.0f), y(((argb >> 8) & 0xFFu) / 255.0f)
+    , z((argb & 0xFFu) / 255.0f), w(((argb >> 24) & 0xFFu) / 255.0f) { }
+
+  xvec4 &operator=(const xvec4 &rhs) { x = rhs.x; y = rhs.y; z = rhs.z; w = rhs.w; return *this; }
+
   T length_sq() const { return x*x + y*y + z*z + w*w; }
   T length() const { return sqrt(length_sq()); }
 
@@ -88,6 +102,9 @@ template <typename T> struct xvec4
   static const xvec4 &unit_z() { static xvec4 v(0, 0, 1, 0); return v; }
   static const xvec4 &unit_w() { static xvec4 v(0, 0, 0, 1); return v; }
   static const xvec4 &one()    { static xvec4 v(1, 1, 1, 1); return v; }
+  static const xvec4 &red()    { static xvec4 v(1, 0, 0, 1); return v; }
+  static const xvec4 &green()  { static xvec4 v(0, 1, 0, 1); return v; }
+  static const xvec4 &blue()   { static xvec4 v(0, 0, 1, 1); return v; }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -170,9 +187,9 @@ template <typename T> struct xmat4
 
   template <typename T2> static xmat4 perspective(T2 fovYDeg, T2 aspectRatio, T2 nearClip, T2 farClip)
   {
-    T tangent = tan((fovYDeg / 2) / (static_cast<T2>(180) * 3.14159265358));
+    T tangent = tan((fovYDeg / 2) / (static_cast<T>(180) * static_cast<T>(3.14159265358)));
     T height = nearClip * tangent, width = height * aspectRatio;
-    return setFrustum(-width, width, -height, height, nearClip, farClip);
+    return perspective(-width, width, -height, height, nearClip, farClip);
   }
 
   template <typename T2> static xmat4 ortho(T2 l, T2 r, T2 b, T2 t, T2 n, T2 f)
@@ -191,6 +208,8 @@ typedef detail::xvec2<float> vec2;
 typedef detail::xvec2<int> ivec2;
 typedef detail::xvec3<float> vec3;
 typedef detail::xvec3<int> ivec3;
+typedef detail::xvec4<float> vec4;
+typedef detail::xvec4<int> ivec4;
 typedef detail::xmat4<float> mat4;
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -205,29 +224,12 @@ template <typename T> detail::xvec3<T> cross(const detail::xvec3<T> &a, const de
 template <typename T> T maximum(T a, T b) { return a > b ? a : b; }
 template <typename T> T minimum(T a, T b) { return a < b ? a : b; }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct rgba_color
-{
-  float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
-
-  rgba_color() { }
-  rgba_color(const rgba_color &copy): r(copy.r), g(copy.g), b(copy.b), a(copy.a) { }
-  rgba_color(float _r, float _g, float _b, float _a = 1.0f): r(_r), g(_g), b(_b), a(_a) { }
-  rgba_color(uint32_t argb)
-    : r(((argb >> 16) & 0xFFu) / 255.0f), g(((argb >> 8) & 0xFFu) / 255.0f)
-    , b((argb & 0xFFu) / 255.0f), a(((argb >> 24) & 0xFFu) / 255.0f) { }
-};
-
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #pragma region OpenGL API
 
 namespace detail {
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define GL3D_API_FUNC(retValue, name, ...) \
   public: typedef retValue(GL3D_APIENTRY *gl_ ## name ## _ptr_t)(__VA_ARGS__); \
@@ -320,11 +322,10 @@ extern detail::gl_api gl;
 
 #pragma endregion
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 namespace detail
 {
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region Utilities
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -349,7 +350,8 @@ GL3D_INIT_VAO_ARG(vec2, 2, GL_FLOAT)
 GL3D_INIT_VAO_ARG(ivec2, 2, GL_INT)
 GL3D_INIT_VAO_ARG(vec3, 3, GL_FLOAT)
 GL3D_INIT_VAO_ARG(ivec3, 3, GL_INT)
-GL3D_INIT_VAO_ARG(rgba_color, 4, GL_FLOAT)
+GL3D_INIT_VAO_ARG(vec4, 4, GL_FLOAT)
+GL3D_INIT_VAO_ARG(ivec4, 4, GL_INT)
 
 #undef GL3D_INIT_VAO_ARG
 
@@ -373,7 +375,6 @@ struct gl_format_descriptor
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #pragma region Base GL resources
 
 struct gl_resource
@@ -401,7 +402,6 @@ struct gl_resource_program : gl_resource
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #pragma region Reference counting
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -455,7 +455,6 @@ private:
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #pragma region Base classes
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -594,6 +593,9 @@ public:
   void set_index_buffer(buffer *ib) { _indexBuffer = ib; set_dirty(); }
   buffer *index_buffer() const { return _indexBuffer; }
 
+  virtual size_t size_vertices() const = 0;
+  virtual size_t size_indices() const = 0;
+
   virtual bool bind();
   virtual void unbind();
   
@@ -611,6 +613,46 @@ protected:
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma region Basic shaders (vertex3d)
+
+//------------------------------------------------------------------------------------------------------------------------
+static const char *vertex_shader_code3d = R"GLSHADER(
+layout(location = 0) in vec3 vert_Position;
+layout(location = 1) in vec3 vert_Normal;
+layout(location = 2) in vec4 vert_Color;
+layout(location = 3) in vec2 vert_UV;
+
+uniform mat4 u_ProjectionMatrix;
+uniform mat4 u_ModelviewMatrix;
+
+out vec3 Normal;
+out vec4 Color;
+out vec2 UV;
+
+void main()
+{
+  gl_Position = u_ModelviewMatrix * u_ProjectionMatrix * vec4(vert_Position, 1);
+  Normal = vert_Normal;
+  Color = vert_Color;
+  UV = vert_UV;
+}
+)GLSHADER";
+
+//------------------------------------------------------------------------------------------------------------------------
+static const char *fragment_shader_code3d = R"GLSHADER(
+in vec3 Normal;
+in vec4 Color;
+in vec2 UV;
+
+out vec4 out_Color;
+
+void main()
+{
+  out_Color = Color;
+}
+)GLSHADER";
+
+#pragma endregion
 
 } // namespace detail
 
@@ -648,11 +690,11 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex3d : layout<vec3, vec3, rgba_color, vec2>
+struct vertex3d : layout<vec3, vec3, vec4, vec2>
 {
   vec3 pos;
   vec3 normal;
-  rgba_color color;
+  vec4 color = vec4::one();
   vec2 uv;
 };
 
@@ -662,6 +704,8 @@ struct vertex3d : layout<vec3, vec3, rgba_color, vec2>
 template <typename T> class custom_geometry : public detail::base_geometry
 {
 public:
+  typedef detail::ptr<custom_geometry> ptr;
+
   custom_geometry()
   {
     
@@ -671,8 +715,8 @@ public:
   void clear_indices() { _indexCursor = 0; set_dirty(); }
   void clear() { _vertexCursor = _indexCursor = 0; set_dirty(); }
 
-  size_t size_vertices() const { return _vertexCursor; }
-  size_t size_indices() const { return _indexCursor; }
+  size_t size_vertices() const override { return _vertexCursor; }
+  size_t size_indices() const override { return _indexCursor; }
 
   T *alloc_vertices(size_t count)
   {
@@ -732,6 +776,8 @@ typedef custom_geometry<vertex3d> geometry;
 class technique : public detail::compiled_program
 {
 public:
+  typedef detail::ptr<technique> ptr;
+
   technique() { }
   
   void set_vert_source(const std::string &code) { _vertSource = code; set_dirty(); }
@@ -766,6 +812,8 @@ protected:
 class compute : public detail::compiled_program
 {
 public:
+  typedef detail::ptr<compute> ptr;
+
   compute() { }
 
   void set_source(const std::string &code) { _source = code; set_dirty(); }
@@ -789,6 +837,8 @@ protected:
 class texture : public detail::compiled_object
 {
 public:
+  typedef detail::ptr<texture> ptr;
+
   texture(GLenum textureType = GL_TEXTURE_2D): _type(textureType) { }
 
   GLenum type() const { return _type; }
@@ -875,9 +925,11 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class render_target : public detail::ref_counted
+class render_target : public detail::compiled_object
 {
 public:
+  typedef detail::ptr<render_target> ptr;
+
   render_target()
   {
     
@@ -895,7 +947,7 @@ protected:
 class context3d
 {
 public:
-  context3d() { }
+  context3d();
   virtual ~context3d() { }
 
   void clear();
@@ -911,7 +963,10 @@ public:
     
   int get_free_texture_slot() const { for (int i = 0; i < 16; ++i) if (_textures[i].empty()) return i; return -1; }
 
+  bool draw(GLenum primitive = GL_TRIANGLES, size_t offset = 0, size_t length = static_cast<size_t>(-1));
+
 private:
+  technique::ptr _basicTechnique;
   detail::ptr<detail::base_geometry> _geometry;
   detail::ptr<detail::compiled_program> _program;
   detail::ptr<texture> _textures[16];
@@ -1194,6 +1249,14 @@ void texture::set_filter(GLenum minFilter, GLenum magFilter)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
+context3d::context3d()
+{
+  _basicTechnique = new technique();
+  _basicTechnique->set_vert_source(detail::vertex_shader_code3d);
+  _basicTechnique->set_frag_source(detail::fragment_shader_code3d);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
 void context3d::clear()
 {
   if (_geometry) _geometry->unbind();
@@ -1206,6 +1269,8 @@ void context3d::clear()
   {
     _textures[i] = nullptr;
   }
+
+  bind(_basicTechnique);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1290,6 +1355,21 @@ bool context3d::set_uniform(const char *name, texture *value)
     return true;
   }
   return false;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::draw(GLenum primitive, size_t offset, size_t length)
+{
+  if (!_geometry) return false;
+  
+  auto numElements = _geometry->size_vertices();
+  if (offset >= numElements) return false;
+  
+  if (offset + length > numElements)
+    length = numElements - offset;
+  
+  glDrawArrays(primitive, offset, length);
+  return true;
 }
 
 }
