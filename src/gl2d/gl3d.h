@@ -139,12 +139,10 @@ template <typename T> struct xmat4
 
   template <typename T2> xvec3<T2> operator*(const xvec3<T2> &rhs) const
   {
-    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[8]*rhs.z + m[12],
-                 m[1]*rhs.x + m[5]*rhs.y + m[9]*rhs.z + m[13],
-                 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z+ m[14]);
+    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[8]*rhs.z  + m[12],
+                 m[1]*rhs.x + m[5]*rhs.y + m[9]*rhs.z  + m[13],
+                 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]);
   }
-
-  template <typename T2> friend xvec3<T2> operator*(const xvec3<T2> &lhs, const xmat4 &rhs) { return rhs * lhs; }
 
   template <typename T2>
   static xmat4 translation(T2 x, T2 y, T2 z) { return xmat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1); }
