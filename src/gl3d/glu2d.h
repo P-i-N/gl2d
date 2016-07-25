@@ -379,7 +379,7 @@ application::application()
   _window_class.lpfnWndProc = wnd_proc_shared;
   _window_class.hInstance = GetModuleHandle(nullptr);
   _window_class.hbrBackground = GetStockBrush(BLACK_BRUSH);
-  _window_class.lpszClassName = TEXT("gl2d_window");
+  _window_class.lpszClassName = TEXT("gl3d_window");
   _window_class.style = CS_OWNDC;
   _window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
   RegisterClass(&_window_class);
@@ -388,7 +388,7 @@ application::application()
 //---------------------------------------------------------------------------------------------------------------------
 application::~application()
 {
-  UnregisterClass(TEXT("gl2d_window"), _window_class.hInstance);
+  UnregisterClass(TEXT("gl3d_window"), _window_class.hInstance);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
