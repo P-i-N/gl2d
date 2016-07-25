@@ -429,7 +429,7 @@ application::platform_window::platform_window(application *a, window_id_t win_id
   AdjustWindowRectEx(&adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0);
 
   handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-  SetWindowLongPtr(handle, GWL_USERDATA, reinterpret_cast<LONG>(app));
+  SetWindowLongPtr(handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(a));
 
   PIXELFORMATDESCRIPTOR pfd =
   {
@@ -725,8 +725,8 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
 //---------------------------------------------------------------------------------------------------------------------
 LRESULT CALLBACK application::wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  auto app = reinterpret_cast<application *>(GetWindowLongPtr(hWnd, GWL_USERDATA));
-  return app ? app->wnd_proc(hWnd, message, wParam, lParam) : DefWindowProc(hWnd, message, wParam, lParam);
+  auto a = reinterpret_cast<application *>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+  return a ? a->wnd_proc(hWnd, message, wParam, lParam) : DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
