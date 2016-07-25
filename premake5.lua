@@ -30,9 +30,9 @@
 -----------------------------------------------------------------------------------------------------------------------
 Projects =
 {
-  -- gl2d
+  -- gl3d
   {
-    dir = "src/gl2d",
+    dir = "src/gl3d",
     type = "static",
     defines = { "GL3D_IMPLEMENTATION" }
   },
@@ -138,11 +138,8 @@ end
 
 solution(SolutionName)
   configurations { "Debug", "Release" }
-  platforms { "32-bit", "64-bit" }
+  platforms { "64-bit" }
   location(path.join(".build", _ACTION))
-  
-filter { "platforms:32*" }
-  architecture "x86"
 
 filter { "platforms:64*" }
   architecture "x86_64"
@@ -154,6 +151,7 @@ filter { "configurations:*Debug" }
   
 filter { "configurations:*Release" }
   defines { "_NDEBUG", "NDEBUG" }
+  flags { "Symbols" }
   optimize "On"
 
 filter { "system:windows", "platforms:64*" }
@@ -180,7 +178,7 @@ filter { "system:windows" }
   
 filter { }
   includedirs(IncludeDirs)
-  targetdir "bin/%{cfg.buildcfg}"
+  targetdir ".bin/%{cfg.buildcfg}"
   
 -- Get current directory
 cwd = os.getcwd()
