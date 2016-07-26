@@ -340,7 +340,7 @@ template <typename T> struct init_vao_arg { };
 #define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
   template <> struct init_vao_arg<_Type> { \
     static void apply(GLuint index, size_t size, const void *offset) { \
-      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, size, offset); } };
+      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, static_cast<GLsizei>(size), offset); } };
 
 GL3D_INIT_VAO_ARG(int, 1, GL_INT)
 GL3D_INIT_VAO_ARG(float, 1, GL_FLOAT)
@@ -1216,7 +1216,7 @@ bool texture::bind(int slot)
       if (_type == GL_TEXTURE_1D || _type == GL_TEXTURE_2D)
       {
         for (auto &&p : _parts)
-          glTexImage2D(_type, p.mip_level, desc.layout, p.size.x, p.size.y, 0, _format, desc.element_format, reinterpret_cast<const GLvoid *>(p.offset));
+          glTexImage2D(_type, static_cast<GLint>(p.mip_level), desc.layout, p.size.x, p.size.y, 0, _format, desc.element_format, reinterpret_cast<const GLvoid *>(p.offset));
       }
       _pbo->unbind(gl.PIXEL_UNPACK_BUFFER);
     }
@@ -1366,7 +1366,7 @@ bool context3d::draw(GLenum primitive, size_t offset, size_t length)
   if (offset + length > numElements)
     length = numElements - offset;
   
-  glDrawArrays(primitive, offset, length);
+  glDrawArrays(primitive, static_cast<GLint>(offset), static_cast<GLsizei>(length));
   return true;
 }
 
