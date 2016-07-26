@@ -1,5 +1,5 @@
 #define GL3D_IMPLEMENTATION
-#include <gl3d/glu2d.h>
+#include <gl3d/gl3dwin.h>
 
 int main()
 {

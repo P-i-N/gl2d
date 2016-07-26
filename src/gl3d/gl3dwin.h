@@ -512,7 +512,7 @@ void application::update_timer()
 //---------------------------------------------------------------------------------------------------------------------
 key vk_to_key(WPARAM vk)
 {
-  static const std::map<unsigned, key> vkToKeyMap =
+  static const std::map<WPARAM, key> vkToKeyMap =
   {
     { VK_RETURN, key::enter }, { VK_TAB, key::tab }, { VK_BACK, key::backspace }, { VK_ESCAPE, key::escape }, { VK_SPACE, key::space },
     { 0x41, key::a }, { 0x42, key::b }, { 0x43, key::c }, { 0x44, key::d }, { 0x45, key::e }, { 0x46, key::f }, { 0x47, key::g }, { 0x48, key::h },
@@ -687,7 +687,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
           event e(event_type::key_press, kvp.second->id, _time, _delta);
           e.keyboard.down = true;
           e.keyboard.key = key::unknown;
-          e.keyboard.key_char = wParam;
+          e.keyboard.key_char = static_cast<int>(wParam);
           send(e);
         }
         return 0;
