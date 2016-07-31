@@ -15,7 +15,6 @@
 
 namespace gl3d {
 
-class context2d;
 typedef int window_id_t;
 const window_id_t invalid_window_id = static_cast<window_id_t>(-1);
 
@@ -127,32 +126,28 @@ extern context3d *current_context3d;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace detail {
-
-class application;
-
 struct window
 {
-  application *app;
   window_id_t id;
   std::string title;
+  HWND handle;
+  HDC hdc;
+  HGLRC hglrc;
+  DWORD style;
   int width, height;
   context2d ctx2d;
   context3d ctx3d;
   int mouse_x = 0, mouse_y = 0;
   int mouse_dx = 0, mouse_dy = 0;
 
-  window(application *a, window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags)
-    : app(a)
-    , id(win_id)
-    , title(win_title)
-    , width(win_width)
-    , height(win_height)
-  {
-      
-  }
+  window(window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags);
 
-  virtual ~window() { }
+  virtual ~window();
+
+  void make_current();
+  void flip();
+  void set_title(const std::string &text);
+  void set_size(int w, int h);
 
   void fill_mouse_event(event &e)
   {
@@ -165,192 +160,35 @@ struct window
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class application
-{
-public:
-  application();
-  virtual ~application();
+void run();
 
-  void run();
+float time();
 
-  float time() const { return _time; }
+float delta();
 
-  float delta() const { return _delta; }
+window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags);
 
-  window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags)
-  {
-    auto id = _next_id++;
-    auto window = std::make_unique<platform_window>(this, id, title, width, height, flags);
+bool window_close(window_id_t id);
 
-    if (!window->ctx2d.init())
-    {
-      window_close(id);
-      return invalid_window_id;
-    }
+void set_window_title(window_id_t id, const std::string &text);
 
-    if (!_main_window_id)
-      _main_window_id = id;
+const std::string &window_title(window_id_t id);
 
-    _windows[id] = std::move(window);
-    return id;
-  }
+void set_window_size(window_id_t id, int width, int height);
 
-  bool window_close(window_id_t id)
-  {
-    auto iter = _windows.find(id);
-    if (iter != _windows.end())
-    {
-      send({ event_type::close, iter->second->id, _time, _delta });
-      _windows.erase(iter);
-      _should_quit |= _windows.empty();
+ivec2 get_window_size(window_id_t id);
 
-      if (id == _main_window_id)
-        _main_window_id = 0;
+typedef std::function<void(const event &)> event_handler_t;
 
-      return true;
-    }
+extern event_handler_t event_handler;
 
-    return false;
-  }
+typedef std::function<void(float)> tick_handler_t;
 
-  void set_window_title(window_id_t id, const std::string &text)
-  {
-    auto iter = _windows.find(id);
-    if (iter != _windows.end())
-      iter->second->set_title(text);
-  }
-
-  const std::string &window_title(window_id_t id) const
-  {
-    auto iter = _windows.find(id);
-    if (iter != _windows.end())
-      return iter->second->title;
-
-    static const std::string empty_title = "";
-    return empty_title;
-  }
-
-  void set_window_size(window_id_t id, int width, int height)
-  {
-    auto iter = _windows.find(id);
-    if (iter != _windows.end())
-      iter->second->set_size(width, height);
-  }
-
-  ivec2 get_window_size(window_id_t id) const
-  {
-    auto iter = _windows.find(id);
-    if (iter != _windows.end())
-      return ivec2(iter->second->width, iter->second->height);
-
-    return ivec2();
-  }
-
-  typedef std::function<void(const event &)> event_handler_t;
-
-  void set_event_handler(const event_handler_t &handler) { _event_handler = handler; }
-  const event_handler_t &event_handler() const { return _event_handler; }
-
-  typedef std::function<void(float)> tick_handler_t;
-
-  void set_tick_handler(const tick_handler_t &handler) { _tick_handler = handler; }
-  const tick_handler_t &tick_handler() const { return _tick_handler; }
+extern tick_handler_t tick_handler;
   
-  gl3d::context2d *get_window_context(window_id_t id) const
-  {
-    auto iter = _windows.find(id);
-    if (iter != _windows.end())
-      return &(iter->second->ctx2d);
+void send(const event &e);
 
-    return nullptr;
-  }
-
-protected:
-  virtual void on_event(const event &e) { }
-  
-private:
-#ifdef _WIN32
-  struct platform_window : detail::window
-  {
-    HWND handle;
-    HDC hdc;
-    HGLRC hglrc;
-    DWORD style;
-
-    platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags = default_window_flags);
-    virtual ~platform_window();
-
-    void make_current();
-    void flip();
-    void set_title(const std::string &text);
-    void set_size(int w, int h);
-  };
-
-  LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-  static LRESULT CALLBACK wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-  
-  WNDCLASS _window_class;
-
-  uint64_t _timer_offset = 0;
-  uint64_t _timer_frequency = 0;
-  uint64_t _last_timer_counter = 0;
-#endif
-
-  bool _should_quit = false;
-  unsigned _next_id = 1;
-
-  float _time = 0.0;
-  float _delta = 0.0;
-
-  typedef std::map<window_id_t, std::unique_ptr<platform_window>> windows_t;
-  windows_t _windows;
-  window_id_t _main_window_id = 0;
-  event_handler_t _event_handler;
-  tick_handler_t _tick_handler;
-
-  void update_timer();
-
-  void send(const event &e)
-  {
-    on_event(e);
-    if (_event_handler != nullptr)
-      _event_handler(e);
-  }
-
-  void tick()
-  {
-    update_timer();
-
-    if (_tick_handler != nullptr)
-    {
-      current_context2d = _main_window_id ? &(_windows[_main_window_id]->ctx2d) : nullptr;
-      current_context3d = nullptr;
-      _tick_handler(_delta);
-    }
-
-    for (auto &kvp : _windows)
-    {
-      auto &w = *kvp.second;
-
-      w.make_current();
-      current_context2d = &(w.ctx2d);
-      current_context3d = &(w.ctx3d);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      current_context3d->clear();
-      send({ event_type::paint, w.id, _time, _delta });
-      w.ctx2d.render(w.width, w.height);
-      w.flip();
-    }
-
-    current_context2d = nullptr;
-    current_context3d = nullptr;
-  }
-};
-
-}
-
-// Global application instance
-extern detail::application app;
+void tick();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -364,45 +202,67 @@ extern detail::application app;
 
 namespace gl3d {
 
-static detail::application app;
 static context2d *current_context2d = nullptr;
 static context3d *current_context3d = nullptr;
+static event_handler_t event_handler;
+static tick_handler_t tick_handler;
 
-namespace detail {
-
-#ifdef _WIN32
+uint64_t g_timer_offset = 0;
+uint64_t g_timer_frequency = 0;
+uint64_t g_last_timer_counter = 0;
+bool g_should_quit = false;
+unsigned g_next_id = 1;
+float g_time = 0.0f;
+float g_delta = 0.0f;
+typedef std::map<window_id_t, std::unique_ptr<window>> windows_t;
+windows_t g_windows;
+window_id_t g_main_window_id = 0;
 
 //---------------------------------------------------------------------------------------------------------------------
-application::application()
+float time() { return g_time; }
+float delta() { return g_delta; }
+
+//---------------------------------------------------------------------------------------------------------------------
+
+/* Forward declaration */
+LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+struct window_class
 {
-  _window_class = { 0 };
-  _window_class.lpfnWndProc = wnd_proc_shared;
-  _window_class.hInstance = GetModuleHandle(nullptr);
-  _window_class.hbrBackground = GetStockBrush(BLACK_BRUSH);
-  _window_class.lpszClassName = TEXT("gl3d_window");
-  _window_class.style = CS_OWNDC;
-  _window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
-  RegisterClass(&_window_class);
-}
+  WNDCLASS wndclass;
+
+  window_class()
+  {
+    wndclass = { 0 };
+    wndclass.lpfnWndProc = wnd_proc;
+    wndclass.hInstance = GetModuleHandle(nullptr);
+    wndclass.hbrBackground = GetStockBrush(BLACK_BRUSH);
+    wndclass.lpszClassName = TEXT("gl3d_window");
+    wndclass.style = CS_OWNDC;
+    wndclass.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    RegisterClass(&wndclass);
+  }
+
+  ~window_class()
+  {
+    UnregisterClass(TEXT("gl3d_window"), wndclass.hInstance);
+  }
+};
+
+static window_class g_window_class;
 
 //---------------------------------------------------------------------------------------------------------------------
-application::~application()
-{
-  UnregisterClass(TEXT("gl3d_window"), _window_class.hInstance);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void application::run()
+void run()
 {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
-  _timer_offset = li.QuadPart;
+  g_timer_offset = li.QuadPart;
 
   QueryPerformanceFrequency(&li);
-  _timer_frequency = li.QuadPart;
+  g_timer_frequency = li.QuadPart;
 
   MSG msg = { 0 };
-  while (!_should_quit)
+  while (!g_should_quit)
   {
     if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
     {
@@ -417,8 +277,86 @@ void application::run()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-application::platform_window::platform_window(application *a, window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
-  : window(a, win_id, title, width, height, flags)
+window_id_t window_open(const std::string &title, int width, int height, unsigned flags)
+{
+  auto id = g_next_id++;
+  auto w = std::make_unique<window>(id, title, width, height, flags);
+
+  if (!w->ctx2d.init())
+  {
+    window_close(id);
+    return invalid_window_id;
+  }
+
+  if (!g_main_window_id)
+    g_main_window_id = id;
+
+  g_windows[id] = std::move(w);
+  return id;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool window_close(window_id_t id)
+{
+  auto iter = g_windows.find(id);
+  if (iter != g_windows.end())
+  {
+    send({ event_type::close, iter->second->id, g_time, g_delta });
+    g_windows.erase(iter);
+    g_should_quit |= g_windows.empty();
+
+    if (id == g_main_window_id)
+      g_main_window_id = invalid_window_id;
+
+    return true;
+  }
+
+  return false;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void set_window_title(window_id_t id, const std::string &text)
+{
+  auto iter = g_windows.find(id);
+  if (iter != g_windows.end())
+    iter->second->set_title(text);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+const std::string &window_title(window_id_t id)
+{
+  auto iter = g_windows.find(id);
+  if (iter != g_windows.end())
+    return iter->second->title;
+
+  static const std::string empty_title = "";
+  return empty_title;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void set_window_size(window_id_t id, int width, int height)
+{
+  auto iter = g_windows.find(id);
+  if (iter != g_windows.end())
+    iter->second->set_size(width, height);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+ivec2 get_window_size(window_id_t id)
+{
+  auto iter = g_windows.find(id);
+  if (iter != g_windows.end())
+    return ivec2(iter->second->width, iter->second->height);
+
+  return ivec2();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+window::window(window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
+  : id(win_id)
+  , title(title)
+  , width(width)
+  , height(height)
 {
   style =  WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
@@ -428,8 +366,7 @@ application::platform_window::platform_window(application *a, window_id_t win_id
   adjustedRect.bottom = height;
   AdjustWindowRectEx(&adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0);
 
-  handle = CreateWindow(app->_window_class.lpszClassName, title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-  SetWindowLongPtr(handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(a));
+  handle = CreateWindow(TEXT("gl3d_window"), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 
   PIXELFORMATDESCRIPTOR pfd =
   {
@@ -455,32 +392,32 @@ application::platform_window::platform_window(application *a, window_id_t win_id
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-application::platform_window::~platform_window()
+window::~window()
 {
   wglDeleteContext(hglrc);
   DestroyWindow(handle);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void application::platform_window::make_current()
+void window::make_current()
 {
   wglMakeCurrent(hdc, hglrc);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void application::platform_window::flip()
+void window::flip()
 {
   SwapBuffers(hdc);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void application::platform_window::set_title(const std::string &text)
+void window::set_title(const std::string &text)
 {
   SetWindowTextA(handle, text.c_str());
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void application::platform_window::set_size(int w, int h)
+void window::set_size(int w, int h)
 {
   if (width != w || height != h)
   {
@@ -498,15 +435,52 @@ void application::platform_window::set_size(int w, int h)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void application::update_timer()
+void update_timer()
 {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
-  li.QuadPart -= _timer_offset;
+  li.QuadPart -= g_timer_offset;
 
-  _time = static_cast<float>(static_cast<double>(li.QuadPart) / static_cast<double>(_timer_frequency));
-  _delta = static_cast<float>(static_cast<double>(li.QuadPart - _last_timer_counter) / static_cast<double>(_timer_frequency));
-  _last_timer_counter = li.QuadPart;
+  g_time = static_cast<float>(static_cast<double>(li.QuadPart) / static_cast<double>(g_timer_frequency));
+  g_delta = static_cast<float>(static_cast<double>(li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency));
+  g_last_timer_counter = li.QuadPart;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void send(const event &e)
+{
+  if (event_handler != nullptr)
+    event_handler(e); 
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void tick()
+{
+  update_timer();
+
+  if (tick_handler != nullptr)
+  {
+    current_context2d = g_main_window_id ? &(g_windows[g_main_window_id]->ctx2d) : nullptr;
+    current_context3d = nullptr;
+    tick_handler(g_delta);
+  }
+
+  for (auto &kvp : g_windows)
+  {
+    auto &w = *kvp.second;
+    
+    w.make_current();
+    current_context2d = &(w.ctx2d);
+    current_context3d = &(w.ctx3d);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    current_context3d->clear();
+    send({ event_type::paint, w.id, g_time, g_delta });
+    w.ctx2d.render(w.width, w.height);
+    w.flip();
+  }
+
+  current_context2d = nullptr;
+  current_context3d = nullptr;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -553,9 +527,9 @@ mouse_button xbutton_to_mouse_button(WPARAM xb)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  for (auto &kvp : _windows)
+  for (auto &kvp : g_windows)
   {
     if (kvp.second->handle == hWnd)
     {
@@ -563,7 +537,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
       {
         case WM_MOUSEMOVE:
         {
-          event e(event_type::mouse_move, kvp.second->id, _time, _delta);
+          event e(event_type::mouse_move, kvp.second->id, g_time, g_delta);
           e.mouse.down = false;
           e.mouse.button = mouse_button::unknown;
           e.mouse.x = GET_X_LPARAM(lParam);
@@ -580,7 +554,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
         {
-          event e(event_type::mouse_down, kvp.second->id, _time, _delta);
+          event e(event_type::mouse_down, kvp.second->id, g_time, g_delta);
           e.mouse.down = true;
           if (message == WM_LBUTTONDOWN)
             e.mouse.button = mouse_button::left;
@@ -598,7 +572,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
         {
-          event e(event_type::mouse_up, kvp.second->id, _time, _delta);
+          event e(event_type::mouse_up, kvp.second->id, g_time, g_delta);
           e.mouse.down = false;
           if (message == WM_LBUTTONUP)
             e.mouse.button = mouse_button::left;
@@ -617,7 +591,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
           auto button = xbutton_to_mouse_button(wParam);
           if (button != mouse_button::unknown)
           {
-            event e(event_type::mouse_down, kvp.second->id, _time, _delta);
+            event e(event_type::mouse_down, kvp.second->id, g_time, g_delta);
             e.mouse.down = true;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
@@ -631,7 +605,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
           auto button = xbutton_to_mouse_button(wParam);
           if (button != mouse_button::unknown)
           {
-            event e(event_type::mouse_up, kvp.second->id, _time, _delta);
+            event e(event_type::mouse_up, kvp.second->id, g_time, g_delta);
             e.mouse.down = false;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
@@ -642,7 +616,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
         case WM_MOUSEWHEEL:
         {
-          event e(event_type::mouse_wheel, kvp.second->id, _time, _delta);
+          event e(event_type::mouse_wheel, kvp.second->id, g_time, g_delta);
           e.wheel.dx = 0;
           e.wheel.dy = GET_WHEEL_DELTA_WPARAM(wParam);
           send(e);
@@ -651,7 +625,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
         case WM_MOUSEHWHEEL:
         {
-          event e(event_type::mouse_wheel, kvp.second->id, _time, _delta);
+          event e(event_type::mouse_wheel, kvp.second->id, g_time, g_delta);
           e.wheel.dx = GET_WHEEL_DELTA_WPARAM(wParam);
           e.wheel.dy = 0;
           send(e);
@@ -663,7 +637,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
           bool isKeyPress = (lParam & (1 << 30)) != 0;
           if (!isKeyPress)
           {
-            event e(event_type::key_down, kvp.second->id, _time, _delta);
+            event e(event_type::key_down, kvp.second->id, g_time, g_delta);
             e.keyboard.down = true;
             e.keyboard.key = vk_to_key(wParam);
             e.keyboard.key_char = 0;
@@ -674,7 +648,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
         case WM_KEYUP:
         {
-          event e(event_type::key_up, kvp.second->id, _time, _delta);
+          event e(event_type::key_up, kvp.second->id, g_time, g_delta);
           e.keyboard.down = false;
           e.keyboard.key = vk_to_key(wParam);
           e.keyboard.key_char = 0;
@@ -684,7 +658,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
         case WM_CHAR:
         {
-          event e(event_type::key_press, kvp.second->id, _time, _delta);
+          event e(event_type::key_press, kvp.second->id, g_time, g_delta);
           e.keyboard.down = true;
           e.keyboard.key = key::unknown;
           e.keyboard.key_char = static_cast<int>(wParam);
@@ -694,7 +668,7 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
 
         case WM_SIZE:
         {
-          event e(event_type::resize, kvp.second->id, _time, _delta);
+          event e(event_type::resize, kvp.second->id, g_time, g_delta);
           e.resize.width = LOWORD(lParam);
           e.resize.height = HIWORD(lParam);
           send(e);
@@ -720,21 +694,6 @@ LRESULT CALLBACK application::wnd_proc(HWND hWnd, UINT message, WPARAM wParam, L
   }
 
   return DefWindowProc(hWnd, message, wParam, lParam);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-LRESULT CALLBACK application::wnd_proc_shared(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-  auto a = reinterpret_cast<application *>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-  return a ? a->wnd_proc(hWnd, message, wParam, lParam) : DefWindowProc(hWnd, message, wParam, lParam);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#else
-
-#endif
-
 }
 
 }

@@ -21,13 +21,13 @@ int main()
   vertices->color = vec4::blue();
   ++vertices;
 
-  auto id = app.window_open("Example", 400, 300);
+  auto id = window_open("Example", 400, 300);
 
-  app.set_event_handler([&](const event &e)
+  event_handler = [&](const event &e)
   {
     if (e.type == event_type::paint)
     {
-      auto size = app.get_window_size(e.window_id);
+      auto size = get_window_size(e.window_id);
       float aspectRatio = static_cast<float>(size.x) / size.y;
 
       auto ctx = current_context3d;
@@ -36,8 +36,8 @@ int main()
       ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4());
       ctx->draw();
     }
-  });
+  };
       
-  app.run();
+  run();
   return 0;
 }
