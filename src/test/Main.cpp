@@ -37,7 +37,7 @@ int main()
       ctx->draw();
     }
   };
-      
+  
   run();
   return 0;
 }

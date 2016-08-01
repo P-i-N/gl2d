@@ -17,6 +17,7 @@ namespace gl3d {
 
 typedef int window_id_t;
 const window_id_t invalid_window_id = static_cast<window_id_t>(-1);
+const window_id_t main_window_id = 0;
 
 struct window_flag
 {
@@ -97,8 +98,6 @@ struct event
 {
   event_type type;
   window_id_t window_id;
-  double time;
-  double delta;
   unsigned mods = mod_flag::none;
 
   union
@@ -109,11 +108,9 @@ struct event
     struct { int dx, dy; } wheel;
   };
 
-  event(event_type et, window_id_t id, double t, double d)
+  event(event_type et, window_id_t id)
     : type(et)
     , window_id(id)
-    , time(t)
-    , delta(d)
   {
     
   }
@@ -126,6 +123,74 @@ extern context3d *current_context3d;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void run();
+
+float time();
+double timed();
+
+float delta();
+double deltad();
+
+window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags);
+
+bool window_close(window_id_t id = main_window_id);
+
+void set_window_title(const std::string &text, window_id_t id = main_window_id);
+
+const std::string &window_title(window_id_t id = main_window_id);
+
+void set_window_size(int width, int height, window_id_t = main_window_id);
+
+ivec2 get_window_size(window_id_t id = main_window_id);
+
+typedef std::function<void(const event &)> event_handler_t;
+
+extern event_handler_t event_handler;
+
+typedef std::function<void()> tick_handler_t;
+
+extern tick_handler_t tick_handler;
+  
+void send(const event &e);
+
+void tick();
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+}
+
+#endif // __GLU2D_H__
+
+#ifdef GL3D_IMPLEMENTATION
+#ifndef __GLU2D_H_IMPL__
+#define __GLU2D_H_IMPL__
+
+#define GL3D_WINDOW_CLASS "gl3d_window"
+
+namespace gl3d {
+
+static context2d *current_context2d = nullptr;
+static context3d *current_context3d = nullptr;
+static event_handler_t event_handler;
+static tick_handler_t tick_handler;
+
+bool g_should_quit = false;
+window_id_t g_next_id = 0;
+
+uint64_t g_timer_offset = 0;
+uint64_t g_timer_frequency = 0;
+uint64_t g_last_timer_counter = 0;
+
+double g_time = 0.0;
+double g_delta = 0.0;
+
+//---------------------------------------------------------------------------------------------------------------------
+float time() { return static_cast<float>(g_time); }
+double timed() { return g_time; }
+float delta() { return static_cast<float>(g_delta); }
+double deltad() { return g_delta; }
+
+//---------------------------------------------------------------------------------------------------------------------
 struct window
 {
   window_id_t id;
@@ -158,75 +223,14 @@ struct window
   }
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void run();
-
-float time();
-
-float delta();
-
-window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags);
-
-bool window_close(window_id_t id);
-
-void set_window_title(window_id_t id, const std::string &text);
-
-const std::string &window_title(window_id_t id);
-
-void set_window_size(window_id_t id, int width, int height);
-
-ivec2 get_window_size(window_id_t id);
-
-typedef std::function<void(const event &)> event_handler_t;
-
-extern event_handler_t event_handler;
-
-typedef std::function<void(float)> tick_handler_t;
-
-extern tick_handler_t tick_handler;
-  
-void send(const event &e);
-
-void tick();
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-}
-
-#endif // __GLU2D_H__
-
-#ifdef GL3D_IMPLEMENTATION
-#ifndef __GLU2D_H_IMPL__
-#define __GLU2D_H_IMPL__
-
-namespace gl3d {
-
-static context2d *current_context2d = nullptr;
-static context3d *current_context3d = nullptr;
-static event_handler_t event_handler;
-static tick_handler_t tick_handler;
-
-uint64_t g_timer_offset = 0;
-uint64_t g_timer_frequency = 0;
-uint64_t g_last_timer_counter = 0;
-bool g_should_quit = false;
-unsigned g_next_id = 1;
-float g_time = 0.0f;
-float g_delta = 0.0f;
+//---------------------------------------------------------------------------------------------------------------------
 typedef std::map<window_id_t, std::unique_ptr<window>> windows_t;
 windows_t g_windows;
-window_id_t g_main_window_id = 0;
-
-//---------------------------------------------------------------------------------------------------------------------
-float time() { return g_time; }
-float delta() { return g_delta; }
-
-//---------------------------------------------------------------------------------------------------------------------
 
 /* Forward declaration */
 LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
+//---------------------------------------------------------------------------------------------------------------------
 struct window_class
 {
   WNDCLASS wndclass;
@@ -237,7 +241,7 @@ struct window_class
     wndclass.lpfnWndProc = wnd_proc;
     wndclass.hInstance = GetModuleHandle(nullptr);
     wndclass.hbrBackground = GetStockBrush(BLACK_BRUSH);
-    wndclass.lpszClassName = TEXT("gl3d_window");
+    wndclass.lpszClassName = TEXT(GL3D_WINDOW_CLASS);
     wndclass.style = CS_OWNDC;
     wndclass.hCursor = LoadCursor(nullptr, IDC_ARROW);
     RegisterClass(&wndclass);
@@ -245,11 +249,9 @@ struct window_class
 
   ~window_class()
   {
-    UnregisterClass(TEXT("gl3d_window"), wndclass.hInstance);
+    UnregisterClass(TEXT(GL3D_WINDOW_CLASS), wndclass.hInstance);
   }
-};
-
-static window_class g_window_class;
+} g_window_class;
 
 //---------------------------------------------------------------------------------------------------------------------
 void run()
@@ -288,9 +290,6 @@ window_id_t window_open(const std::string &title, int width, int height, unsigne
     return invalid_window_id;
   }
 
-  if (!g_main_window_id)
-    g_main_window_id = id;
-
   g_windows[id] = std::move(w);
   return id;
 }
@@ -301,21 +300,16 @@ bool window_close(window_id_t id)
   auto iter = g_windows.find(id);
   if (iter != g_windows.end())
   {
-    send({ event_type::close, iter->second->id, g_time, g_delta });
+    send({ event_type::close, iter->second->id });
     g_windows.erase(iter);
-    g_should_quit |= g_windows.empty();
-
-    if (id == g_main_window_id)
-      g_main_window_id = invalid_window_id;
-
+    g_should_quit |= id == main_window_id || g_windows.empty();
     return true;
   }
-
   return false;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void set_window_title(window_id_t id, const std::string &text)
+void set_window_title(const std::string &text, window_id_t id)
 {
   auto iter = g_windows.find(id);
   if (iter != g_windows.end())
@@ -334,7 +328,7 @@ const std::string &window_title(window_id_t id)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void set_window_size(window_id_t id, int width, int height)
+void set_window_size(int width, int height, window_id_t id)
 {
   auto iter = g_windows.find(id);
   if (iter != g_windows.end())
@@ -366,7 +360,7 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
   adjustedRect.bottom = height;
   AdjustWindowRectEx(&adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0);
 
-  handle = CreateWindow(TEXT("gl3d_window"), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+  handle = CreateWindow(TEXT(GL3D_WINDOW_CLASS), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 
   PIXELFORMATDESCRIPTOR pfd =
   {
@@ -441,8 +435,8 @@ void update_timer()
   QueryPerformanceCounter(&li);
   li.QuadPart -= g_timer_offset;
 
-  g_time = static_cast<float>(static_cast<double>(li.QuadPart) / static_cast<double>(g_timer_frequency));
-  g_delta = static_cast<float>(static_cast<double>(li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency));
+  g_time = static_cast<double>(li.QuadPart) / static_cast<double>(g_timer_frequency);
+  g_delta = static_cast<double>(li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency);
   g_last_timer_counter = li.QuadPart;
 }
 
@@ -460,9 +454,14 @@ void tick()
 
   if (tick_handler != nullptr)
   {
-    current_context2d = g_main_window_id ? &(g_windows[g_main_window_id]->ctx2d) : nullptr;
+    auto iter = g_windows.find(main_window_id);
+    if (iter != g_windows.end())
+      current_context2d = &(iter->second->ctx2d);
+    else
+      current_context2d = nullptr;
+
     current_context3d = nullptr;
-    tick_handler(g_delta);
+    tick_handler();
   }
 
   for (auto &kvp : g_windows)
@@ -474,7 +473,7 @@ void tick()
     current_context3d = &(w.ctx3d);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     current_context3d->clear();
-    send({ event_type::paint, w.id, g_time, g_delta });
+    send({ event_type::paint, w.id });
     w.ctx2d.render(w.width, w.height);
     w.flip();
   }
@@ -516,12 +515,8 @@ key vk_to_key(WPARAM vk)
 mouse_button xbutton_to_mouse_button(WPARAM xb)
 {
   auto lo = LOWORD(xb);
-
-  if (lo == 32)
-    return mouse_button::back;
-  
-  if (lo == 64)
-    return mouse_button::forward;
+  if (lo == 32) return mouse_button::back;
+  if (lo == 64) return mouse_button::forward;
 
   return mouse_button::unknown;
 }
@@ -537,7 +532,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       {
         case WM_MOUSEMOVE:
         {
-          event e(event_type::mouse_move, kvp.second->id, g_time, g_delta);
+          event e(event_type::mouse_move, kvp.second->id);
           e.mouse.down = false;
           e.mouse.button = mouse_button::unknown;
           e.mouse.x = GET_X_LPARAM(lParam);
@@ -554,7 +549,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
         {
-          event e(event_type::mouse_down, kvp.second->id, g_time, g_delta);
+          event e(event_type::mouse_down, kvp.second->id);
           e.mouse.down = true;
           if (message == WM_LBUTTONDOWN)
             e.mouse.button = mouse_button::left;
@@ -572,7 +567,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
         {
-          event e(event_type::mouse_up, kvp.second->id, g_time, g_delta);
+          event e(event_type::mouse_up, kvp.second->id);
           e.mouse.down = false;
           if (message == WM_LBUTTONUP)
             e.mouse.button = mouse_button::left;
@@ -591,7 +586,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           auto button = xbutton_to_mouse_button(wParam);
           if (button != mouse_button::unknown)
           {
-            event e(event_type::mouse_down, kvp.second->id, g_time, g_delta);
+            event e(event_type::mouse_down, kvp.second->id);
             e.mouse.down = true;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
@@ -605,7 +600,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           auto button = xbutton_to_mouse_button(wParam);
           if (button != mouse_button::unknown)
           {
-            event e(event_type::mouse_up, kvp.second->id, g_time, g_delta);
+            event e(event_type::mouse_up, kvp.second->id);
             e.mouse.down = false;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
@@ -616,7 +611,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_MOUSEWHEEL:
         {
-          event e(event_type::mouse_wheel, kvp.second->id, g_time, g_delta);
+          event e(event_type::mouse_wheel, kvp.second->id);
           e.wheel.dx = 0;
           e.wheel.dy = GET_WHEEL_DELTA_WPARAM(wParam);
           send(e);
@@ -625,7 +620,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_MOUSEHWHEEL:
         {
-          event e(event_type::mouse_wheel, kvp.second->id, g_time, g_delta);
+          event e(event_type::mouse_wheel, kvp.second->id);
           e.wheel.dx = GET_WHEEL_DELTA_WPARAM(wParam);
           e.wheel.dy = 0;
           send(e);
@@ -637,7 +632,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           bool isKeyPress = (lParam & (1 << 30)) != 0;
           if (!isKeyPress)
           {
-            event e(event_type::key_down, kvp.second->id, g_time, g_delta);
+            event e(event_type::key_down, kvp.second->id);
             e.keyboard.down = true;
             e.keyboard.key = vk_to_key(wParam);
             e.keyboard.key_char = 0;
@@ -648,7 +643,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_KEYUP:
         {
-          event e(event_type::key_up, kvp.second->id, g_time, g_delta);
+          event e(event_type::key_up, kvp.second->id);
           e.keyboard.down = false;
           e.keyboard.key = vk_to_key(wParam);
           e.keyboard.key_char = 0;
@@ -658,7 +653,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_CHAR:
         {
-          event e(event_type::key_press, kvp.second->id, g_time, g_delta);
+          event e(event_type::key_press, kvp.second->id);
           e.keyboard.down = true;
           e.keyboard.key = key::unknown;
           e.keyboard.key_char = static_cast<int>(wParam);
@@ -668,7 +663,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE:
         {
-          event e(event_type::resize, kvp.second->id, g_time, g_delta);
+          event e(event_type::resize, kvp.second->id);
           e.resize.width = LOWORD(lParam);
           e.resize.height = HIWORD(lParam);
           send(e);
