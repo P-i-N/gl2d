@@ -6,7 +6,7 @@
 #include <memory>
 #include <thread>
 
-#include "gl2d.h"
+#include "gl3d_2d.h"
 
 #if defined(WIN32)
 #include <windowsx.h>
