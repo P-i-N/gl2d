@@ -29,7 +29,7 @@ set GENERATOR=%GENERATOR%
 if %GENERATOR%=="" (
 echo Visual Studio not detected! You must specify a premake generator manually.
 ) else (
-premake5 %GENERATOR%
+premake5 --file=../Premaker/premake5.lua vs2015 --cwd=%~dp0 %GENERATOR%
 )
 
 :done
