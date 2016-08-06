@@ -5,21 +5,34 @@ namespace gl3d {
 namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> struct xvec2
+template <typename T, size_t Size> struct xvec_traits { typedef T type; static const size_t size = Size; };
+template <typename T, size_t Size> struct xvec_data { };
+template <typename T> struct xvec_data<T, 2> : xvec_traits<T, 2> { union { struct { T x, y; }; T data[2]; }; };
+template <typename T> struct xvec_data<T, 3> : xvec_traits<T, 3> { union { struct { T x, y, z; }; T data[3]; }; };
+template <typename T> struct xvec_data<T, 4> : xvec_traits<T, 4> { union { struct { T x, y, z, w; }; T data[4]; }; };
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T, size_t Size> struct xvec_impl : xvec_data<T, Size>
 {
-  typedef T type;
-  T x = 0, y = 0;
-  const T *data() const { return &x; }
+  T &operator[](size_t index) { return &x + index; }
+  const T &operator[](size_t index) const { return &x + index; }
 
-  xvec2() { }
-  xvec2(const xvec2 &copy): x(copy.x), y(copy.y) { }
+  template <typename... Args> xvec_impl(Args&&... args) { static_assert(sizeof...(Args) == Size, ""); set<0>(args...); }
 
-  template <typename T2>
-  xvec2(T2 _x, T2 _y): x(static_cast<T>(_x)), y(static_cast<T>(_y)) { }
+  template <size_t I, typename T2> void set(T2 &&v) { data[I] = static_cast<T>(v); }
+  template <size_t I, typename T2, typename... Tail> void set(T2 &&v, Tail&&... t) { set<I>(v); set<I + 1>(t...); }
+};
 
-  xvec2 &operator=(const xvec2 &rhs) { x = rhs.x; y = rhs.y; return *this; }
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct xvec2 : xvec_impl<T, 2>
+{
+  xvec2(): xvec_impl(0, 0) { }
+  template <typename T2> xvec2(T2 x, T2 y): xvec_impl(x, y) { }
+
   xvec2 operator*(T scale) const { return { x * scale, y * scale }; }
-
+  xvec2 operator+(const xvec2 &rhs) const { return { x + rhs.x, y + rhs.y }; }
+  xvec2 operator-(const xvec2 &rhs) const { return { x - rhs.x, y - rhs.y }; }
+  
   T length_sq() const { return x*x + y*y; }
   T length() const { return sqrt(length_sq()); }
 
@@ -29,20 +42,14 @@ template <typename T> struct xvec2
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> struct xvec3
+template <typename T> struct xvec3 : xvec_impl<T, 3>
 {
-  typedef T type;
-  T x = 0, y = 0, z = 0;
-  const T *data() const { return &x; }
+  xvec3(): xvec_impl(0, 0, 0) { }
+  template <typename T2> xvec3(T2 x, T2 y, T2 z): xvec_impl(x, y, z) { }
 
-  xvec3() { }
-  xvec3(const xvec3 &copy): x(copy.x), y(copy.y), z(copy.z) { }
-
-  template <typename T2>
-  xvec3(T2 _x, T2 _y, T2 _z): x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)) { }
-
-  xvec3 &operator=(const xvec3 &rhs) { x = rhs.x; y = rhs.y; z = rhs.z; return *this; }
   xvec3 operator*(T scale) const { return { x * scale, y * scale, z * scale }; }
+  xvec3 operator+(const xvec3 &rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z }; }
+  xvec3 operator-(const xvec3 &rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z }; }
 
   T length_sq() const { return x*x + y*y + z*z; }
   T length() const { return sqrt(length_sq()); }
@@ -54,25 +61,20 @@ template <typename T> struct xvec3
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> struct xvec4
+template <typename T> struct xvec4 : xvec_impl<T, 4>
 {
-  typedef T type;
-  T x = 0, y = 0, z = 0, w = 0;
-  const T *data() const { return &x; }
+  xvec4(): xvec_impl(0, 0, 0, 0) { }
+  template <typename T2> xvec4(T2 x, T2 y, T2 z, T2 w): xvec_impl(x, y, z, w) { }
 
-  xvec4() { }
-  xvec4(const xvec4 &copy): x(copy.x), y(copy.y), z(copy.z), w(copy.w) { }
+  explicit xvec4(uint32_t argb): xvec_impl(
+    ((argb >> 16) & 0xFFu) / 255.0f,
+    ((argb >> 8) & 0xFFu) / 255.0f,
+    (argb & 0xFFu) / 255.0f,
+    ((argb >> 24) & 0xFFu) / 255.0f) { }
 
-  template <typename T2>
-  xvec4(T2 _x, T2 _y, T2 _z, T2 _w)
-    : x(static_cast<T>(_x)), y(static_cast<T>(_y)), z(static_cast<T>(_z)), w(static_cast<T>(_w)) { }
-
-  explicit xvec4(uint32_t argb)
-    : x(((argb >> 16) & 0xFFu) / 255.0f), y(((argb >> 8) & 0xFFu) / 255.0f)
-    , z((argb & 0xFFu) / 255.0f), w(((argb >> 24) & 0xFFu) / 255.0f) { }
-
-  xvec4 &operator=(const xvec4 &rhs) { x = rhs.x; y = rhs.y; z = rhs.z; w = rhs.w; return *this; }
   xvec4 operator*(T scale) const { return { x * scale, y * scale, z * scale, w * scale }; }
+  xvec4 operator+(const xvec4 &rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w }; }
+  xvec4 operator-(const xvec4 &rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w }; }
 
   T length_sq() const { return x*x + y*y + z*z + w*w; }
   T length() const { return sqrt(length_sq()); }
@@ -91,8 +93,7 @@ template <typename T> struct xvec4
 template <typename T> struct xmat4
 {
   typedef T type;
-  T m[16];
-  const T *data() const { return m; }
+  union { T m[16]; T data[16]; };
   T operator[](size_t index) const { return m[index]; }
 
   xmat4()
@@ -112,19 +113,25 @@ template <typename T> struct xmat4
 
   xmat4 operator*(const xmat4 &n) const
   {
-    return xmat4(m[0]*n[0]  + m[4]*n[1]  + m[8]*n[2]  + m[12]*n[3],   m[1]*n[0]  + m[5]*n[1]  + m[9]*n[2]  + m[13]*n[3],   m[2]*n[0]  + m[6]*n[1]  + m[10]*n[2]  + m[14]*n[3],   m[3]*n[0]  + m[7]*n[1]  + m[11]*n[2]  + m[15]*n[3],
-                 m[0]*n[4]  + m[4]*n[5]  + m[8]*n[6]  + m[12]*n[7],   m[1]*n[4]  + m[5]*n[5]  + m[9]*n[6]  + m[13]*n[7],   m[2]*n[4]  + m[6]*n[5]  + m[10]*n[6]  + m[14]*n[7],   m[3]*n[4]  + m[7]*n[5]  + m[11]*n[6]  + m[15]*n[7],
-                 m[0]*n[8]  + m[4]*n[9]  + m[8]*n[10] + m[12]*n[11],  m[1]*n[8]  + m[5]*n[9]  + m[9]*n[10] + m[13]*n[11],  m[2]*n[8]  + m[6]*n[9]  + m[10]*n[10] + m[14]*n[11],  m[3]*n[8]  + m[7]*n[9]  + m[11]*n[10] + m[15]*n[11],
-                 m[0]*n[12] + m[4]*n[13] + m[8]*n[14] + m[12]*n[15],  m[1]*n[12] + m[5]*n[13] + m[9]*n[14] + m[13]*n[15],  m[2]*n[12] + m[6]*n[13] + m[10]*n[14] + m[14]*n[15],  m[3]*n[12] + m[7]*n[13] + m[11]*n[14] + m[15]*n[15]);
+    return xmat4(m[0]*n[ 0] + m[4]*n[ 1] + m[8]*n[ 2] + m[12]*n[ 3], m[1]*n[ 0] + m[5]*n[ 1] + m[9]*n[ 2] + m[13]*n[ 3],  m[2]*n[ 0] + m[6]*n[ 1] + m[10]*n[ 2] + m[14]*n[ 3],  m[3]*n[ 0] + m[7]*n[ 1] + m[11]*n[ 2] + m[15]*n[ 3],
+                 m[0]*n[ 4] + m[4]*n[ 5] + m[8]*n[ 6] + m[12]*n[ 7], m[1]*n[ 4] + m[5]*n[ 5] + m[9]*n[ 6] + m[13]*n[ 7],  m[2]*n[ 4] + m[6]*n[ 5] + m[10]*n[ 6] + m[14]*n[ 7],  m[3]*n[ 4] + m[7]*n[ 5] + m[11]*n[ 6] + m[15]*n[ 7],
+                 m[0]*n[ 8] + m[4]*n[ 9] + m[8]*n[10] + m[12]*n[11], m[1]*n[ 8] + m[5]*n[ 9] + m[9]*n[10] + m[13]*n[11],  m[2]*n[ 8] + m[6]*n[ 9] + m[10]*n[10] + m[14]*n[11],  m[3]*n[ 8] + m[7]*n[ 9] + m[11]*n[10] + m[15]*n[11],
+                 m[0]*n[12] + m[4]*n[13] + m[8]*n[14] + m[12]*n[15], m[1]*n[12] + m[5]*n[13] + m[9]*n[14] + m[13]*n[15],  m[2]*n[12] + m[6]*n[13] + m[10]*n[14] + m[14]*n[15],  m[3]*n[12] + m[7]*n[13] + m[11]*n[14] + m[15]*n[15]);
   }
 
   template <typename T2> xvec3<T2> operator*(const xvec3<T2> &rhs) const
   {
-    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[8]*rhs.z  + m[12],
-                 m[1]*rhs.x + m[5]*rhs.y + m[9]*rhs.z  + m[13],
+    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12],
+                 m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13],
                  m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]);
   }
 
+  template <typename T2> xvec4<T2> operator*(const xvec4<T2> &rhs) const
+  {
+    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12]*rhs.w,
+                 m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13]*rhs.w,
+                 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w);
+  }
   template <typename T2>
   static xmat4 translation(T2 x, T2 y, T2 z) { return xmat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1); }
   template <typename T2> static xmat4 translation(const xvec3<T2> &pos) { return translation(pos.x, pos.y, pos.z); }
@@ -186,29 +193,41 @@ template <typename T> struct xmat4
   xmat4 &invert()
   {
     T inv[16] = {
-       m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10],
-      -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10],
-       m[1] * m[ 6] * m[15] - m[1] * m[ 7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[ 7] - m[13] * m[3] * m[ 6],
-      -m[1] * m[ 6] * m[11] + m[1] * m[ 7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[ 9] * m[2] * m[ 7] + m[ 9] * m[3] * m[ 6],
-      -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10],
-       m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10],
-      -m[0] * m[ 6] * m[15] + m[0] * m[ 7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[ 7] + m[12] * m[3] * m[ 6],
-       m[0] * m[ 6] * m[11] - m[0] * m[ 7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[ 8] * m[2] * m[ 7] - m[ 8] * m[3] * m[ 6],
-       m[4] * m[ 9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[ 9],
-      -m[0] * m[ 9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[ 9],
-       m[0] * m[ 5] * m[15] - m[0] * m[ 7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[ 7] - m[12] * m[3] * m[ 5],
-      -m[0] * m[ 5] * m[11] + m[0] * m[ 7] * m[ 9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[ 9] - m[ 8] * m[1] * m[ 7] + m[ 8] * m[3] * m[ 5],
-      -m[4] * m[ 9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[ 9],
-       m[0] * m[ 9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[ 9],
-      -m[0] * m[ 5] * m[14] + m[0] * m[ 6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[ 6] + m[12] * m[2] * m[ 5],
-       m[0] * m[ 5] * m[10] - m[0] * m[ 6] * m[ 9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[ 9] + m[ 8] * m[1] * m[ 6] - m[ 8] * m[2] * m[ 5] };
+       m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10],
+      -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10],
+       m[1]*m[ 6]*m[15] - m[1]*m[ 7]*m[14] - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[ 7] - m[13]*m[3]*m[ 6],
+      -m[1]*m[ 6]*m[11] + m[1]*m[ 7]*m[10] + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[ 9]*m[2]*m[ 7] + m[ 9]*m[3]*m[ 6],
+      -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10],
+       m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10],
+      -m[0]*m[ 6]*m[15] + m[0]*m[ 7]*m[14] + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[ 7] + m[12]*m[3]*m[ 6],
+       m[0]*m[ 6]*m[11] - m[0]*m[ 7]*m[10] - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[ 8]*m[2]*m[ 7] - m[ 8]*m[3]*m[ 6],
+       m[4]*m[ 9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[ 9],
+      -m[0]*m[ 9]*m[15] + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[ 9],
+       m[0]*m[ 5]*m[15] - m[0]*m[ 7]*m[13] - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[ 7] - m[12]*m[3]*m[ 5],
+      -m[0]*m[ 5]*m[11] + m[0]*m[ 7]*m[ 9] + m[4]*m[1]*m[11] - m[4]*m[3]*m[ 9] - m[ 8]*m[1]*m[ 7] + m[ 8]*m[3]*m[ 5],
+      -m[4]*m[ 9]*m[14] + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[ 9],
+       m[0]*m[ 9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[ 9],
+      -m[0]*m[ 5]*m[14] + m[0]*m[ 6]*m[13] + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[ 6] + m[12]*m[2]*m[ 5],
+       m[0]*m[ 5]*m[10] - m[0]*m[ 6]*m[ 9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[ 9] + m[ 8]*m[1]*m[ 6] - m[ 8]*m[2]*m[ 5] };
 
     T det = 1 / (m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12]), *pm = m;
     
-    *pm++ = inv[ 0] * det; *pm++ = inv[ 1] * det; *pm++ = inv[ 2] * det; *pm++ = inv[ 3] * det;
-    *pm++ = inv[ 4] * det; *pm++ = inv[ 5] * det; *pm++ = inv[ 6] * det; *pm++ = inv[ 7] * det;
-    *pm++ = inv[ 8] * det; *pm++ = inv[ 9] * det; *pm++ = inv[10] * det; *pm++ = inv[11] * det;
-    *pm++ = inv[12] * det; *pm++ = inv[13] * det; *pm++ = inv[14] * det; *pm   = inv[15] * det;
+    *pm++ = inv[ 0]*det; *pm++ = inv[ 1]*det; *pm++ = inv[ 2]*det; *pm++ = inv[ 3]*det;
+    *pm++ = inv[ 4]*det; *pm++ = inv[ 5]*det; *pm++ = inv[ 6]*det; *pm++ = inv[ 7]*det;
+    *pm++ = inv[ 8]*det; *pm++ = inv[ 9]*det; *pm++ = inv[10]*det; *pm++ = inv[11]*det;
+    *pm++ = inv[12]*det; *pm++ = inv[13]*det; *pm++ = inv[14]*det; *pm   = inv[15]*det;
+
+    return *this;
+  }
+
+  xmat4 &transpose()
+  {
+    swap(m[1], m[4]);
+    swap(m[2], m[8]);
+    swap(m[3], m[12]);
+    swap(m[6], m[9]);
+    swap(m[7], m[13]);
+    swap(m[11], m[14]);
 
     return *this;
   }
@@ -226,6 +245,9 @@ typedef detail::xvec4<int> ivec4;
 typedef detail::xmat4<float> mat4;
 
 //---------------------------------------------------------------------------------------------------------------------
+template <typename T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
+
+//---------------------------------------------------------------------------------------------------------------------
 template <typename T> T dot(const detail::xvec2<T> &a, const detail::xvec2<T> &b) { return a.x*b.x + a.y*b.y; }
 template <typename T> T dot(const detail::xvec3<T> &a, const detail::xvec3<T> &b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
@@ -234,7 +256,14 @@ template <typename T> detail::xvec3<T> cross(const detail::xvec3<T> &a, const de
 { return { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x }; }
 
 //---------------------------------------------------------------------------------------------------------------------
+template <typename T> typename T::type distance_sq(const T &a, const T &b) { return (a - b).length_sq(); }
+template <typename T> typename T::type distance(const T &a, const T &b) { return (a - b).length(); }
+
+//---------------------------------------------------------------------------------------------------------------------
 template <typename T> T normalize(const T &vec) { return vec * (1 / vec.length()); }
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> T direction(const T &a, const T &b) { return normalize(b - a); }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

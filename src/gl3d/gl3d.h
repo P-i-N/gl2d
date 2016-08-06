@@ -433,7 +433,7 @@ out vec2 UV;
 
 void main()
 {
-  gl_Position = u_ModelviewMatrix * u_ProjectionMatrix * vec4(vert_Position, 1);
+  gl_Position = u_ProjectionMatrix * u_ModelviewMatrix * vec4(vert_Position, 1);
   Normal = vert_Normal;
   Color = vert_Color;
   UV = vert_UV;
@@ -1125,7 +1125,7 @@ bool context3d::set_uniform(const char *name, const vec2 &value)
   auto id = gl.GetUniformLocation(_program->id(), name);
   if (id >= 0)
   {
-    gl.Uniform2fv(id, 1, value.data());
+    gl.Uniform2fv(id, 1, value.data);
     return true;      
   }
   return false;
@@ -1138,7 +1138,7 @@ bool context3d::set_uniform(const char *name, const mat4 &value)
   auto id = gl.GetUniformLocation(_program->id(), name);
   if (id >= 0)
   {
-    gl.UniformMatrix4fv(id, 1, GL_FALSE, value.data());
+    gl.UniformMatrix4fv(id, 1, GL_FALSE, value.data);
     return true;      
   }
   return false;
