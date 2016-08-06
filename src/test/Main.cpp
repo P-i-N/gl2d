@@ -41,7 +41,7 @@ int main()
   tick_handler = [&]()
   {
     auto ctx = current_context2d;
-    ctx->texti(10, 10, "Hello, world!");
+    ctx->texti(10, 10, "Hello, world! ^9%.3f ms", delta() * 1000.0f);
   };
   
   run();

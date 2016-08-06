@@ -11,5 +11,13 @@ Projects =
   {
     dir = "src/test",
     type = "console",
+  },
+  
+  -- fontconv
+  {
+    dir = "src/fontconv",
+    language = "C#",
+    type = "console",
+    links = { "System.Drawing" }
   }
 }
