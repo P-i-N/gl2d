@@ -5,19 +5,19 @@ namespace gl3d {
 namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T, size_t Size> struct xvec_traits { typedef T type; static const size_t size = Size; };
-template <typename T, size_t Size> struct xvec_data { };
+template <typename T, size_t Dimensions> struct xvec_traits { typedef T type; static const size_t dimensions = Dimensions; };
+template <typename T, size_t Dimensions> struct xvec_data { };
 template <typename T> struct xvec_data<T, 2> : xvec_traits<T, 2> { union { struct { T x, y; }; T data[2]; }; };
 template <typename T> struct xvec_data<T, 3> : xvec_traits<T, 3> { union { struct { T x, y, z; }; T data[3]; }; };
 template <typename T> struct xvec_data<T, 4> : xvec_traits<T, 4> { union { struct { T x, y, z, w; }; T data[4]; }; };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T, size_t Size> struct xvec_impl : xvec_data<T, Size>
+template <typename T, size_t Dimensions> struct xvec_impl : xvec_data<T, Dimensions>
 {
   T &operator[](size_t index) { return &x + index; }
   const T &operator[](size_t index) const { return &x + index; }
 
-  template <typename... Args> xvec_impl(Args&&... args) { static_assert(sizeof...(Args) == Size, ""); set<0>(args...); }
+  template <typename... Args> xvec_impl(Args&&... args) { static_assert(sizeof...(Args) == Dimensions, ""); set<0>(args...); }
 
   template <size_t I, typename T2> void set(T2 &&v) { data[I] = static_cast<T>(v); }
   template <size_t I, typename T2, typename... Tail> void set(T2 &&v, Tail&&... t) { set<I>(v); set<I + 1>(t...); }
@@ -30,6 +30,7 @@ template <typename T> struct xvec2 : xvec_impl<T, 2>
   template <typename T2> xvec2(T2 x, T2 y): xvec_impl(x, y) { }
 
   xvec2 operator*(T scale) const { return { x * scale, y * scale }; }
+  xvec2 operator/(T scale) const { return { x / scale, y / scale }; }
   xvec2 operator+(const xvec2 &rhs) const { return { x + rhs.x, y + rhs.y }; }
   xvec2 operator-(const xvec2 &rhs) const { return { x - rhs.x, y - rhs.y }; }
   
@@ -48,6 +49,7 @@ template <typename T> struct xvec3 : xvec_impl<T, 3>
   template <typename T2> xvec3(T2 x, T2 y, T2 z): xvec_impl(x, y, z) { }
 
   xvec3 operator*(T scale) const { return { x * scale, y * scale, z * scale }; }
+  xvec3 operator/(T scale) const { return { x / scale, y / scale, z / scale }; }
   xvec3 operator+(const xvec3 &rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z }; }
   xvec3 operator-(const xvec3 &rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z }; }
 
@@ -73,6 +75,7 @@ template <typename T> struct xvec4 : xvec_impl<T, 4>
     ((argb >> 24) & 0xFFu) / 255.0f) { }
 
   xvec4 operator*(T scale) const { return { x * scale, y * scale, z * scale, w * scale }; }
+  xvec4 operator/(T scale) const { return { x / scale, y / scale, z / scale, w / scale }; }
   xvec4 operator+(const xvec4 &rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w }; }
   xvec4 operator-(const xvec4 &rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w }; }
 
@@ -87,6 +90,37 @@ template <typename T> struct xvec4 : xvec_impl<T, 4>
   static const xvec4 &red()    { static xvec4 v(1, 0, 0, 1); return v; }
   static const xvec4 &green()  { static xvec4 v(0, 1, 0, 1); return v; }
   static const xvec4 &blue()   { static xvec4 v(0, 0, 1, 1); return v; }
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct xbox
+{
+  typedef T type;
+  typedef typename T::type elem_type;
+  static const size_t dimensions = T::dimensions;
+
+  T min, max;
+
+  T center() const { return (min + max) / 2; }
+  T size() const { max - min; }
+
+  template <size_t I> T corner() const { return cross_over<I>(min, max); }
+  T corner(size_t index) const
+  {
+    switch (index % (1 << dimensions))
+    {
+      case 0: return cross_over<0>(min, max);
+      case 1: return cross_over<1>(min, max);
+      case 2: return cross_over<2>(min, max);
+      case 3: return cross_over<3>(min, max);
+      case 4: return cross_over<4>(min, max);
+      case 5: return cross_over<5>(min, max);
+      case 6: return cross_over<6>(min, max);
+      case 7: return cross_over<7>(min, max);
+    }
+
+    return min;
+  }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -236,15 +270,6 @@ template <typename T> struct xmat4
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-typedef detail::xvec2<float> vec2;
-typedef detail::xvec2<int> ivec2;
-typedef detail::xvec3<float> vec3;
-typedef detail::xvec3<int> ivec3;
-typedef detail::xvec4<float> vec4;
-typedef detail::xvec4<int> ivec4;
-typedef detail::xmat4<float> mat4;
-
-//---------------------------------------------------------------------------------------------------------------------
 template <typename T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -265,13 +290,31 @@ template <typename T> T normalize(const T &vec) { return vec * (1 / vec.length()
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T> T direction(const T &a, const T &b) { return normalize(b - a); }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//---------------------------------------------------------------------------------------------------------------------
 template <typename T> T maximum(T a) { return a; }
 template <typename T> T maximum(T a, T b) { return a > b ? a : b; }
 template <typename Head, typename... Tail> Head maximum(Head a, Tail... b) { return maximum(a, maximum(b...)); }
 template <typename T> T minimum(T a) { return a; }
 template <typename T> T minimum(T a, T b) { return a < b ? a : b; }
 template <typename Head, typename... Tail> Head minimum(Head a, Tail... b) { return minimum(a, minimum(b...)); }
+
+//---------------------------------------------------------------------------------------------------------------------
+template <size_t I, typename T> detail::xvec2<T> cross_over(const detail::xvec2<T> &a, const detail::xvec2<T> &b)
+{ return { ((!I || I == 3) ? a.x : b.x), ((I / 2) ? b.y : a.y) }; };
+
+template <size_t I, typename T> detail::xvec3<T> cross_over(const detail::xvec3<T> &a, const detail::xvec3<T> &b)
+{ return { ((!(I % 4) || (I % 4) == 3) ? a.x : b.x), ((I / 2) ? a.y : b.y), ((I % 4) ? a.z : b.z) }; };
+
+//---------------------------------------------------------------------------------------------------------------------
+typedef detail::xvec2<float> vec2;
+typedef detail::xvec2<int> ivec2;
+typedef detail::xvec3<float> vec3;
+typedef detail::xvec3<int> ivec3;
+typedef detail::xvec4<float> vec4;
+typedef detail::xvec4<int> ivec4;
+typedef detail::xmat4<float> mat4;
+typedef detail::xbox<vec2> box2;
+typedef detail::xbox<ivec2> ibox2;
+typedef detail::xbox<vec3> box3;
 
 }
