@@ -15,7 +15,7 @@ useUnicode=1
 disableBoxChars=1
 outputInvalidCharGlyph=0
 dontIncludeKerningPairs=0
-useHinting=1
+useHinting=0
 renderFromOutline=0
 useClearType=1
 
@@ -30,8 +30,8 @@ useFixedHeight=0
 forceZero=0
 
 # output file
-outWidth=64
-outHeight=96
+outWidth=96
+outHeight=64
 outBitDepth=32
 fontDescFormat=0
 fourChnlPacked=0

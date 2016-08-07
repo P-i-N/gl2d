@@ -215,7 +215,11 @@ namespace fontconv
     public static int Main(string[] args)
     {
       Program p = new Program();
-      return p.Run(new string[] { "..\\..\\data\\fonts\\Default.fnt" });
+
+      p.Run(new string[] { "..\\..\\data\\fonts\\Default.fnt" });
+      //p.Run(new string[] { "..\\..\\data\\fonts\\Mono.fnt" });
+
+      return 0;
     }
 
     public void PrintHelp()
