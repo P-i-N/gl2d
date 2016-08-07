@@ -214,6 +214,7 @@ class ref_counted
 public:
   void ref() const { ++_refCount; }
   void unref() const { if (!(--_refCount)) delete this; }
+  bool unref_check() const { if (!(--_refCount)) { delete this; return false; } return true; }
 
 protected:
   virtual ~ref_counted() { }
