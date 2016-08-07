@@ -263,18 +263,22 @@ void run()
   QueryPerformanceFrequency(&li);
   g_timer_frequency = li.QuadPart;
 
-  MSG msg = { 0 };
-  while (!g_should_quit)
+  while (true)
   {
-    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    MSG msg;
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
     {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
-    else
+    
+    if (!g_should_quit)
+    {
       tick();
-
-    std::this_thread::yield();
+      std::this_thread::yield();
+    }
+    else
+      break;
   }
 }
 
@@ -395,7 +399,8 @@ window::~window()
 //---------------------------------------------------------------------------------------------------------------------
 void window::make_current()
 {
-  wglMakeCurrent(hdc, hglrc);
+  if (wglGetCurrentContext() != hglrc)
+    wglMakeCurrent(hdc, hglrc);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
