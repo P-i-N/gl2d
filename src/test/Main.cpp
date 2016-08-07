@@ -4,7 +4,7 @@
 int main()
 {
   using namespace gl3d;
-    
+
   // Triangle geometry
   geometry::ptr geom = new geometry();
   auto vertices = geom->alloc_vertices(3);
