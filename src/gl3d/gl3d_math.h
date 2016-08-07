@@ -143,7 +143,7 @@ template <typename T> struct xmat4
     m[8] = m8; m[9] = m9; m[10] = m10; m[11] = m11; m[12] = m12; m[13] = m13; m[14] = m14; m[15] = m15;
   }
 
-  xmat4 &operator=(const xmat4 &rhs) { memcpy(m, rhs.m, sizeot(T) * 16); return *this; }
+  xmat4 &operator=(const xmat4 &rhs) { memcpy(m, rhs.m, sizeof(T) * 16); return *this; }
 
   xmat4 operator*(const xmat4 &n) const
   {
@@ -155,14 +155,14 @@ template <typename T> struct xmat4
 
   template <typename T2> xvec3<T2> operator*(const xvec3<T2> &rhs) const
   {
-    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12],
+    return xvec3<T2>(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12],
                  m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13],
                  m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]);
   }
 
   template <typename T2> xvec4<T2> operator*(const xvec4<T2> &rhs) const
   {
-    return xvec3(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12]*rhs.w,
+    return xvec3<T2>(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12]*rhs.w,
                  m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13]*rhs.w,
                  m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w);
   }
