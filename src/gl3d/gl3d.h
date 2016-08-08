@@ -4,6 +4,8 @@
 #include <atomic>
 #include <vector>
 #include <map>
+#include <set>
+#include <unordered_map>
 
 #if !defined(GL3D_APIENTRY)
 #if defined(WIN32)
@@ -27,6 +29,8 @@
 #include "gl3d_math.h"
 
 namespace gl3d {
+
+typedef uint32_t hash_t;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region OpenGL API
@@ -131,7 +135,18 @@ namespace detail
 #pragma region Utilities
 
 //---------------------------------------------------------------------------------------------------------------------
-ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
+constexpr hash_t hash(const char *str, const hash_t val = 0x811C9DC5)
+{
+  return (str[0] == '\0') ? val : hash(&str[1], (val ^ hash_t(str[0])) * 0x01000193);
+}
+
+constexpr hash_t hash(const char *str, const size_t length, const hash_t val)
+{
+  return (length == 0) ? val : hash(str + 1, length - 1, (val ^ hash_t(str[0])) * 0x01000193);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+inline ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
 {
   return ivec2(
     maximum(1.0f, floor(width / pow(2.0f, static_cast<float>(mipLevel)))),
@@ -306,16 +321,27 @@ public:
     return macroString;
   }
 
+  void flush_cache()
+  {
+    for (auto &&kvp : _cache)
+      if (kvp.second.id != _program.id)
+        kvp.second.destroy();
+
+    _cache.clear();
+  }
+
   virtual bool bind() = 0;
   virtual void unbind() { gl.UseProgram(0); }
   
 protected:
   virtual ~compiled_program()
   {
-    _program.destroy();    
+    flush_cache();
+    _program.destroy();
   }
 
   std::map<std::string, std::string> _macros;
+  std::unordered_map<hash_t, detail::gl_resource_program> _cache;
   detail::gl_resource_program _program;
   std::string _glslVersion = "330";
   std::string _lastError;
@@ -775,6 +801,11 @@ private:
   detail::ptr<texture> _textures[16];
 };
 
+}
+
+constexpr gl3d::hash_t operator "" _hash(const char *str, const size_t length)
+{
+  return gl3d::detail::hash(str, length, 0x811C9DC5);
 }
 
 #endif // __GL3D_H__

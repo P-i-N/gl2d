@@ -32,8 +32,8 @@ int main()
 
       auto ctx = current_context3d;
       ctx->bind(geom);
-      ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(120.0f, aspectRatio, 0.01f, 1000.0f));
-      ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(20.0f * sin(time()), 10.0f, 20.0f * cos(time()), 0.0f, 0.0f, 0.0f).invert());
+      ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(60.0f, aspectRatio, 0.01f, 1000.0f));
+      ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(5.0f * sin(time()), 2.0f, 5.0f * cos(time()), 0.0f, 0.0f, 0.0f).invert());
       ctx->draw();
     }
   };
@@ -44,6 +44,8 @@ int main()
     ctx->texti(10, 10, "Hello, world! ^9%.3f ms", delta() * 1000.0f);
   };
   
+  auto x = "Hello!"_hash;
+
   run();
   return 0;
 }
