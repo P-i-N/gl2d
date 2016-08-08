@@ -5,11 +5,13 @@ namespace gl3d {
 namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T, size_t Dimensions> struct xvec_traits { typedef T type; static const size_t dimensions = Dimensions; };
+template <typename T, size_t Dimensions> struct xmath_traits { typedef T type; static const size_t dimensions = Dimensions; };
+
+//---------------------------------------------------------------------------------------------------------------------
 template <typename T, size_t Dimensions> struct xvec_data { };
-template <typename T> struct xvec_data<T, 2> : xvec_traits<T, 2> { union { struct { T x, y; }; T data[2]; }; };
-template <typename T> struct xvec_data<T, 3> : xvec_traits<T, 3> { union { struct { T x, y, z; }; T data[3]; }; };
-template <typename T> struct xvec_data<T, 4> : xvec_traits<T, 4> { union { struct { T x, y, z, w; }; T data[4]; }; };
+template <typename T> struct xvec_data<T, 2> : xmath_traits<T, 2> { union { struct { T x, y; }; T data[2]; }; };
+template <typename T> struct xvec_data<T, 3> : xmath_traits<T, 3> { union { struct { T x, y, z; }; T data[3]; }; };
+template <typename T> struct xvec_data<T, 4> : xmath_traits<T, 4> { union { struct { T x, y, z, w; }; T data[4]; }; };
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T, size_t Dimensions> struct xvec_impl : xvec_data<T, Dimensions>
@@ -124,12 +126,60 @@ template <typename T> struct xbox
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> struct xmat4
+template <typename T, size_t Dimensions> struct xmat_data : xmath_traits<T, Dimensions>
 {
-  typedef T type;
-  union { T m[16]; T data[16]; };
-  T operator[](size_t index) const { return m[index]; }
+  union { T m[Dimensions * Dimensions]; T data[Dimensions * Dimensions]; };
+  T &operator[](size_t index) { return m[index]; }
+  const T &operator[](size_t index) const { return m[index]; }
+};
 
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct xmat3 : xmat_data<T, 3>
+{
+  xmat3()
+  {
+    m[0] = m[4] = m[8] = static_cast<T>(1);
+    m[1] = m[2] = m[3] = m[5] = m[6] = m[7] = 0;
+  }
+
+  xmat3(const xmat3 &copy) { memcpy(m, copy.m, sizeof(T) * 9); }
+  xmat3(T m0, T m1, T m2, T m3, T m4, T m5, T m6, T m7, T m8)
+  {
+    auto n = m;
+    *n++ = m0; *n++ = m1; *n++ = m2; *n++ = m3; *n++ = m4; *n++ = m5; *n++ = m6; *n++ = m7; *n++ = m8;
+  }
+
+  xmat3 &operator=(const xmat3 &rhs) { memcpy(m, rhs.m, sizeof(T) * 9); return *this; }
+
+  xmat3 operator*(const xmat3 &n) const
+  {
+    return xmat3(m[0]*n[0] + m[3]*n[1] + m[6]*n[2], m[1]*n[0] + m[4]*n[1] + m[7]*n[2], m[2]*n[0] + m[5]*n[1] + m[8]*n[2],
+                 m[0]*n[3] + m[3]*n[4] + m[6]*n[5], m[1]*n[3] + m[4]*n[4] + m[7]*n[5], m[2]*n[3] + m[5]*n[4] + m[8]*n[5],
+                 m[0]*n[6] + m[3]*n[7] + m[6]*n[8], m[1]*n[6] + m[4]*n[7] + m[7]*n[8], m[2]*n[6] + m[5]*n[7] + m[8]*n[8]);
+  }
+  
+  template <typename T2> xvec3<T2> operator*(const xvec3<T2> &rhs) const
+  {
+    return xvec3<T2>(m[0]*rhs.x + m[3]*rhs.y + m[6]*rhs.z,
+                     m[1]*rhs.x + m[4]*rhs.y + m[7]*rhs.z,
+                     m[2]*rhs.x + m[5]*rhs.y + m[8]*rhs.z);
+  }
+  
+  template <typename T2, typename T3> static xmat3 rotate(T2 angleDeg, T3 x, T3 y, T3 z)
+  {
+    T c = static_cast<T>(cos(radians(angleDeg))), s = static_cast<T>(sin(radians(angleDeg))), c1 = 1 - c;
+    return xmat3(x * x * c1 + c, x * y * c1 + z * s, x * z * c1 - y * s,
+                 x * y * c1 - z * s, y * y * c1 + c, y * z * c1 + x * s,
+                 x * z * c1 + y * s, y * z * c1 - x * s, z * z * c1 + c);
+  }
+
+  template <typename T2, typename T3>
+  static xmat3 rotate(T2 angleDeg, const xvec3<T3> &axis) { return rotate<T2, T3>(angleDeg, axis.x, axis.y, axis.z); }
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct xmat4 : xmat_data<T, 4>
+{
   xmat4()
   {
     m[0] = m[5] = m[10] = m[15] = static_cast<T>(1);
@@ -139,8 +189,16 @@ template <typename T> struct xmat4
   xmat4(const xmat4 &copy) { memcpy(m, copy.m, sizeof(T) * 16); }
   xmat4(T m0, T m1, T m2, T m3, T m4, T m5, T m6, T m7, T m8, T m9, T m10, T m11, T m12, T m13, T m14, T m15)
   {
-    m[0] = m0; m[1] = m1; m[2] = m2; m[3] = m3; m[4] = m4; m[5] = m5; m[6] = m6; m[7] = m7;
-    m[8] = m8; m[9] = m9; m[10] = m10; m[11] = m11; m[12] = m12; m[13] = m13; m[14] = m14; m[15] = m15;
+    auto n = m;
+    *n++ = m0; *n++ = m1; *n++ = m2; *n++ = m3; *n++ = m4; *n++ = m5; *n++ = m6; *n++ = m7;
+    *n++ = m8; *n++ = m9; *n++ = m10; *n++ = m11; *n++ = m12; *n++ = m13; *n++ = m14; *n++ = m15;
+  }
+
+  xmat4(const xmat3<T> &mat3)
+  {
+    auto n = m; auto i = mat3.m;
+    *n++ = *i++; *n++ = *i++; *n++ = *i++; *n++ = 0; *n++ = *i++; *n++ = *i++; *n++ = *i++; *n++ = 0;
+    *n++ = *i++; *n++ = *i++; *n++ = *i++; *n++ = 0; *n++ = 0; *n++ = 0; *n++ = 0; *n++ = 1;
   }
 
   xmat4 &operator=(const xmat4 &rhs) { memcpy(m, rhs.m, sizeof(T) * 16); return *this; }
@@ -156,15 +214,15 @@ template <typename T> struct xmat4
   template <typename T2> xvec3<T2> operator*(const xvec3<T2> &rhs) const
   {
     return xvec3<T2>(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12],
-                 m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13],
-                 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]);
+                     m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13],
+                     m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]);
   }
 
   template <typename T2> xvec4<T2> operator*(const xvec4<T2> &rhs) const
   {
     return xvec3<T2>(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12]*rhs.w,
-                 m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13]*rhs.w,
-                 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w);
+                     m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13]*rhs.w,
+                     m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w);
   }
   template <typename T2>
   static xmat4 translation(T2 x, T2 y, T2 z) { return xmat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1); }
@@ -175,21 +233,11 @@ template <typename T> struct xmat4
   template <typename T2> static xmat4 scale(T2 xyz) { return scale(xyz, xyz, xyz); }
   template <typename T2> static xmat4 scale(const xvec3<T2> &xyz) { return scale(xyz.x, xyz.y, xyz.z); }
 
-  template <typename T2>
-  static xmat4 rotate(T2 angleDeg, T2 x, T2 y, T2 z)
-  {
-    T c = static_cast<T>(cos(angleDeg / (static_cast<T2>(180) * 3.14159265358)));
-    T s = static_cast<T>(sin(angleDeg / (static_cast<T2>(180) * 3.14159265358)));
-    T c1 = 1 - c;
-
-    return xmat4(x * x * c1 + c, x * y * c1 + z * s, x * z * c1 - y * s, 0,
-                 x * y * c1 - z * s, y * y * c1 + c, y * z * c1 + x * s, 0,
-                 x * z * c1 + y * s, y * z * c1 - x * s, z * z * c1 + c, 0,
-                 0, 0, 0, 1);
-  }
+  template <typename T2, typename T3>
+  static xmat4 rotate(T2 angleDeg, T3 x, T3 y, T3 z) { return xmat3<T>::rotate(angleDeg, x, y, z); }
 
   template <typename T2, typename T3>
-  static xmat4 rotate(T2 angleDeg, const xvec3<T3> &axis) { return rotate<T3>(angleDeg, axis.x, axis.y, axis.z); }
+  static xmat4 rotate(T2 angleDeg, const xvec3<T3> &axis) { return xmat3<T>::rotate(angleDeg, axis.x, axis.y, axis.z); }
 
   template <typename T2>
   static xmat4 look_at(T2 eyeX, T2 eyeY, T2 eyeZ, T2 targetX, T2 targetY, T2 targetZ, T2 upX = 0, T2 upY = 1, T2 upZ = 0)
@@ -211,7 +259,7 @@ template <typename T> struct xmat4
 
   template <typename T2> static xmat4 perspective(T2 fovYDeg, T2 aspectRatio, T2 nearClip, T2 farClip)
   {
-    T tangent = tan((fovYDeg / 2) / (static_cast<T>(180) * static_cast<T>(3.14159265358)));
+    T tangent = tan(radians(fovYDeg / 2));
     T height = nearClip * tangent, width = height * aspectRatio;
     return perspective(-width, width, -height, height, nearClip, farClip);
   }
@@ -245,7 +293,7 @@ template <typename T> struct xmat4
        m[0]*m[ 5]*m[10] - m[0]*m[ 6]*m[ 9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[ 9] + m[ 8]*m[1]*m[ 6] - m[ 8]*m[2]*m[ 5] };
 
     T det = 1 / (m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12]), *pm = m;
-    
+
     *pm++ = inv[ 0]*det; *pm++ = inv[ 1]*det; *pm++ = inv[ 2]*det; *pm++ = inv[ 3]*det;
     *pm++ = inv[ 4]*det; *pm++ = inv[ 5]*det; *pm++ = inv[ 6]*det; *pm++ = inv[ 7]*det;
     *pm++ = inv[ 8]*det; *pm++ = inv[ 9]*det; *pm++ = inv[10]*det; *pm++ = inv[11]*det;
@@ -256,18 +304,23 @@ template <typename T> struct xmat4
 
   xmat4 &transpose()
   {
-    swap(m[1], m[4]);
-    swap(m[2], m[8]);
-    swap(m[3], m[12]);
-    swap(m[6], m[9]);
-    swap(m[7], m[13]);
-    swap(m[11], m[14]);
-
+    swap(m[1], m[4]); swap(m[2], m[ 8]); swap(m[ 3], m[12]);
+    swap(m[6], m[9]); swap(m[7], m[13]); swap(m[11], m[14]);
     return *this;
   }
 };
 
 }
+
+//---------------------------------------------------------------------------------------------------------------------
+static const double pi = 3.14159265358;
+static const double two_pi = 2.0 * 3.14159265358;
+static const double pi2 = 0.5 * 3.14159265358;
+static const double pi4 = 0.25 * 3.14159265358;
+static const float pif = static_cast<float>(pi);
+static const float two_pif = static_cast<float>(two_pi);
+static const float pi2f = static_cast<float>(pi2);
+static const float pi4f = static_cast<float>(pi4);
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
@@ -306,12 +359,17 @@ template <size_t I, typename T> detail::xvec3<T> cross_over(const detail::xvec3<
 { return { ((!(I % 4) || (I % 4) == 3) ? a.x : b.x), ((I / 2) ? a.y : b.y), ((I % 4) ? a.z : b.z) }; };
 
 //---------------------------------------------------------------------------------------------------------------------
+template <typename T> T degrees(T radians) { return radians / static_cast<T>(pi) * 180; }
+template <typename T> T radians(T degrees) { return degrees / 180 * static_cast<T>(pi); }
+
+//---------------------------------------------------------------------------------------------------------------------
 typedef detail::xvec2<float> vec2;
 typedef detail::xvec2<int> ivec2;
 typedef detail::xvec3<float> vec3;
 typedef detail::xvec3<int> ivec3;
 typedef detail::xvec4<float> vec4;
 typedef detail::xvec4<int> ivec4;
+typedef detail::xmat3<float> mat3;
 typedef detail::xmat4<float> mat4;
 typedef detail::xbox<vec2> box2;
 typedef detail::xbox<ivec2> ibox2;
