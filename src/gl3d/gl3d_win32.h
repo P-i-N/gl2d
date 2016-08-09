@@ -1,5 +1,5 @@
-#ifndef __GLU2D_H__
-#define __GLU2D_H__
+#ifndef __GL3D_WIN32_H__
+#define __GL3D_WIN32_H__
 
 #include <functional>
 #include <map>
@@ -7,129 +7,9 @@
 #include <thread>
 
 #include "gl3d_2d.h"
-
-#if defined(WIN32)
-#include <windowsx.h>
-#else
-#endif
+#include "gl3d_events.h"
 
 namespace gl3d {
-
-typedef int window_id_t;
-const window_id_t invalid_window_id = static_cast<window_id_t>(-1);
-const window_id_t main_window_id = 0;
-
-struct window_flag
-{
-  enum 
-  {
-    none = 0,
-    resizable = 1,
-    fullscreen = 2,
-    title = 4,
-  };
-};
-
-static const unsigned default_window_flags = window_flag::resizable | window_flag::title;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-enum class key
-{
-  unknown = 0,
-  enter = 13,
-  tab = 8, backspace = 9,
-  escape = 27,
-  space = ' ',
-  a = 'A', b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
-  num_0 = '0', num_1, num_2, num_3, num_4, num_5, num_6, num_7, num_8, num_9,
-  numpad_0, numpad_1, numpad_2, numpad_3, numpad_4, numpad_5, numpad_6, numpad_7, numpad_8, numpad_9,
-  up, right, down, left,
-  insert, del,
-  home, end,
-  page_up, page_down,
-  f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
-  ctrl, alt, shift,
-
-  last
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-enum class mouse_button
-{
-  unknown = 0,
-  left, right, middle,
-  special_0, special_1,
-  back, forward,
-
-  last
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-enum class event_type
-{
-  unknown = 0,
-  paint,
-  open, close, resize,
-  key_down, key_up, key_press,
-  mouse_down, mouse_up, mouse_move, mouse_wheel
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct mod_flag
-{
-  enum
-  {
-    none = 0,
-    alt = 1,
-    control = 2,
-    shift = 4,
-    mouse_left = 8,
-    mouse_right = 16,
-  };
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct event
-{
-  event_type type;
-  window_id_t window_id;
-  unsigned mods = mod_flag::none;
-
-  union
-  {
-    struct { bool down; key key; int key_char; } keyboard;
-    struct { int width, height; } resize;
-    struct { bool down; int x, y, dx, dy; mouse_button button; } mouse;
-    struct { int dx, dy; } wheel;
-  };
-
-  event(event_type et, window_id_t id)
-    : type(et)
-    , window_id(id)
-  {
-    
-  }
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-extern context2d *current_context2d;
-extern context3d *current_context3d;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void run();
-
-float time();
-double timed();
-
-float delta();
-double deltad();
 
 window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags);
 
@@ -143,36 +23,28 @@ void set_window_size(int width, int height, window_id_t = main_window_id);
 
 ivec2 get_window_size(window_id_t id = main_window_id);
 
-typedef std::function<void(const event &)> event_handler_t;
-
-extern event_handler_t event_handler;
-
-typedef std::function<void()> tick_handler_t;
-
-extern tick_handler_t tick_handler;
-  
-void send(const event &e);
-
-void tick();
+void run();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 }
 
-#endif // __GLU2D_H__
+#endif // __GL3D_WIN32_H__
 
 #ifdef GL3D_IMPLEMENTATION
-#ifndef __GLU2D_H_IMPL__
-#define __GLU2D_H_IMPL__
+#ifndef __GL3D_WIN32_H_IMPL__
+#define __GL3D_WIN32_H_IMPL__
+
+#if defined(WIN32)
+#include <windowsx.h>
+#include <Xinput.h>
+#pragma comment(lib, "xinput.lib")
+#else
+#endif
 
 #define GL3D_WINDOW_CLASS "gl3d_window"
 
 namespace gl3d {
-
-static context2d *current_context2d = nullptr;
-static context3d *current_context3d = nullptr;
-static event_handler_t event_handler;
-static tick_handler_t tick_handler;
 
 bool g_should_quit = false;
 window_id_t g_next_id = 0;
@@ -180,15 +52,6 @@ window_id_t g_next_id = 0;
 uint64_t g_timer_offset = 0;
 uint64_t g_timer_frequency = 0;
 uint64_t g_last_timer_counter = 0;
-
-double g_time = 0.0;
-double g_delta = 0.0;
-
-//---------------------------------------------------------------------------------------------------------------------
-float time() { return static_cast<float>(g_time); }
-double timed() { return g_time; }
-float delta() { return static_cast<float>(g_delta); }
-double deltad() { return g_delta; }
 
 //---------------------------------------------------------------------------------------------------------------------
 struct window
@@ -254,32 +117,50 @@ struct window_class
 } g_window_class;
 
 //---------------------------------------------------------------------------------------------------------------------
-void run()
+void update_timer()
 {
   LARGE_INTEGER li;
   QueryPerformanceCounter(&li);
-  g_timer_offset = li.QuadPart;
+  li.QuadPart -= g_timer_offset;
 
-  QueryPerformanceFrequency(&li);
-  g_timer_frequency = li.QuadPart;
+  current.time = static_cast<float>(li.QuadPart / static_cast<double>(g_timer_frequency));
+  current.delta = static_cast<float>((li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency));
+  g_last_timer_counter = li.QuadPart;
+}
 
-  while (true)
+//---------------------------------------------------------------------------------------------------------------------
+void update()
+{
+  update_timer();
+
+  // Call global tick
   {
-    MSG msg;
-    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-    {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-    }
-    
-    if (!g_should_quit)
-    {
-      tick();
-      std::this_thread::yield();
-    }
+    auto iter = g_windows.find(main_window_id);
+    if (iter != g_windows.end())
+      current.ctx2d = &(iter->second->ctx2d);
     else
-      break;
+      current.ctx2d = nullptr;
+
+    current.ctx3d = nullptr;
+    on_tick();
   }
+
+  for (auto &kvp : g_windows)
+  {
+    auto &w = *kvp.second;
+    
+    w.make_current();
+    current.ctx2d = &(w.ctx2d);
+    current.ctx3d = &(w.ctx3d);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    current.ctx3d->clear();
+    on_event(event(event_type::paint, w.id));
+    w.ctx2d.render(w.width, w.height);
+    w.flip();
+  }
+
+  current.ctx2d = nullptr;
+  current.ctx3d = nullptr;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -304,7 +185,7 @@ bool window_close(window_id_t id)
   auto iter = g_windows.find(id);
   if (iter != g_windows.end())
   {
-    send({ event_type::close, iter->second->id });
+    on_event(event(event_type::close, iter->second->id));
     g_windows.erase(iter);
     g_should_quit |= id == main_window_id || g_windows.empty();
     return true;
@@ -387,6 +268,16 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
   make_current();
 
   ctx2d.init();
+
+  if (win_id == main_window_id)
+  {
+    RAWINPUTDEVICE rid;
+    rid.usUsagePage = 1;
+    rid.usUsage = 5;
+    rid.dwFlags = RIDEV_INPUTSINK;
+    rid.hwndTarget = handle;
+    RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE));
+  }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -434,60 +325,6 @@ void window::set_size(int w, int h)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void update_timer()
-{
-  LARGE_INTEGER li;
-  QueryPerformanceCounter(&li);
-  li.QuadPart -= g_timer_offset;
-
-  g_time = static_cast<double>(li.QuadPart) / static_cast<double>(g_timer_frequency);
-  g_delta = static_cast<double>(li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency);
-  g_last_timer_counter = li.QuadPart;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void send(const event &e)
-{
-  if (event_handler != nullptr)
-    event_handler(e); 
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void tick()
-{
-  update_timer();
-
-  if (tick_handler != nullptr)
-  {
-    auto iter = g_windows.find(main_window_id);
-    if (iter != g_windows.end())
-      current_context2d = &(iter->second->ctx2d);
-    else
-      current_context2d = nullptr;
-
-    current_context3d = nullptr;
-    tick_handler();
-  }
-
-  for (auto &kvp : g_windows)
-  {
-    auto &w = *kvp.second;
-    
-    w.make_current();
-    current_context2d = &(w.ctx2d);
-    current_context3d = &(w.ctx3d);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    current_context3d->clear();
-    send({ event_type::paint, w.id });
-    w.ctx2d.render(w.width, w.height);
-    w.flip();
-  }
-
-  current_context2d = nullptr;
-  current_context3d = nullptr;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
 key vk_to_key(WPARAM vk)
 {
   static const std::map<WPARAM, key> vkToKeyMap =
@@ -527,6 +364,15 @@ mouse_button xbutton_to_mouse_button(WPARAM xb)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+std::vector<uint8_t> g_raw_input_buffer;
+
+void parse_raw_input(RAWINPUT *raw)
+{
+  static std::vector<uint8_t> parsedData;
+  UINT bufferSize;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   for (auto &kvp : g_windows)
@@ -535,6 +381,16 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
       switch (message)
       {
+        case WM_INPUT:
+        {
+          UINT bufferSize;
+          GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &bufferSize, sizeof(RAWINPUTHEADER));
+          g_raw_input_buffer.resize(bufferSize);
+          GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, g_raw_input_buffer.data(), &bufferSize, sizeof(RAWINPUTHEADER));
+          parse_raw_input(reinterpret_cast<RAWINPUT *>(g_raw_input_buffer.data()));
+        }
+        return 0;
+
         case WM_MOUSEMOVE:
         {
           event e(event_type::mouse_move, kvp.second->id);
@@ -546,7 +402,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           kvp.second->mouse_dy = e.mouse.dy = e.mouse.y - kvp.second->mouse_y;
           kvp.second->mouse_x = e.mouse.x;
           kvp.second->mouse_y = e.mouse.y;
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -564,7 +420,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             e.mouse.button = mouse_button::middle;
 
           kvp.second->fill_mouse_event(e);
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -582,7 +438,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             e.mouse.button = mouse_button::middle;
 
           kvp.second->fill_mouse_event(e);
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -595,7 +451,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             e.mouse.down = true;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
-            send(e);
+            on_event(e);
           }
         }
         return 0;
@@ -609,7 +465,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             e.mouse.down = false;
             e.mouse.button = button;
             kvp.second->fill_mouse_event(e);
-            send(e);
+            on_event(e);
           }
         }
         return 0;
@@ -619,7 +475,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           event e(event_type::mouse_wheel, kvp.second->id);
           e.wheel.dx = 0;
           e.wheel.dy = GET_WHEEL_DELTA_WPARAM(wParam);
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -628,7 +484,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           event e(event_type::mouse_wheel, kvp.second->id);
           e.wheel.dx = GET_WHEEL_DELTA_WPARAM(wParam);
           e.wheel.dy = 0;
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -641,7 +497,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             e.keyboard.down = true;
             e.keyboard.key = vk_to_key(wParam);
             e.keyboard.key_char = 0;
-            send(e);
+            on_event(e);
           }
         }
         return 0;
@@ -652,7 +508,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           e.keyboard.down = false;
           e.keyboard.key = vk_to_key(wParam);
           e.keyboard.key_char = 0;
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -662,7 +518,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           e.keyboard.down = true;
           e.keyboard.key = key::unknown;
           e.keyboard.key_char = static_cast<int>(wParam);
-          send(e);
+          on_event(e);
         }
         return 0;
 
@@ -671,14 +527,14 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           event e(event_type::resize, kvp.second->id);
           e.resize.width = LOWORD(lParam);
           e.resize.height = HIWORD(lParam);
-          send(e);
+          on_event(e);
           kvp.second->width = LOWORD(lParam);
           kvp.second->height = HIWORD(lParam);
         }
         break;
 
         case WM_SIZING:
-          tick();
+          update();
           break;
 
         case WM_CLOSE:
@@ -696,7 +552,36 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+void run()
+{
+  LARGE_INTEGER li;
+  QueryPerformanceCounter(&li);
+  g_timer_offset = li.QuadPart;
+
+  QueryPerformanceFrequency(&li);
+  g_timer_frequency = li.QuadPart;
+
+  while (true)
+  {
+    MSG msg;
+    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+    {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+    
+    if (!g_should_quit)
+    {
+      update();
+      std::this_thread::yield();
+    }
+    else
+      break;
+  }
 }
 
-#endif // __GLU2D_H_IMPL__
+}
+
+#endif // __GLU3D_WIN32_H_IMPL__
 #endif // GL2D_IMPLEMENTATION
