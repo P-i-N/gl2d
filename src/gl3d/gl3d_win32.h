@@ -7,7 +7,7 @@
 #include <thread>
 
 #include "gl3d_2d.h"
-#include "gl3d_events.h"
+#include "gl3d_input.h"
 
 namespace gl3d {
 
@@ -37,8 +37,8 @@ void run();
 
 #if defined(WIN32)
 #include <windowsx.h>
-#include <Xinput.h>
-#pragma comment(lib, "xinput.lib")
+#include <hidsdi.h>
+#pragma comment(lib, "hid.lib")
 #else
 #endif
 
@@ -368,8 +368,41 @@ std::vector<uint8_t> g_raw_input_buffer;
 
 void parse_raw_input(RAWINPUT *raw)
 {
-  static std::vector<uint8_t> parsedData;
+  // We can use statics here, this should be called from one thread only anyway
+  static std::vector<uint8_t> preparsedDataBuffer;
+  static std::vector<uint8_t> buttonCapsBuffer;
+  static std::vector<uint8_t> valueCapsBuffer;
+  static std::vector<USAGE> usages;
   UINT bufferSize;
+
+  if (GetRawInputDeviceInfo(raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize)) return;
+  if (!bufferSize) return;
+  preparsedDataBuffer.resize(bufferSize);
+  GetRawInputDeviceInfo(raw->header.hDevice, RIDI_PREPARSEDDATA, preparsedDataBuffer.data(), &bufferSize);
+  PHIDP_PREPARSED_DATA preparsedData = reinterpret_cast<PHIDP_PREPARSED_DATA>(preparsedDataBuffer.data());
+  HIDP_CAPS caps;
+  HidP_GetCaps(preparsedData, &caps);
+
+  buttonCapsBuffer.resize(sizeof(HIDP_BUTTON_CAPS) * caps.NumberInputButtonCaps);
+  PHIDP_BUTTON_CAPS buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>(buttonCapsBuffer.data());
+  HidP_GetButtonCaps(HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, preparsedData);
+
+  valueCapsBuffer.resize(sizeof(HIDP_VALUE_CAPS) * caps.NumberInputValueCaps);
+  PHIDP_VALUE_CAPS valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>(valueCapsBuffer.data());
+  HidP_GetValueCaps(HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData);
+
+  // Check buttons
+  ULONG numButtons = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1;
+  usages.resize(numButtons);
+  HidP_GetUsages(HidP_Input,
+    buttonCaps->UsagePage, 0, usages.data(), &numButtons, preparsedData,
+    reinterpret_cast<PCHAR>(raw->data.hid.bRawData), raw->data.hid.dwSizeHid);
+
+  for (size_t i = 0; i < usages.size(); ++i)
+  {
+    int index = usages[i];// - buttonCaps->Range.UsageMin;
+    printf("%d ", index);
+  }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
