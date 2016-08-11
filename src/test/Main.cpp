@@ -58,6 +58,17 @@ int main()
     if (gamepad[0][gamepad_button::down]) ctx->texti(16, y += 16, "DOWN");
     if (gamepad[0][gamepad_button::left]) ctx->texti(16, y += 16, "LEFT");
     if (gamepad[0][gamepad_button::right]) ctx->texti(16, y += 16, "RIGHT");
+
+    auto size = get_window_size();
+    float cx = size.x / 2.0f - size.x / 4.0f;
+    float r = size.x / 8.0f;
+    float cy = size.y / 2.0f + r * gamepad[0].axis_x[3];;
+
+    ctx->line(cx, cy, cx + r * gamepad[0].axis_x[1], cy - r * gamepad[0].axis_y[1]);
+
+    cx = size.x / 2.0f + size.x / 4.0f;
+    cy = size.y / 2.0f + r * gamepad[0].axis_x[4];;
+    ctx->line(cx, cy, cx + r * gamepad[0].axis_x[2], cy - r * gamepad[0].axis_y[2]);
   };
   
   run();
