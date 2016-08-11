@@ -1,7 +1,7 @@
 #ifndef __GL3D_EVENTS_H__
 #define __GL3D_EVENTS_H__
 
-#define GL3D_MAX_GAMEPADS 4
+#define GL3D_MAX_GAMEPADS 8
 
 namespace gl3d {
 
@@ -147,6 +147,9 @@ namespace detail { struct gamepad_state
 
   void change_button_state(gamepad_button b, bool down);
   void change_axis_state(gamepad_axis ax, float x, float y);
+
+  static int allocate_port();
+  static void release_port(int port);
 }; }
 
 extern detail::gamepad_state gamepad[GL3D_MAX_GAMEPADS];
@@ -250,6 +253,23 @@ void gamepad_state::change_button_state(gamepad_button b, bool down)
 void gamepad_state::change_axis_state(gamepad_axis ax, float x, float y)
 {
   
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+int gamepad_state::allocate_port()
+{
+  for (int i = 0; i < GL3D_MAX_GAMEPADS; ++i)
+    if (gamepad[i].port < 0)
+      return i;
+
+  return -1;  
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void gamepad_state::release_port(int port)
+{
+  if (port >= 0 && port < GL3D_MAX_GAMEPADS && gamepad[port].port == port)
+    gamepad[port].port = -1;
 }
 
 }
