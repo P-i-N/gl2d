@@ -28,14 +28,6 @@ int main()
     if (e.canceled)
       return;
 
-    if (e.type == event_type::gamepad_connect)
-    {
-      if (e.gamepad.down)
-        printf("gamepad connected to port %d\n", e.gamepad.port);
-      else
-        printf("gamepad disonnected from port %d\n", e.gamepad.port);
-    }
-
     if (e.type == event_type::paint)
     {
       auto size = get_window_size(e.window_id);
@@ -45,7 +37,7 @@ int main()
       ctx->bind(geom);
       ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(60.0f, aspectRatio, 0.01f, 1000.0f));
       ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(5.0f * sin(current.time), 2.0f, 5.0f * cos(current.time), 0.0f, 0.0f, 0.0f).invert());
-      //ctx->draw();
+      ctx->draw();
     }
   };
 

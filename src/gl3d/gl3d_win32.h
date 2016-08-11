@@ -149,7 +149,6 @@ void update_xinput()
         g_xinput_port_map[i] = port;
         event e(event_type::gamepad_connect, invalid_window_id);
         e.gamepad.port = port;
-        e.gamepad.down = true;
         on_event(e);
       }
       else
@@ -179,9 +178,8 @@ void update_xinput()
     {
       if (port != -1)
       {
-        event e(event_type::gamepad_connect, invalid_window_id);
+        event e(event_type::gamepad_disconnect, invalid_window_id);
         e.gamepad.port = port;
-        e.gamepad.down = false;
         on_event(e);
         detail::gamepad_state::release_port(port);
         g_xinput_port_map.erase(iter);
@@ -417,6 +415,19 @@ key vk_to_key(WPARAM vk)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+mouse_button mbutton_to_mouse_button(UINT msg)
+{
+  if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP)
+    return mouse_button::left;
+  if (msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP)
+    return mouse_button::right;
+  if (msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP)
+    return mouse_button::middle;
+
+  return mouse_button::unknown;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 mouse_button xbutton_to_mouse_button(WPARAM xb)
 {
   auto lo = LOWORD(xb);
@@ -490,7 +501,6 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_MOUSEMOVE:
         {
           event e(event_type::mouse_move, kvp.second->id);
-          e.mouse.down = false;
           e.mouse.button = mouse_button::unknown;
           e.mouse.x = GET_X_LPARAM(lParam);
           e.mouse.y = GET_Y_LPARAM(lParam);
@@ -505,50 +515,20 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
         case WM_MBUTTONDOWN:
-        {
-          event e(event_type::mouse_down, kvp.second->id);
-          e.mouse.down = true;
-          if (message == WM_LBUTTONDOWN)
-            e.mouse.button = mouse_button::left;
-          else if (message == WM_RBUTTONDOWN)
-            e.mouse.button = mouse_button::right;
-          else if (message == WM_MBUTTONDOWN)
-            e.mouse.button = mouse_button::middle;
-
-          kvp.second->fill_mouse_event(e);
-          on_event(e);
-        }
-        return 0;
+          mouse.change_button_state(mbutton_to_mouse_button(message), true, 0, 0, kvp.second->id);
+          return 0;
 
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
-        {
-          event e(event_type::mouse_up, kvp.second->id);
-          e.mouse.down = false;
-          if (message == WM_LBUTTONUP)
-            e.mouse.button = mouse_button::left;
-          else if (message == WM_RBUTTONUP)
-            e.mouse.button = mouse_button::right;
-          else if (message == WM_MBUTTONUP)
-            e.mouse.button = mouse_button::middle;
-
-          kvp.second->fill_mouse_event(e);
-          on_event(e);
-        }
-        return 0;
+          mouse.change_button_state(mbutton_to_mouse_button(message), false, 0, 0, kvp.second->id);
+          return 0;
 
         case WM_XBUTTONDOWN:
         {
           auto button = xbutton_to_mouse_button(wParam);
           if (button != mouse_button::unknown)
-          {
-            event e(event_type::mouse_down, kvp.second->id);
-            e.mouse.down = true;
-            e.mouse.button = button;
-            kvp.second->fill_mouse_event(e);
-            on_event(e);
-          }
+            mouse.change_button_state(button, true, 0, 0, kvp.second->id);
         }
         return 0;
 
@@ -556,13 +536,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
           auto button = xbutton_to_mouse_button(wParam);
           if (button != mouse_button::unknown)
-          {
-            event e(event_type::mouse_up, kvp.second->id);
-            e.mouse.down = false;
-            e.mouse.button = button;
-            kvp.second->fill_mouse_event(e);
-            on_event(e);
-          }
+            mouse.change_button_state(button, false, 0, 0, kvp.second->id);
         }
         return 0;
 
@@ -588,30 +562,17 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
           bool isKeyPress = (lParam & (1 << 30)) != 0;
           if (!isKeyPress)
-          {
-            event e(event_type::key_down, kvp.second->id);
-            e.keyboard.down = true;
-            e.keyboard.key = vk_to_key(wParam);
-            e.keyboard.key_char = 0;
-            on_event(e);
-          }
+            keyboard.change_key_state(vk_to_key(wParam), true, kvp.second->id);
         }
         return 0;
 
         case WM_KEYUP:
-        {
-          event e(event_type::key_up, kvp.second->id);
-          e.keyboard.down = false;
-          e.keyboard.key = vk_to_key(wParam);
-          e.keyboard.key_char = 0;
-          on_event(e);
-        }
-        return 0;
+          keyboard.change_key_state(vk_to_key(wParam), false, kvp.second->id);
+          return 0;
 
         case WM_CHAR:
         {
           event e(event_type::key_press, kvp.second->id);
-          e.keyboard.down = true;
           e.keyboard.key = key::unknown;
           e.keyboard.key_char = static_cast<int>(wParam);
           on_event(e);

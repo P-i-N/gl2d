@@ -91,7 +91,7 @@ enum class event_type
   open, close, resize,
   key_down, key_up, key_press,
   mouse_down, mouse_up, mouse_move, mouse_wheel,
-  gamepad_down, gamepad_up, gamepad_move, gamepad_connect
+  gamepad_down, gamepad_up, gamepad_move, gamepad_connect, gamepad_disconnect
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -103,11 +103,11 @@ struct event
 
   union
   {
-    struct { bool down; key key; int key_char; } keyboard;
+    struct { key key; int key_char; } keyboard;
     struct { int width, height; } resize;
-    struct { bool down; int x, y, dx, dy; mouse_button button; } mouse;
+    struct { int x, y, dx, dy; mouse_button button; } mouse;
     struct { int dx, dy; } wheel;
-    struct { int port; bool down; float x, y, dx, dy; gamepad_button button; gamepad_axis axis; } gamepad;
+    struct { int port; float x, y, dx, dy; gamepad_button button; gamepad_axis axis; } gamepad;
   };
 
   event(event_type et, window_id_t id)
@@ -123,6 +123,8 @@ namespace detail { struct keyboard_state
 {
   bool key_down[static_cast<size_t>(key::last)];
   bool operator[](key k) const { return key_down[static_cast<size_t>(k)]; }
+
+  void change_key_state(key k, bool down, window_id_t id = invalid_window_id);
 }; }
 
 extern detail::keyboard_state keyboard;
@@ -133,6 +135,8 @@ namespace detail { struct mouse_state
   bool button_down[static_cast<size_t>(mouse_button::last)];
   bool operator[](mouse_button b) const { return button_down[static_cast<size_t>(b)]; }
   int x, y;
+
+  void change_button_state(mouse_button b, bool down, int originX = 0, int originY = 0, window_id_t id = invalid_window_id);
 }; }
 
 extern detail::mouse_state mouse;
@@ -236,15 +240,41 @@ static decltype(on_event) on_event;
 namespace detail {
   
 //---------------------------------------------------------------------------------------------------------------------
+void keyboard_state::change_key_state(key k, bool down, window_id_t id)
+{
+  bool old = (*this)[k];
+  if (old != down)
+  {
+    key_down[static_cast<size_t>(k)] = down;
+    event e(down ? event_type::key_down : event_type::key_up, id);
+    e.keyboard.key = k;
+    e.keyboard.key_char = 0;
+    on_event(e);
+  }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void mouse_state::change_button_state(mouse_button b, bool down, int originX, int originY, window_id_t id)
+{
+  bool old = (*this)[b];
+  if (old != down)
+  {
+    button_down[static_cast<size_t>(b)] = down;
+    event e(down ? event_type::mouse_down : event_type::mouse_up, id);
+    e.mouse.button = b;
+    on_event(e);
+  }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void gamepad_state::change_button_state(gamepad_button b, bool down)
 {
   bool old = (*this)[b];
   if (old != down)
   {
     button_down[static_cast<size_t>(b)] = down;
-    event e(event_type::gamepad_down, invalid_window_id);
+    event e(down ? event_type::gamepad_down : event_type::gamepad_up, invalid_window_id);
     e.gamepad.port = port;
-    e.gamepad.down = down;
     e.gamepad.button = b;
     on_event(e);
   }
