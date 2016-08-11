@@ -38,7 +38,9 @@ void run();
 #if defined(WIN32)
 #include <windowsx.h>
 #include <hidsdi.h>
+#include <Xinput.h>
 #pragma comment(lib, "hid.lib")
+#pragma comment(lib, "xinput.lib")
 #else
 #endif
 
@@ -129,9 +131,64 @@ void update_timer()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+std::map<int, int> g_xinput_port_map;
+
+void update_xinput()
+{
+  for (int i = 0; i < XUSER_MAX_COUNT; ++i)
+  {
+    auto iter = g_xinput_port_map.find(i);
+    int port = iter != g_xinput_port_map.end() ? iter->second : -1;
+    XINPUT_STATE state;
+    ZeroMemory(&state, sizeof(XINPUT_STATE));
+    if (XInputGetState(i, &state) == ERROR_SUCCESS)
+    {
+      if (port == -1)
+      {
+        port = detail::gamepad_state::allocate_port();
+        g_xinput_port_map[i] = port;
+        event e(event_type::gamepad_connect, invalid_window_id);
+        e.gamepad.port = port;
+        e.gamepad.down = true;
+        on_event(e);
+      }
+      else
+        port = iter->second;
+
+      auto &g = gamepad[port];
+      g.change_button_state(gamepad_button::a, (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) != 0);
+      g.change_button_state(gamepad_button::b, (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0);
+      g.change_button_state(gamepad_button::x, (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) != 0);
+      g.change_button_state(gamepad_button::y, (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) != 0);
+      g.change_button_state(gamepad_button::up, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0);
+      g.change_button_state(gamepad_button::down, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) != 0);
+      g.change_button_state(gamepad_button::left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) != 0);
+      g.change_button_state(gamepad_button::right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0);
+      g.change_button_state(gamepad_button::thumb_left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB) != 0);
+      g.change_button_state(gamepad_button::thumb_right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0);
+      g.change_button_state(gamepad_button::shoulder_left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0);
+      g.change_button_state(gamepad_button::shoulder_right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0);
+    }
+    else
+    {
+      if (port != -1)
+      {
+        event e(event_type::gamepad_connect, invalid_window_id);
+        e.gamepad.port = port;
+        e.gamepad.down = false;
+        on_event(e);
+        detail::gamepad_state::release_port(port);
+        g_xinput_port_map.erase(iter);
+      }
+    }
+  }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void update()
 {
   update_timer();
+  update_xinput();
 
   // Call global tick
   {
@@ -247,6 +304,16 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
 
   handle = CreateWindow(TEXT(GL3D_WINDOW_CLASS), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 
+  if (win_id == main_window_id)
+  {
+    RAWINPUTDEVICE rid;
+    rid.usUsagePage = 1;
+    rid.usUsage = 5;
+    rid.dwFlags = RIDEV_DEVNOTIFY | RIDEV_INPUTSINK;
+    rid.hwndTarget = handle;
+    RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE));
+  }
+
   PIXELFORMATDESCRIPTOR pfd =
   {
     sizeof(PIXELFORMATDESCRIPTOR),
@@ -268,16 +335,6 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
   make_current();
 
   ctx2d.init();
-
-  if (win_id == main_window_id)
-  {
-    RAWINPUTDEVICE rid;
-    rid.usUsagePage = 1;
-    rid.usUsage = 5;
-    rid.dwFlags = RIDEV_INPUTSINK;
-    rid.hwndTarget = handle;
-    RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE));
-  }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -374,6 +431,8 @@ void parse_raw_input(RAWINPUT *raw)
   static std::vector<uint8_t> valueCapsBuffer;
   static std::vector<USAGE> usages;
   UINT bufferSize;
+
+  printf("*");
 
   if (GetRawInputDeviceInfo(raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize)) return;
   if (!bufferSize) return;

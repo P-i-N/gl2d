@@ -52,7 +52,20 @@ int main()
   on_tick += [&]()
   {
     auto ctx = current.ctx2d;
-    //ctx->texti(10, 10, "Hello, world! ^9%.3f ms", current.delta * 1000.0f);
+    int y = 0;
+    
+    if (gamepad[0][gamepad_button::a]) ctx->texti(16, y += 16, "^AButton A");
+    if (gamepad[0][gamepad_button::b]) ctx->texti(16, y += 16, "^CButton B");
+    if (gamepad[0][gamepad_button::x]) ctx->texti(16, y += 16, "^9Button X");
+    if (gamepad[0][gamepad_button::y]) ctx->texti(16, y += 16, "^EButton Y");
+    if (gamepad[0][gamepad_button::thumb_left]) ctx->texti(16, y += 16, "Thumb Left");
+    if (gamepad[0][gamepad_button::thumb_right]) ctx->texti(16, y += 16, "Thumb Right");
+    if (gamepad[0][gamepad_button::shoulder_left]) ctx->texti(16, y += 16, "Shoulder Left");
+    if (gamepad[0][gamepad_button::shoulder_right]) ctx->texti(16, y += 16, "Shoulder Right");
+    if (gamepad[0][gamepad_button::up]) ctx->texti(16, y += 16, "UP");
+    if (gamepad[0][gamepad_button::down]) ctx->texti(16, y += 16, "DOWN");
+    if (gamepad[0][gamepad_button::left]) ctx->texti(16, y += 16, "LEFT");
+    if (gamepad[0][gamepad_button::right]) ctx->texti(16, y += 16, "RIGHT");
   };
   
   run();
