@@ -132,8 +132,7 @@ namespace detail { struct mouse_state
 {
   bool button_down[static_cast<size_t>(mouse_button::last)];
   bool operator[](mouse_button b) const { return button_down[static_cast<size_t>(b)]; }
-  ivec2 pos;
-  ivec2 delta;
+  int x, y;
 }; }
 
 extern detail::mouse_state mouse;
@@ -143,6 +142,8 @@ namespace detail { struct gamepad_state
 {
   int port = -1;
   bool button_down[static_cast<size_t>(gamepad_button::last)];
+  float axis_x[static_cast<size_t>(gamepad_axis::last)];
+  float axis_y[static_cast<size_t>(gamepad_axis::last)];
   bool operator[](gamepad_button b) const { return button_down[static_cast<size_t>(b)]; }
 
   void change_button_state(gamepad_button b, bool down);
@@ -252,7 +253,21 @@ void gamepad_state::change_button_state(gamepad_button b, bool down)
 //---------------------------------------------------------------------------------------------------------------------
 void gamepad_state::change_axis_state(gamepad_axis ax, float x, float y)
 {
-  
+  float oldX = axis_x[static_cast<size_t>(ax)];
+  float oldY = axis_y[static_cast<size_t>(ax)];
+  if (oldX != x || oldY != y)
+  {
+    axis_x[static_cast<size_t>(ax)] = x;
+    axis_y[static_cast<size_t>(ax)] = y;
+    event e(event_type::gamepad_move, invalid_window_id);
+    e.gamepad.port = port;
+    e.gamepad.axis = ax;
+    e.gamepad.x = x;
+    e.gamepad.y = y;
+    e.gamepad.dx = x - oldX;
+    e.gamepad.dy = y - oldY;
+    on_event(e);
+  }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
