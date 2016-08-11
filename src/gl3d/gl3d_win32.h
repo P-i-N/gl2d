@@ -156,6 +156,7 @@ void update_xinput()
         port = iter->second;
 
       auto &g = gamepad[port];
+
       g.change_button_state(gamepad_button::a, (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) != 0);
       g.change_button_state(gamepad_button::b, (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0);
       g.change_button_state(gamepad_button::x, (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) != 0);
@@ -168,6 +169,11 @@ void update_xinput()
       g.change_button_state(gamepad_button::thumb_right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0);
       g.change_button_state(gamepad_button::shoulder_left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0);
       g.change_button_state(gamepad_button::shoulder_right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0);
+
+      g.change_axis_state(gamepad_axis::thumb_left, state.Gamepad.sThumbLX / 32767.0f, state.Gamepad.sThumbLY / 32767.0f);
+      g.change_axis_state(gamepad_axis::thumb_right, state.Gamepad.sThumbRX / 32767.0f, state.Gamepad.sThumbRY / 32767.0f);
+      g.change_axis_state(gamepad_axis::trigger_left, state.Gamepad.bLeftTrigger / 255.0f, 0.0f);
+      g.change_axis_state(gamepad_axis::trigger_right, state.Gamepad.bRightTrigger / 255.0f, 0.0f);
     }
     else
     {
@@ -432,8 +438,6 @@ void parse_raw_input(RAWINPUT *raw)
   static std::vector<USAGE> usages;
   UINT bufferSize;
 
-  printf("*");
-
   if (GetRawInputDeviceInfo(raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize)) return;
   if (!bufferSize) return;
   preparsedDataBuffer.resize(bufferSize);
@@ -459,8 +463,8 @@ void parse_raw_input(RAWINPUT *raw)
 
   for (size_t i = 0; i < usages.size(); ++i)
   {
+    // TODO
     int index = usages[i];// - buttonCaps->Range.UsageMin;
-    printf("%d ", index);
   }
 }
 
