@@ -137,6 +137,7 @@ namespace detail { struct mouse_state
   int x, y;
 
   void change_button_state(mouse_button b, bool down, int originX = 0, int originY = 0, window_id_t id = invalid_window_id);
+  void change_position(int mx, int my, int originX = 0, int originY = 0, window_id_t id = invalid_window_id);
 }; }
 
 extern detail::mouse_state mouse;
@@ -263,6 +264,17 @@ void mouse_state::change_button_state(mouse_button b, bool down, int originX, in
     event e(down ? event_type::mouse_down : event_type::mouse_up, id);
     e.mouse.button = b;
     on_event(e);
+  }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void mouse_state::change_position(int mx, int my, int originX, int originY, window_id_t id)
+{
+  int oldX = x;
+  int oldY = y;
+  if (oldX != mx || oldY != my)
+  {
+        
   }
 }
 
