@@ -1,5 +1,6 @@
 #define GL3D_IMPLEMENTATION
 #include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_ui.h>
 
 int main()
 {
@@ -38,6 +39,13 @@ int main()
       ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(60.0f, aspectRatio, 0.01f, 1000.0f));
       ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(5.0f * sin(current.time), 2.0f, 5.0f * cos(current.time), 0.0f, 0.0f, 0.0f).invert());
       ctx->draw();
+
+      // Draw UI
+      ui::begin();
+      {
+        ui::label("Hello, world!");
+      }
+      ui::end();
     }
   };
 
