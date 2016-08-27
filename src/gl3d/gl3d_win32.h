@@ -203,6 +203,7 @@ void update()
       current.ctx2d = nullptr;
 
     current.ctx3d = nullptr;
+    current.current_window_id = main_window_id;
     on_tick();
   }
 
@@ -213,15 +214,17 @@ void update()
     w.make_current();
     current.ctx2d = &(w.ctx2d);
     current.ctx3d = &(w.ctx3d);
+    current.current_window_id = w.id;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     current.ctx3d->clear();
     on_event(event(event_type::paint, w.id));
-    w.ctx2d.render(w.width, w.height);
+    w.ctx2d.render(w.ctx3d, w.width, w.height);
     w.flip();
   }
 
   current.ctx2d = nullptr;
   current.ctx3d = nullptr;
+  current.current_window_id = invalid_window_id;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

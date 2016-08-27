@@ -210,6 +210,8 @@ extern detail::callback_list<void(event &)> on_event;
 //---------------------------------------------------------------------------------------------------------------------
 namespace detail { struct current_state
 {
+  window_id_t focused_window_id = invalid_window_id;
+  window_id_t current_window_id = invalid_window_id;
   context2d *ctx2d = nullptr;
   context3d *ctx3d = nullptr;
   float time = 0.0f;

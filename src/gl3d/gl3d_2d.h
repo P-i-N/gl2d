@@ -193,21 +193,24 @@ struct font : public detail::ref_counted
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex2d : layout<vec2, vec4, vec2>
+struct vertex2d : layout<vec2, vec4, vec2, ivec4>
 {
   vec2 pos;
   vec4 color;
   vec2 uv;
+  ivec4 scissors;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct draw_call
 {
-  bool triangles; // true for triangles, false for lines
-  size_t length;  // number of vertices
+  bool triangles;     // true for triangles, false for lines
+  size_t start_index; // first vertex index
+  size_t length;      // number of vertices
 
-  draw_call(bool tris, size_t len): triangles(tris), length(len) { }
+  draw_call(bool tris, size_t start, size_t len): triangles(tris), start_index(start), length(len) { }
+  size_t end() const { return start_index + length; }
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -246,11 +249,23 @@ public:
 
   void clear()
   {
-    _context3d.clear();
     _geometry->clear();
     _drawCalls.clear();
-    _drawCalls.emplace_back(true, 0);
+    _layers.clear();
+    new_layer();
     _state.color = vec4::one();
+  }
+
+  size_t new_layer()
+  {
+    _layers.push_back(_drawCalls.size());
+
+    if (_drawCalls.empty())
+      _drawCalls.emplace_back(true, 0, 0);
+    else
+      _drawCalls.emplace_back(true, _drawCalls.back().end(), 0);
+
+    return _layers.size() - 1;
   }
 
   void color(const vec4 &c) { _state.color = c; }
@@ -266,7 +281,7 @@ public:
     if (!_drawCalls.back().triangles)
       _drawCalls.back().length += 2;
     else
-      _drawCalls.emplace_back(false, 2);
+      _drawCalls.emplace_back(false, _drawCalls.back().end(), 2);
     
     auto *v = _geometry->alloc_vertices(2);
     v->pos = a;
@@ -289,7 +304,7 @@ public:
       if (_drawCalls.back().triangles)
         _drawCalls.back().length += 6;
       else
-        _drawCalls.emplace_back(true, 6);
+        _drawCalls.emplace_back(true, _drawCalls.back().end(), 6);
       
       auto *v = _geometry->alloc_vertices(6);
       v->pos = a;
@@ -408,45 +423,61 @@ public:
     va_end(ap);
   }
 
-  void render(int x, int y, int width, int height)
+  void begin_render(context3d &ctx, int x, int y, int width, int height)
   {
     using namespace detail;
 
-    _context3d.clear();
+    ctx.clear();
 
     glViewport(x, y, width, height);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    _context3d.bind(_geometry);
-    _context3d.bind(_technique);
-    _context3d.set_uniform("u_ScreenSize", vec2(width, height));
-    _context3d.set_uniform("u_FontTexture", _state.font->font_texture);
-
-    size_t startVertex = 0;
-    for (auto &&dc : _drawCalls)
-    {
-      if (!dc.length) continue;
-
-      glDrawArrays(dc.triangles ? GL_TRIANGLES : GL_LINES, static_cast<GLint>(startVertex), static_cast<GLsizei>(dc.length));
-      startVertex += dc.length;
-    }
-
-    clear(); 
+    ctx.bind(_geometry);
+    ctx.bind(_technique);
+    ctx.set_uniform("u_ScreenSize", vec2(width, height));
+    ctx.set_uniform("u_FontTexture", _state.font->font_texture);
   }
 
-  void render(int width, int height) { render(0, 0, width, height); }
+  void render_layer(size_t index)
+  {
+    size_t start_dc = _layers[index];
+    size_t end_dc = (index < _layers.size() - 1) ? _layers[index + 1] : _drawCalls.size();
+
+    for (size_t i = start_dc; i < end_dc; ++i)
+    {
+      auto &dc = _drawCalls[i];
+      glDrawArrays(dc.triangles ? GL_TRIANGLES : GL_LINES, static_cast<GLint>(dc.start_index), static_cast<GLsizei>(dc.length));
+    }
+  }
+
+  void end_render()
+  {
+    clear();
+  }
+
+  void render(context3d &ctx, int x, int y, int width, int height)
+  {
+    begin_render(ctx, x, y, width, height);
+
+    for (size_t i = 0, S = _layers.size(); i < S; ++i)
+      render_layer(i);
+
+    end_render();
+  }
+
+  void render(context3d &ctx, int width, int height) { render(ctx, 0, 0, width, height); }
 
 private:
   void print_substring(float &x, float &y, const vec4 &color, const char *text, size_t length);
 
   bool _initialized = false;
   detail::state _state;
-  context3d _context3d;
   detail::ptr<technique> _technique = new technique();
   detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
   std::vector<detail::draw_call> _drawCalls;
+  std::vector<size_t> _layers;
 };
 
 extern detail::font *default_font;
@@ -549,7 +580,7 @@ void context2d::print_substring(float &x, float &y, const vec4 &color, const cha
   if (_drawCalls.back().triangles)
     _drawCalls.back().length += length * 6;
   else
-    _drawCalls.emplace_back(true, length * 6);
+    _drawCalls.emplace_back(true, _drawCalls.back().end(), length * 6);
 
   size_t skippedChars = 0;
   auto *v = _geometry->alloc_vertices(length * 6);
