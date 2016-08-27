@@ -2,6 +2,7 @@
 #define __GL3D_H__
 
 #include <atomic>
+#include <cassert>
 #include <vector>
 #include <map>
 #include <set>
@@ -134,15 +135,18 @@ namespace detail
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region Utilities
 
+static const hash_t fnv_offset = 0x811C9DC5u;
+static const hash_t fnv_prime = 0x01000193u;
+
 //---------------------------------------------------------------------------------------------------------------------
-constexpr hash_t hash(const char *str, const hash_t val = 0x811C9DC5)
+constexpr hash_t hash(const char *str, const hash_t val = fnv_offset)
 {
-  return (str[0] == '\0') ? val : hash(&str[1], (val ^ hash_t(str[0])) * 0x01000193);
+  return (str[0] == '\0') ? val : hash(&str[1], (val ^ hash_t(str[0])) * fnv_prime);
 }
 
 constexpr hash_t hash(const char *str, const size_t length, const hash_t val)
 {
-  return (length == 0) ? val : hash(str + 1, length - 1, (val ^ hash_t(str[0])) * 0x01000193);
+  return (length == 0) ? val : hash(str + 1, length - 1, (val ^ hash_t(str[0])) * fnv_prime);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -805,7 +809,7 @@ private:
 
 constexpr gl3d::hash_t operator "" _hash(const char *str, const size_t length)
 {
-  return gl3d::detail::hash(str, length, 0x811C9DC5);
+  return gl3d::detail::hash(str, length, gl3d::detail::fnv_offset);
 }
 
 #endif // __GL3D_H__
