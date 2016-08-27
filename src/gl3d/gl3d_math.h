@@ -105,6 +105,8 @@ template <typename T> struct xbox
 
   T center() const { return (min + max) / 2; }
   T size() const { max - min; }
+  elem_type width() const { return max.x - min.x; }
+  elem_type height() const { return max.y - min.y; }
 
   template <size_t I> T corner() const { return cross_over<I>(min, max); }
   T corner(size_t index) const
