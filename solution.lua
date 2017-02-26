@@ -13,6 +13,12 @@ Projects =
     type = "console",
   },
   
+  -- test_imgui
+  {
+    dir = "src/test_imgui",
+    type = "console",
+  },
+
   -- fontconv
   {
     dir = "src/fontconv",
