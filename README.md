@@ -43,7 +43,7 @@ Collection of small header-only libraries for writing simple OpenGL applications
   - mouse wheel events
   - keyboard events (key down, key up, key press)
   - window events (open, close, resize...)
-  - joystick/gamepad events (TODO)
+  - joystick/gamepad events
 - Frame timing functions
 - Multiple windows support
 - Depends on gl3d_2d.h, gl3d_input.h
