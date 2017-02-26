@@ -26,6 +26,15 @@ Collection of small header-only libraries for writing simple OpenGL applications
 - Supports colored strings with '^' marks
 - Depends on gl3d.h
 
+### gl3d_input.h
+- Enums for key, mouse and gamepad devices
+- Callback registration for tick & window events
+- Simple access to main input device states:
+  - Keyboard
+  - Mouse
+  - Gamepads
+- No dependencies to other gl3d headers
+
 ### gl3d_win32.h
 - Windowing library
 - Creating windows with initialized OpenGL contexts quickly
@@ -37,13 +46,21 @@ Collection of small header-only libraries for writing simple OpenGL applications
   - joystick/gamepad events (TODO)
 - Frame timing functions
 - Multiple windows support
-- Depends on gl3d_2d.h
+- Depends on gl3d_2d.h, gl3d_input.h
 
-### gl3d_ui.h
-TODO
+### gl3d_imgui.h
+- **TODO**
+- [dear imgui](https://github.com/ocornut/imgui) integration
+- Depends on gl3d_2d.h, gl3d_input.h
 
 ### gl3d_scene.h
-TODO
+- **TODO**
+- [ ] Simple scene tree management
+- [ ] Forward rendering pipeline
+- [ ] One global light
+- [ ] RAW model loading
+- [ ] OBJ model loading
+- [ ] Texture loading (using [stb_image](https://github.com/nothings/stb))
 
 -------------------------------------------------------------------------------
 
