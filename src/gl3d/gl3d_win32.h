@@ -240,6 +240,8 @@ window_id_t window_open(const std::string &title, int width, int height, unsigne
   }
 
   g_windows[id] = std::move(w);
+
+  on_event(event(event_type::open, id));
   return id;
 }
 
