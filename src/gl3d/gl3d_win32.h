@@ -125,8 +125,8 @@ void update_timer()
   QueryPerformanceCounter(&li);
   li.QuadPart -= g_timer_offset;
 
-  current.time = static_cast<float>(li.QuadPart / static_cast<double>(g_timer_frequency));
-  current.delta = static_cast<float>((li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency));
+  state.time = static_cast<float>(li.QuadPart / static_cast<double>(g_timer_frequency));
+  state.delta = static_cast<float>((li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency));
   g_last_timer_counter = li.QuadPart;
 }
 
@@ -198,12 +198,12 @@ void update()
   {
     auto iter = g_windows.find(main_window_id);
     if (iter != g_windows.end())
-      current.ctx2d = &(iter->second->ctx2d);
+      state.ctx2d = &(iter->second->ctx2d);
     else
-      current.ctx2d = nullptr;
+      state.ctx2d = nullptr;
 
-    current.ctx3d = nullptr;
-    current.current_window_id = main_window_id;
+    state.ctx3d = nullptr;
+    state.current_window_id = main_window_id;
     on_tick();
   }
 
@@ -212,19 +212,19 @@ void update()
     auto &w = *kvp.second;
     
     w.make_current();
-    current.ctx2d = &(w.ctx2d);
-    current.ctx3d = &(w.ctx3d);
-    current.current_window_id = w.id;
+    state.ctx2d = &(w.ctx2d);
+    state.ctx3d = &(w.ctx3d);
+    state.current_window_id = w.id;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    current.ctx3d->clear();
+    state.ctx3d->clear();
     on_event(event(event_type::paint, w.id));
     w.ctx2d.render(w.ctx3d, w.width, w.height);
     w.flip();
   }
 
-  current.ctx2d = nullptr;
-  current.ctx3d = nullptr;
-  current.current_window_id = invalid_window_id;
+  state.ctx2d = nullptr;
+  state.ctx3d = nullptr;
+  state.current_window_id = invalid_window_id;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

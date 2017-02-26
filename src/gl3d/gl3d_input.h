@@ -208,7 +208,7 @@ extern detail::callback_list<void(event &)> on_event;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-namespace detail { struct current_state
+namespace detail { struct gl3d_state
 {
   window_id_t focused_window_id = invalid_window_id;
   window_id_t current_window_id = invalid_window_id;
@@ -218,7 +218,7 @@ namespace detail { struct current_state
   float delta = 0.0f;
 }; }
 
-extern detail::current_state current;
+extern detail::gl3d_state state;
 
 }
 
@@ -235,7 +235,7 @@ namespace gl3d {
 static detail::keyboard_state keyboard;
 static detail::mouse_state mouse;
 static detail::gamepad_state gamepad[GL3D_MAX_GAMEPADS];
-static detail::current_state current;
+static detail::gl3d_state state;
 
 static decltype(on_tick) on_tick;
 static decltype(on_event) on_event;

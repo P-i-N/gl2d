@@ -33,17 +33,17 @@ int main()
       auto size = get_window_size(e.window_id);
       float aspectRatio = static_cast<float>(size.x) / size.y;
 
-      auto ctx = current.ctx3d;
+      auto ctx = state.ctx3d;
       ctx->bind(geom);
       ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(60.0f, aspectRatio, 0.01f, 1000.0f));
-      ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(5.0f * sin(current.time), 2.0f, 5.0f * cos(current.time), 0.0f, 0.0f, 0.0f).invert());
+      ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(5.0f * sin(state.time), 2.0f, 5.0f * cos(state.time), 0.0f, 0.0f, 0.0f).invert());
       ctx->draw();
     }
   };
 
   on_tick += [&]()
   {
-    auto ctx = current.ctx2d;
+    auto ctx = state.ctx2d;
     int y = 0;
     
     if (gamepad[0][gamepad_button::a]) ctx->texti(16, y += 16, "^AButton A");
