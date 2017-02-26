@@ -6,7 +6,9 @@
 
 namespace gl3d {
 
+void begin_imgui();
 
+void end_imgui();
 
 }
 
@@ -16,6 +18,17 @@ namespace gl3d {
 #ifndef __GL3D_IMGUI_H_IMPL__
 #define __GL3D_IMGUI_H_IMPL__
 
+//---------------------------------------------------------------------------------------------------------------------
+void begin_imgui()
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void end_imgui()
+{
+
+}
 
 #endif // __GL3D_IMGUI_H_IMPL__
 #endif // GL3D_IMPLEMENTATION
