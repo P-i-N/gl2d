@@ -19,6 +19,12 @@ Projects =
     type = "console",
   },
 
+  -- test_scene
+  {
+    dir = "src/test_scene",
+    type = "console",
+  },
+
   -- fontconv
   {
     dir = "src/fontconv",

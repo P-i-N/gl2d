@@ -5,6 +5,11 @@
 
 namespace gl3d {
 
+//---------------------------------------------------------------------------------------------------------------------
+class node;
+class camera;
+class root;
+
 namespace detail {
   
 //---------------------------------------------------------------------------------------------------------------------
@@ -34,36 +39,29 @@ public:
 
   node();
 
-  void set_parent(node *parent);
+  virtual bool set_parent(node *parent);
   node *parent() const { return _parent; }
+
+  root *scene_root() const { return _root; }
 
   const detail::transform &transform() const { return _trans; }
 
   void set_position(float x, float y, float z) { _trans.pos = vec3(x, y, z); }
   vec3 position() const { return _trans.pos; }
 
+  void set_position_world(float x, float y, float z);
+  vec3 position_world() const;
+
   void set_rotation(float yawDeg, float pitchDeg, float rollDeg) { _trans.set_rotation(yawDeg, pitchDeg, rollDeg); }
   vec3 rotation_euler() const { return _trans.rotation_euler(); }
-    
+
 protected:
   virtual ~node();
 
-private:
   node *_parent = nullptr;
+  root *_root = nullptr;
   detail::transform _trans;
   box3 _aabb;
-};
-
-//---------------------------------------------------------------------------------------------------------------------
-class root : public node
-{
-public:
-  typedef detail::ptr<root> ptr;
-
-  root();
-
-protected:
-  virtual ~root();
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -71,6 +69,13 @@ class camera : public node
 {
 public:
   typedef detail::ptr<camera> ptr;
+
+  camera();
+
+protected:
+  virtual ~camera();
+
+  mat4 _projection;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +118,27 @@ public:
   typedef detail::ptr<directional_light> ptr;
 };
 
+//---------------------------------------------------------------------------------------------------------------------
+class root : public node
+{
+public:
+  typedef detail::ptr<root> ptr;
+
+  static ptr create_default();
+
+  root();
+
+  bool set_parent(node *parent) override { return false; }
+
+  bool set_main_camera(camera *node);
+  camera *main_camera() const { return _main_camera; }
+  
+protected:
+  virtual ~root();
+
+  camera *_main_camera = nullptr;
+};
+
 }
 
 #endif // __GL3D_SCENE_H__
@@ -138,16 +164,56 @@ node::~node()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void node::set_parent(node *parent)
+bool node::set_parent(node *parent)
 {
   if (parent != _parent)
   {
     
   }
+
+  return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void node::set_position_world(float x, float y, float z)
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+vec3 node::position_world() const
+{
+  return vec3();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+camera::camera()
+  : node()
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+camera::~camera()
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+root::ptr root::create_default()
+{
+  root::ptr result = new root();
+
+  camera::ptr cam = new camera();
+  cam->set_parent(result);
+  result->set_main_camera(cam);
+
+  return result;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 root::root()
+  : node()
 {
   
 }
@@ -156,6 +222,12 @@ root::root()
 root::~root()
 {
   
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool root::set_main_camera(camera *node)
+{
+  return true;
 }
 
 }
