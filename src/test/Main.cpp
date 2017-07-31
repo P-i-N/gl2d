@@ -1,6 +1,8 @@
 #define GL3D_IMPLEMENTATION
 #include <gl3d/gl3d_win32.h>
 
+#include <chrono>
+
 int main()
 {
   using namespace gl3d;
@@ -72,7 +74,7 @@ int main()
 
     ctx->texti(8, 8, "Hello, world!");
   };
-  
+
   run();
   return 0;
 }

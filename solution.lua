@@ -7,12 +7,25 @@ Projects =
     defines = { "GL3D_IMPLEMENTATION" }
   },
 
+  -- gl3d_parts
+  {
+    dir = "src/gl3d_parts",
+    type = "headeronly",
+    defines = { "GL3D_IMPLEMENTATION" }
+  },
+
   -- test
   {
     dir = "src/test",
     type = "console",
   },
   
+  -- arc
+  {
+    dir = "src/arc",
+    type = "console",
+  },
+
   -- test_imgui
   {
     dir = "src/test_imgui",
