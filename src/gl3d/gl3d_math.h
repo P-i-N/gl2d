@@ -1,11 +1,23 @@
 #pragma once
 
-namespace gl3d {
-
-namespace detail {
+namespace gl3d::detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T, size_t Dimensions> struct xmath_traits { typedef T type; static const size_t dimensions = Dimensions; };
+template <class T> struct precision_rank { enum { value = 0 }; };
+template <> struct precision_rank<int> { enum { value = 1 }; };
+template <> struct precision_rank<float> { enum { value = 2 }; };
+template <> struct precision_rank<double> { enum { value = 3 }; };
+template <> struct precision_rank<long double> { enum { value = 4 }; };
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename TA, typename TB, bool> struct precision_filter { using best = TA; using worst = TB; };
+template <typename TA, typename TB> struct precision_filter<TA, TB, false> { using best = TB; using worst = TA; };
+
+template <class TA, class TB>
+using best_precision = typename precision_filter<TA, TB, precision_rank<TA>::value >= precision_rank<TB>::value>::best;
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T, size_t Dimensions> struct xmath_traits { typedef T elem_type; static const size_t dimensions = Dimensions; };
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T, size_t Dimensions> struct xvec_data { };
@@ -28,14 +40,21 @@ template <typename T, size_t Dimensions> struct xvec_impl : xvec_data<T, Dimensi
 //---------------------------------------------------------------------------------------------------------------------
 template <class T> struct xvec2 : xvec_impl<T, 2>
 {
-	xvec2(): xvec_impl(0, 0) { }
-	template <class TX, class TY> xvec2(TX x, TY y): xvec_impl((T)x, (T)y) { }
+	xvec2() : xvec_impl(0, 0) { }
+	template <class TX, class TY> xvec2(TX x, TY y) : xvec_impl((T)x, (T)y) { }
 	template <class TV> xvec2(const xvec2<TV> &v): xvec_impl((T)v.x, (T)v.y) { }
 
-	xvec2 operator*(T scale) const { return { x * scale, y * scale }; }
-	xvec2 operator/(T scale) const { return { x / scale, y / scale }; }
-	xvec2 operator+(const xvec2 &rhs) const { return { x + rhs.x, y + rhs.y }; }
-	xvec2 operator-(const xvec2 &rhs) const { return { x - rhs.x, y - rhs.y }; }
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec2<RT> operator*(T2 scale) const { return xvec2<RT>(x * scale, y * scale); }
+	
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec2<RT> operator/(T2 scale) const { return xvec2<RT>(x / scale, y / scale); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec2<RT> operator+(const xvec2<T2> &rhs) const { return xvec2<RT>(x + rhs.x, y + rhs.y); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec2<RT> operator-(const xvec2<T2> &rhs) const { return xvec2<RT>(x - rhs.x, y - rhs.y); }
 	
 	T length_sq() const { return x*x + y*y; }
 	T length() const { return sqrt(length_sq()); }
@@ -48,14 +67,22 @@ template <class T> struct xvec2 : xvec_impl<T, 2>
 //---------------------------------------------------------------------------------------------------------------------
 template <class T> struct xvec3 : xvec_impl<T, 3>
 {
-	xvec3(): xvec_impl(0, 0, 0) { }
+	xvec3() : xvec_impl(0, 0, 0) { }
 	template <class TX, class TY, class TZ> xvec3(TX x, TY y, TZ z): xvec_impl((T)x, (T)y, (T)z) { }
-	template <class TV> xvec3(const xvec3<TV> &v): xvec_impl((T)v.x, (T)v.y, (T)v.z) { }
+	template <class TV> xvec3(const xvec3<TV> &v) : xvec_impl((T)v.x, (T)v.y, (T)v.z) { }
+	template <class TV, class TZ> xvec3(const xvec2<TV> &v, TZ z) : xvec_impl((T)v.x, (T)v.y, (T)z) { }
 
-	xvec3 operator*(T scale) const { return { x * scale, y * scale, z * scale }; }
-	xvec3 operator/(T scale) const { return { x / scale, y / scale, z / scale }; }
-	xvec3 operator+(const xvec3 &rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z }; }
-	xvec3 operator-(const xvec3 &rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z }; }
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec3<RT> operator*(T2 scale) const { return xvec3<RT>(x * scale, y * scale, z * scale); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec3<RT> operator/(T2 scale) const { return xvec3<RT>(x / scale, y / scale, z / scale); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec3<RT> operator+(const xvec3<T2> &rhs) const { return xvec3<RT>(x + rhs.x, y + rhs.y, z + rhs.z); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec3<RT> operator-(const xvec3<T2> &rhs) const { return xvec3<RT>(x - rhs.x, y - rhs.y, z - rhs.z); }
 
 	T length_sq() const { return x*x + y*y + z*z; }
 	T length() const { return sqrt(length_sq()); }
@@ -69,9 +96,10 @@ template <class T> struct xvec3 : xvec_impl<T, 3>
 //---------------------------------------------------------------------------------------------------------------------
 template <class T> struct xvec4 : xvec_impl<T, 4>
 {
-	xvec4(): xvec_impl(0, 0, 0, 0) { }
+	xvec4() : xvec_impl(0, 0, 0, 0) { }
 	template <class TX, class TY, class TZ, class TW> xvec4(TX x, TY y, TZ z, TW w): xvec_impl((T)x, (T)y, (T)z, (T)w) { }
 	template <class TV> xvec4(const xvec4<TV> &v): xvec_impl((T)v.x, (T)v.y, (T)v.z, (T)v.w) { }
+	template <class TV, class TW> xvec4(const xvec3<TV> &v, TW w) : xvec_impl((T)v.x, (T)v.y, (T)v.z, (T)w) { }
 
 	explicit xvec4(uint32_t argb): xvec_impl(
 		((argb >> 16) & 0xFFu) / 255.0f,
@@ -79,10 +107,17 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 		(argb & 0xFFu) / 255.0f,
 		((argb >> 24) & 0xFFu) / 255.0f) { }
 
-	xvec4 operator*(T scale) const { return { x * scale, y * scale, z * scale, w * scale }; }
-	xvec4 operator/(T scale) const { return { x / scale, y / scale, z / scale, w / scale }; }
-	xvec4 operator+(const xvec4 &rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w }; }
-	xvec4 operator-(const xvec4 &rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w }; }
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec4<RT> operator*(T2 scale) const { return xvec4<RT>(x * scale, y * scale, z * scale, w * scale); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec4<RT> operator/(T2 scale) const { return xvec4<RT>(x / scale, y / scale, z / scale, w / scale); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec4<RT> operator+(const xvec4<T2> &rhs) const { return xvec4<RT>(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
+
+	template <class T2, class RT = best_precision<T, T2>>
+	xvec4<RT> operator-(const xvec4<T2> &rhs) const { return xvec4<RT>(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
 
 	T length_sq() const { return x*x + y*y + z*z + w*w; }
 	T length() const { return sqrt(length_sq()); }
@@ -101,7 +136,7 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 template <class T> struct xbox
 {
 	typedef T type;
-	typedef typename T::type elem_type;
+	typedef typename T::elem_type elem_type;
 	static const size_t dimensions = T::dimensions;
 
 	T min, max;
@@ -147,7 +182,7 @@ template <class T> struct xmat3 : xmat_data<T, 3>
 		m[1] = m[2] = m[3] = m[5] = m[6] = m[7] = 0;
 	}
 
-	xmat3(const xmat3 &copy) { memcpy(m, copy.m, sizeof(T) * 9); }
+	xmat3(const xmat3 &copy) { memcpy(m, copy.m, sizeof(T) * dimensions * dimensions); }
 	xmat3(T m0, T m1, T m2, T m3, T m4, T m5, T m6, T m7, T m8)
 	{
 		auto n = m;
@@ -169,17 +204,16 @@ template <class T> struct xmat3 : xmat_data<T, 3>
 										 m[1]*rhs.x + m[4]*rhs.y + m[7]*rhs.z,
 										 m[2]*rhs.x + m[5]*rhs.y + m[8]*rhs.z);
 	}
-	
-	template <typename T2, typename T3> static xmat3 rotate(T2 angleDeg, T3 x, T3 y, T3 z)
+
+	template <typename TA, typename TV>
+	static xmat3 make_rotation(TA angleDeg, const xvec3<TV> &axis)
 	{
 		T c = static_cast<T>(cos(radians(angleDeg))), s = static_cast<T>(sin(radians(angleDeg))), c1 = 1 - c;
-		return xmat3(x * x * c1 + c, x * y * c1 + z * s, x * z * c1 - y * s,
-								 x * y * c1 - z * s, y * y * c1 + c, y * z * c1 + x * s,
-								 x * z * c1 + y * s, y * z * c1 - x * s, z * z * c1 + c);
-	}
 
-	template <typename T2, typename T3>
-	static xmat3 rotate(T2 angleDeg, const xvec3<T3> &axis) { return rotate<T2, T3>(angleDeg, axis.x, axis.y, axis.z); }
+		return xmat3(axis.x * axis.x * c1 + c, axis.x * axis,y * c1 + axis,z * s, axis.x * axis,z * c1 - axis,y * s,
+		             axis.x * axis,y * c1 - axis,z * s, axis,y * axis,y * c1 + c, axis,y * axis,z * c1 + axis.x * s,
+		             axis.x * axis,z * c1 + axis,y * s, axis,y * axis,z * c1 - axis.x * s, axis,z * axis,z * c1 + c);
+	}
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -191,7 +225,7 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 		m[1] = m[2] = m[3] = m[4] = m[6] = m[7] = m[8] = m[9] = m[11] = m[12] = m[13] = m[14] = 0;
 	}
 
-	xmat4(const xmat4 &copy) { memcpy(m, copy.m, sizeof(T) * 16); }
+	xmat4(const xmat4 &copy) { memcpy(m, copy.m, sizeof(T) * dimensions * dimensions); }
 	xmat4(T m0, T m1, T m2, T m3, T m4, T m5, T m6, T m7, T m8, T m9, T m10, T m11, T m12, T m13, T m14, T m15)
 	{
 		auto n = m;
@@ -229,23 +263,19 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 										 m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13]*rhs.w,
 										 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w);
 	}
-	template <typename T2>
-	static xmat4 translation(T2 x, T2 y, T2 z) { return xmat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1); }
-	template <typename T2> static xmat4 translation(const xvec3<T2> &pos) { return translation(pos.x, pos.y, pos.z); }
+	template <typename TV> static xmat4 make_translation(const xvec3<TV> &pos)
+	{
+		return { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, pos.x, pos.y, pos.z, 1 };
+	}
+
+	template <typename TV> static xmat4 make_scale(const xvec3<TV> &xyz) { return { xyz.x, 0, 0, 0, 0, xyz.y, 0, 0, 0, 0, xyz.z, 0, 0, 0, 0, 1 }; }
+	template <typename TS> static xmat4 make_scale(TS xyz) { return { xyz, 0, 0, 0, 0, xyz, 0, 0, 0, 0, xyz, 0, 0, 0, 0, 1 }; }
+
+	template <typename TA, typename TV>
+	static xmat4 make_rotation(TA angleDeg, const xvec3<TV> &axis) { return xmat3<T>::make_rotation(angleDeg, axis); }
 
 	template <typename T2>
-	static xmat4 scale(T2 x, T2 y, T2 z) { return xmat4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1); }
-	template <typename T2> static xmat4 scale(T2 xyz) { return scale(xyz, xyz, xyz); }
-	template <typename T2> static xmat4 scale(const xvec3<T2> &xyz) { return scale(xyz.x, xyz.y, xyz.z); }
-
-	template <typename T2, typename T3>
-	static xmat4 rotate(T2 angleDeg, T3 x, T3 y, T3 z) { return xmat3<T>::rotate(angleDeg, x, y, z); }
-
-	template <typename T2, typename T3>
-	static xmat4 rotate(T2 angleDeg, const xvec3<T3> &axis) { return xmat3<T>::rotate(angleDeg, axis.x, axis.y, axis.z); }
-
-	template <typename T2>
-	static xmat4 look_at(T2 eyeX, T2 eyeY, T2 eyeZ, T2 targetX, T2 targetY, T2 targetZ, T2 upX = 0, T2 upY = 1, T2 upZ = 0)
+	static xmat4 make_look_at(T2 eyeX, T2 eyeY, T2 eyeZ, T2 targetX, T2 targetY, T2 targetZ, T2 upX = 0, T2 upY = 1, T2 upZ = 0)
 	{
 		auto l = normalize(detail::xvec3<T2>(targetX - eyeX, targetY - eyeY, targetZ - eyeZ));
 		auto s = normalize(cross(l, detail::xvec3<T2>(upX, upY, upZ)));
@@ -254,27 +284,27 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 		return xmat4(s.x, s.y, s.z, 0, u.x, u.y, u.z, 0, -l.x, -l.y, -l.z, 0, eyeX, eyeY, eyeZ, 1);
 	}
 
-	template <typename T2> static xmat4 perspective(T2 l, T2 r, T2 b, T2 t, T2 n, T2 f)
+	template <typename T2> static xmat4 make_perspective(T2 l, T2 r, T2 b, T2 t, T2 nearClip, T2 farClip)
 	{
-		return xmat4(2 * n / (r - l), 0, 0, 0,
-								 0, 2 * n / (t - b), 0, 0,
-								 (r + l) / (r - l), (t + b) / (t - b), -(f + n) / (f - n), -1,
-								 0, 0, -(2 * f * n) / (f - n), 0);
+		return xmat4(2 * nearClip / (r - l), 0, 0, 0,
+								 0, 2 * nearClip / (t - b), 0, 0,
+								 (r + l) / (r - l), (t + b) / (t - b), -(farClip + nearClip) / (farClip - nearClip), -1,
+								 0, 0, -(2 * farClip * nearClip) / (farClip - nearClip), 0);
 	}
 
-	template <typename T2> static xmat4 perspective(T2 fovYDeg, T2 aspectRatio, T2 nearClip, T2 farClip)
+	template <typename T2> static xmat4 make_perspective(T2 fovYDeg, T2 aspectRatio, T2 nearClip, T2 farClip)
 	{
 		T tangent = tan(radians(fovYDeg / 2));
 		T height = nearClip * tangent, width = height * aspectRatio;
-		return perspective(-width, width, -height, height, nearClip, farClip);
+		return make_perspective(-width, width, -height, height, nearClip, farClip);
 	}
 
-	template <typename T2> static xmat4 ortho(T2 l, T2 r, T2 b, T2 t, T2 n, T2 f)
+	template <typename T2> static xmat4 make_ortho(T2 l, T2 r, T2 b, T2 t, T2 nearClip, T2 farClip)
 	{
 		return xmat4(2 / (r - l), 0, 0, 0,
 								 0, 2 / (t - b), 0, 0,
-								 0, 0, -2 / (f - n), 0,
-								 -(r + l) / (r - l), -(t + b) / (t - b), -(f + n) / (f - n), 1);
+								 0, 0, -2 / (farClip - nearClip), 0,
+								 -(r + l) / (r - l), -(t + b) / (t - b), -(farClip + nearClip) / (farClip - nearClip), 1);
 	}
 
 	xmat4 &invert()
@@ -311,11 +341,16 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 	{
 		swap(m[1], m[4]); swap(m[2], m[ 8]); swap(m[ 3], m[12]);
 		swap(m[6], m[9]); swap(m[7], m[13]); swap(m[11], m[14]);
+
 		return *this;
 	}
 };
 
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace gl3d {
 
 //---------------------------------------------------------------------------------------------------------------------
 static const double pi = 3.14159265358;
@@ -328,32 +363,48 @@ static const float pi2f = static_cast<float>(pi2);
 static const float pi4f = static_cast<float>(pi4);
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
+template <class T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T sign(T a)
-{
-	if (a) return static_cast<T>((a > 0) ? 1 : -1);
-	return 0;
-}
+template <class T> T sign(T a) { return a ? (static_cast<T>((a > 0) ? 1 : -1)) : 0; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T dot(const detail::xvec2<T> &a, const detail::xvec2<T> &b) { return a.x*b.x + a.y*b.y; }
-template <typename T> T dot(const detail::xvec3<T> &a, const detail::xvec3<T> &b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+RT dot(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return a.x*b.x + a.y*b.y; }
+
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+RT dot(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> detail::xvec3<T> cross(const detail::xvec3<T> &a, const detail::xvec3<T> &b)
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+detail::xvec3<RT> cross(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b)
 { return { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x }; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> typename T::type distance_sq(const T &a, const T &b) { return (a - b).length_sq(); }
-template <typename T> typename T::type distance(const T &a, const T &b) { return (a - b).length(); }
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+RT distance_sq(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return (a - b).length_sq(); }
+
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+RT distance_sq(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return (a - b).length_sq(); }
+
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+RT distance(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return (a - b).length(); }
+
+template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
+RT distance(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return (a - b).length(); }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T normalize(const T &vec) { return vec * (1 / vec.length()); }
+template <class T> T normalize(const T &vec) { return vec * (1 / vec.length()); }
+template <class T> T normalize_safe(const T &vec)
+{
+	auto lenSq = vec.length_sq();
+	if (!lenSq) return T();
+
+	return vec * (1 / sqrt(lenSq));
+}
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T direction(const T &a, const T &b) { return normalize(b - a); }
+template <typename T> T direction(const T &a, const T &b) { return normalize_safe(b - a); }
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T> T maximum(T a) { return a; }
@@ -364,15 +415,15 @@ template <typename T> T minimum(T a, T b) { return a < b ? a : b; }
 template <typename Head, typename... Tail> Head minimum(Head a, Tail... b) { return minimum(a, minimum(b...)); }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <size_t I, typename T> detail::xvec2<T> cross_over(const detail::xvec2<T> &a, const detail::xvec2<T> &b)
+template <size_t I, class T> detail::xvec2<T> cross_over(const detail::xvec2<T> &a, const detail::xvec2<T> &b)
 { return { ((!I || I == 3) ? a.x : b.x), ((I / 2) ? b.y : a.y) }; };
 
-template <size_t I, typename T> detail::xvec3<T> cross_over(const detail::xvec3<T> &a, const detail::xvec3<T> &b)
+template <size_t I, class T> detail::xvec3<T> cross_over(const detail::xvec3<T> &a, const detail::xvec3<T> &b)
 { return { ((!(I % 4) || (I % 4) == 3) ? a.x : b.x), ((I / 2) ? a.y : b.y), ((I % 4) ? a.z : b.z) }; };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T degrees(T radians) { return radians / static_cast<T>(pi) * 180; }
-template <typename T> T radians(T degrees) { return degrees / 180 * static_cast<T>(pi); }
+template <class T> T degrees(T radians) { return radians / static_cast<T>(pi) * 180; }
+template <class T> T radians(T degrees) { return degrees / 180 * static_cast<T>(pi); }
 
 //---------------------------------------------------------------------------------------------------------------------
 typedef detail::xvec2<float> vec2;
