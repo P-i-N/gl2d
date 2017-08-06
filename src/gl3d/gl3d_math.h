@@ -3,18 +3,18 @@
 namespace gl3d::detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-template <class T> struct precision_rank { enum { value = 0 }; };
-template <> struct precision_rank<int> { enum { value = 1 }; };
-template <> struct precision_rank<float> { enum { value = 2 }; };
-template <> struct precision_rank<double> { enum { value = 3 }; };
-template <> struct precision_rank<long double> { enum { value = 4 }; };
+template <class T> struct precision_rank { static constexpr int value = 0; };
+template <> struct precision_rank<int> { static constexpr int value = 1; };
+template <> struct precision_rank<float> { static constexpr int value = 2; };
+template <> struct precision_rank<double> { static constexpr int value = 3; };
+template <> struct precision_rank<long double> { static constexpr int value = 4; };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename TA, typename TB, bool> struct precision_filter { using best = TA; using worst = TB; };
-template <typename TA, typename TB> struct precision_filter<TA, TB, false> { using best = TB; using worst = TA; };
+template <class TA, class TB, bool> struct precision_filter { using best = TA; using worst = TB; };
+template <class TA, class TB> struct precision_filter<TA, TB, false> { using best = TB; using worst = TA; };
 
 template <class TA, class TB>
-using best_precision = typename precision_filter<TA, TB, precision_rank<TA>::value >= precision_rank<TB>::value>::best;
+using precision = typename precision_filter<TA, TB, precision_rank<TA>::value >= precision_rank<TB>::value>::best;
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T, size_t Dimensions> struct xmath_traits { typedef T elem_type; static const size_t dimensions = Dimensions; };
@@ -44,17 +44,10 @@ template <class T> struct xvec2 : xvec_impl<T, 2>
 	template <class TX, class TY> xvec2(TX x, TY y) : xvec_impl((T)x, (T)y) { }
 	template <class TV> xvec2(const xvec2<TV> &v): xvec_impl((T)v.x, (T)v.y) { }
 
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec2<RT> operator*(T2 scale) const { return xvec2<RT>(x * scale, y * scale); }
-	
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec2<RT> operator/(T2 scale) const { return xvec2<RT>(x / scale, y / scale); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec2<RT> operator+(const xvec2<T2> &rhs) const { return xvec2<RT>(x + rhs.x, y + rhs.y); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec2<RT> operator-(const xvec2<T2> &rhs) const { return xvec2<RT>(x - rhs.x, y - rhs.y); }
+	template <class T2> auto operator*(T2 scale) const { return xvec2<precision<T, T2>>(x * scale, y * scale); }
+	template <class T2> auto operator/(T2 scale) const { return xvec2<precision<T, T2>>(x / scale, y / scale); }
+	template <class T2> auto operator+(const xvec2<T2> &rhs) const { return xvec2<precision<T, T2>>(x + rhs.x, y + rhs.y); }
+	template <class T2> auto operator-(const xvec2<T2> &rhs) const { return xvec2<precision<T, T2>>(x - rhs.x, y - rhs.y); }
 	
 	T length_sq() const { return x*x + y*y; }
 	T length() const { return sqrt(length_sq()); }
@@ -72,17 +65,10 @@ template <class T> struct xvec3 : xvec_impl<T, 3>
 	template <class TV> xvec3(const xvec3<TV> &v) : xvec_impl((T)v.x, (T)v.y, (T)v.z) { }
 	template <class TV, class TZ> xvec3(const xvec2<TV> &v, TZ z) : xvec_impl((T)v.x, (T)v.y, (T)z) { }
 
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec3<RT> operator*(T2 scale) const { return xvec3<RT>(x * scale, y * scale, z * scale); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec3<RT> operator/(T2 scale) const { return xvec3<RT>(x / scale, y / scale, z / scale); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec3<RT> operator+(const xvec3<T2> &rhs) const { return xvec3<RT>(x + rhs.x, y + rhs.y, z + rhs.z); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec3<RT> operator-(const xvec3<T2> &rhs) const { return xvec3<RT>(x - rhs.x, y - rhs.y, z - rhs.z); }
+	template <class T2> auto operator*(T2 scale) const { return xvec3<precision<T, T2>>(x * scale, y * scale, z * scale); }
+	template <class T2> auto operator/(T2 scale) const { return xvec3<precision<T, T2>>(x / scale, y / scale, z / scale); }
+	template <class T2> auto operator+(const xvec3<T2> &rhs) const { return xvec3<precision<T, T2>>(x + rhs.x, y + rhs.y, z + rhs.z); }
+	template <class T2> auto operator-(const xvec3<T2> &rhs) const { return xvec3<precision<T, T2>>(x - rhs.x, y - rhs.y, z - rhs.z); }
 
 	T length_sq() const { return x*x + y*y + z*z; }
 	T length() const { return sqrt(length_sq()); }
@@ -107,17 +93,10 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 		(argb & 0xFFu) / 255.0f,
 		((argb >> 24) & 0xFFu) / 255.0f) { }
 
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec4<RT> operator*(T2 scale) const { return xvec4<RT>(x * scale, y * scale, z * scale, w * scale); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec4<RT> operator/(T2 scale) const { return xvec4<RT>(x / scale, y / scale, z / scale, w / scale); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec4<RT> operator+(const xvec4<T2> &rhs) const { return xvec4<RT>(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
-
-	template <class T2, class RT = best_precision<T, T2>>
-	xvec4<RT> operator-(const xvec4<T2> &rhs) const { return xvec4<RT>(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
+	template <class T2> auto operator*(T2 scale) const { return xvec4<precision<T, T2>>(x * scale, y * scale, z * scale, w * scale); }
+	template <class T2> auto operator/(T2 scale) const { return xvec4<precision<T, T2>>(x / scale, y / scale, z / scale, w / scale); }
+	template <class T2> auto operator+(const xvec4<T2> &rhs) const { return xvec4<precision<T, T2>>(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
+	template <class T2> auto operator-(const xvec4<T2> &rhs) const { return xvec4<precision<T, T2>>(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
 
 	T length_sq() const { return x*x + y*y + z*z + w*w; }
 	T length() const { return sqrt(length_sq()); }
@@ -369,29 +348,29 @@ template <class T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
 template <class T> T sign(T a) { return a ? (static_cast<T>((a > 0) ? 1 : -1)) : 0; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-RT dot(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return a.x*b.x + a.y*b.y; }
+template <class TA, class TB>
+auto dot(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return a.x*b.x + a.y*b.y; }
 
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-RT dot(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+template <class TA, class TB>
+auto dot(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-detail::xvec3<RT> cross(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b)
+template <class TA, class TB>
+auto cross(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b)
 { return { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x }; }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-RT distance_sq(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return (a - b).length_sq(); }
+template <class TA, class TB>
+auto distance_sq(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return (a - b).length_sq(); }
 
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-RT distance_sq(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return (a - b).length_sq(); }
+template <class TA, class TB>
+auto distance_sq(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return (a - b).length_sq(); }
 
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-RT distance(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return (a - b).length(); }
+template <class TA, class TB>
+auto distance(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return (a - b).length(); }
 
-template <class TA, class TB, class RT = detail::best_precision<TA, TB>>
-RT distance(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return (a - b).length(); }
+template <class TA, class TB>
+auto distance(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return (a - b).length(); }
 
 //---------------------------------------------------------------------------------------------------------------------
 template <class T> T normalize(const T &vec) { return vec * (1 / vec.length()); }
@@ -404,15 +383,26 @@ template <class T> T normalize_safe(const T &vec)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T direction(const T &a, const T &b) { return normalize_safe(b - a); }
+template <class T> T direction(const T &a, const T &b) { return normalize_safe(b - a); }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> T maximum(T a) { return a; }
-template <typename T> T maximum(T a, T b) { return a > b ? a : b; }
-template <typename Head, typename... Tail> Head maximum(Head a, Tail... b) { return maximum(a, maximum(b...)); }
-template <typename T> T minimum(T a) { return a; }
-template <typename T> T minimum(T a, T b) { return a < b ? a : b; }
-template <typename Head, typename... Tail> Head minimum(Head a, Tail... b) { return minimum(a, minimum(b...)); }
+template <class T> T maximum(T a) { return a; }
+template <class TA, class TB> auto maximum(TA a, TB b)
+{
+	using p = detail::precision<TA, TB>;
+	return (static_cast<p>(a) > static_cast<p>(b)) ? static_cast<p>(a) : static_cast<p>(b);
+}
+
+template <class Head, class... Tail> auto maximum(Head a, Tail... b) { return maximum(a, maximum(b...)); }
+
+template <class T> T minimum(T a) { return a; }
+template <class T> T minimum(T a, T b)
+{
+	using p = detail::precision<TA, TB>;
+	return (static_cast<p>(a) < static_cast<p>(b)) ? static_cast<p>(a) : static_cast<p>(b);
+}
+
+template <class Head, class... Tail> auto minimum(Head a, Tail... b) { return minimum(a, minimum(b...)); }
 
 //---------------------------------------------------------------------------------------------------------------------
 template <size_t I, class T> detail::xvec2<T> cross_over(const detail::xvec2<T> &a, const detail::xvec2<T> &b)
