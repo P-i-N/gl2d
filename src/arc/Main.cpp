@@ -25,7 +25,7 @@ int main()
 				{
 					vec2 center = get_window_center(e.window_id);
 
-					radius = distance({ e.mouse.x, e.mouse.y }, center);
+					radius = distance(ivec2(e.mouse.x, e.mouse.y), center);
 					arcSum = 0.0f;
 					baseDirection = normalize(vec2(mouse.x, mouse.y) - center);
 					prevDirection = baseDirection;
