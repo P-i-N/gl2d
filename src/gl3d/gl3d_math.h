@@ -112,21 +112,21 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <class T> struct xbox
+template <class TV> struct basic_xbox
 {
-	typedef T type;
-	typedef typename T::elem_type elem_type;
-	static const size_t dimensions = T::dimensions;
+	typedef TV type;
+	typedef typename TV::elem_type elem_type;
+	static const size_t dimensions = TV::dimensions;
 
-	T min, max;
+	TV min, max;
 
-	T center() const { return (min + max) / 2; }
-	T size() const { max - min; }
+	TV center() const { return (min + max) / 2; }
+	TV size() const { max - min; }
 	elem_type width() const { return max.x - min.x; }
 	elem_type height() const { return max.y - min.y; }
 
-	template <size_t I> T corner() const { return cross_over<I>(min, max); }
-	T corner(size_t index) const
+	template <size_t I> TV corner() const { return cross_over<I>(min, max); }
+	TV corner(size_t index) const
 	{
 		switch (index % (1 << dimensions))
 		{
@@ -143,6 +143,10 @@ template <class T> struct xbox
 		return min;
 	}
 };
+
+//---------------------------------------------------------------------------------------------------------------------
+template <class TV> using xbox2 = basic_xbox<TV>;
+template <typename TV> struct xbox3 : basic_xbox<TV> { elem_type depth() const { return max.z - min.z; } };
 
 //---------------------------------------------------------------------------------------------------------------------
 template <class T, size_t Dimensions> struct xmat_data : xmath_traits<T, Dimensions>
@@ -424,8 +428,8 @@ typedef detail::xvec4<float> vec4;
 typedef detail::xvec4<int> ivec4;
 typedef detail::xmat3<float> mat3;
 typedef detail::xmat4<float> mat4;
-typedef detail::xbox<vec2> box2;
-typedef detail::xbox<ivec2> ibox2;
-typedef detail::xbox<vec3> box3;
+typedef detail::xbox2<vec2> box2;
+typedef detail::xbox2<ivec2> ibox2;
+typedef detail::xbox3<vec3> box3;
 
 }
