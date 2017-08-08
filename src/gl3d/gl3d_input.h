@@ -321,7 +321,7 @@ int gamepad_state::allocate_port()
 {
 	for (int i = 0; i < GL3D_MAX_GAMEPADS; ++i)
 		if (gamepad[i].port < 0)
-			return i;
+			return gamepad[i].port = i;
 
 	return -1;  
 }

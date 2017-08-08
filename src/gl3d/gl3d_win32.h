@@ -150,7 +150,7 @@ void update_xinput()
 				port = detail::gamepad_state::allocate_port();
 				g_xinput_port_map[i] = port;
 				event e(event_type::gamepad_connect, invalid_window_id);
-				gamepad[port].port = e.gamepad.port = port;
+				e.gamepad.port = port;
 				on_event.call(e);
 			}
 			else
@@ -184,7 +184,6 @@ void update_xinput()
 				e.gamepad.port = port;
 				on_event.call(e);
 				detail::gamepad_state::release_port(port);
-				gamepad[port].port = -1;
 				g_xinput_port_map.erase(iter);
 			}
 		}
