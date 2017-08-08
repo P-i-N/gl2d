@@ -133,10 +133,10 @@ void update_timer()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::map<int, int> g_xinput_port_map;
-
 void update_xinput()
 {
+	static std::map<int, int> g_xinput_port_map;
+
 	for (int i = 0; i < XUSER_MAX_COUNT; ++i)
 	{
 		auto iter = g_xinput_port_map.find(i);
