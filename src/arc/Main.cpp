@@ -12,7 +12,7 @@ int main()
 	vec2 baseDirection;
 	vec2 prevDirection;
 
-	on_event += [&](event &e)
+	on_event([&](event &e)
 	{
 		if (e.canceled)
 			return;
@@ -121,7 +121,7 @@ int main()
 			}
 			break;
 		}
-	};
+	});
 
 	run();
 	return 0;

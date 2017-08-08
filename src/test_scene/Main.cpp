@@ -11,11 +11,11 @@ int main()
   // Create default scene with active camera
   auto scene = root::create_default();
 
-  on_tick += [&]()
+  on_tick([&]()
   {
 
 
-  };
+  });
 
   run();
   return 0;

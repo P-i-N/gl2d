@@ -10,11 +10,11 @@ int main()
 
   window_open("ImGui example", 800, 600);
 
-  on_tick += [&]()
+  on_tick([&]()
   {
     
   
-  };
+  });
 
   run();
   return 0;

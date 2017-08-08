@@ -168,7 +168,7 @@ namespace detail {
 //---------------------------------------------------------------------------------------------------------------------
 template <typename F> struct callback_list
 {
-	typedef std::function<F> function_t;
+	using function_t = std::function<F>;
 
 	struct callback_info
 	{
@@ -180,14 +180,12 @@ template <typename F> struct callback_list
 
 	std::set<callback_info> callbacks;
 
-	callback_list &operator+=(function_t &&f)
+	callback_list &operator()(function_t &&f, int priority = 0)
 	{
-		callback_info ci;
-		ci.callback = f;
-		callbacks.insert(callbacks.end(), ci);
+		callbacks.insert(callbacks.end(), { priority, f });
 		return *this;
 	}
-
+	
 	template <typename... Args> void call(Args&&... args) const
 	{
 		for (auto &&ci : callbacks)
