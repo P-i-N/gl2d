@@ -188,12 +188,6 @@ template <typename F> struct callback_list
 		return *this;
 	}
 
-	callback_list &operator-=(function_t &&f)
-	{
-		callbacks.erase(std::find(callbacks.begin(), callbacks.end(), f));
-		return *this;
-	}
-
 	template <typename... Args> void call(Args&&... args) const
 	{
 		for (auto &&ci : callbacks)
