@@ -150,8 +150,8 @@ void update_xinput()
 				port = detail::gamepad_state::allocate_port();
 				g_xinput_port_map[i] = port;
 				event e(event_type::gamepad_connect, invalid_window_id);
-				e.gamepad.port = port;
-				on_event(e);
+				gamepad[port].port = e.gamepad.port = port;
+				on_event.call(e);
 			}
 			else
 				port = iter->second;
@@ -182,8 +182,9 @@ void update_xinput()
 			{
 				event e(event_type::gamepad_disconnect, invalid_window_id);
 				e.gamepad.port = port;
-				on_event(e);
+				on_event.call(e);
 				detail::gamepad_state::release_port(port);
+				gamepad[port].port = -1;
 				g_xinput_port_map.erase(iter);
 			}
 		}
@@ -206,7 +207,7 @@ void update()
 
 		state.ctx3d = nullptr;
 		state.current_window_id = main_window_id;
-		on_tick();
+		on_tick.call();
 	}
 
 	for (auto &kvp : g_windows)
@@ -219,7 +220,7 @@ void update()
 		state.current_window_id = w.id;
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		state.ctx3d->clear();
-		on_event(event(event_type::paint, w.id));
+		on_event.call(event(event_type::paint, w.id));
 		w.ctx2d.render(w.ctx3d, w.width, w.height);
 		w.flip();
 	}
@@ -243,7 +244,7 @@ window_id_t window_open(const std::string &title, int width, int height, unsigne
 
 	g_windows[id] = std::move(w);
 
-	on_event(event(event_type::open, id));
+	on_event.call(event(event_type::open, id));
 	return id;
 }
 
@@ -253,7 +254,7 @@ bool window_close(window_id_t id)
 	auto iter = g_windows.find(id);
 	if (iter != g_windows.end())
 	{
-		on_event(event(event_type::close, iter->second->id));
+		on_event.call(event(event_type::close, iter->second->id));
 		g_windows.erase(iter);
 		g_should_quit |= id == main_window_id || g_windows.empty();
 		return true;
@@ -542,7 +543,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					event e(event_type::mouse_wheel, kvp.second->id);
 					e.wheel.dx = 0;
 					e.wheel.dy = GET_WHEEL_DELTA_WPARAM(wParam);
-					on_event(e);
+					on_event.call(e);
 				}
 				return 0;
 
@@ -551,7 +552,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					event e(event_type::mouse_wheel, kvp.second->id);
 					e.wheel.dx = GET_WHEEL_DELTA_WPARAM(wParam);
 					e.wheel.dy = 0;
-					on_event(e);
+					on_event.call(e);
 				}
 				return 0;
 
@@ -572,7 +573,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					event e(event_type::key_press, kvp.second->id);
 					e.keyboard.key = key::unknown;
 					e.keyboard.key_char = static_cast<int>(wParam);
-					on_event(e);
+					on_event.call(e);
 				}
 				return 0;
 
@@ -581,7 +582,7 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					event e(event_type::resize, kvp.second->id);
 					e.resize.width = LOWORD(lParam);
 					e.resize.height = HIWORD(lParam);
-					on_event(e);
+					on_event.call(e);
 					kvp.second->width = LOWORD(lParam);
 					kvp.second->height = HIWORD(lParam);
 				}

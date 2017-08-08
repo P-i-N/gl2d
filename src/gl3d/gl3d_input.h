@@ -150,6 +150,7 @@ namespace detail { struct gamepad_state
 	float axis_x[static_cast<size_t>(gamepad_axis::last)];
 	float axis_y[static_cast<size_t>(gamepad_axis::last)];
 	bool operator[](gamepad_button b) const { return button_down[static_cast<size_t>(b)]; }
+	bool connected() const { return port >= 0 && port < GL3D_MAX_GAMEPADS; }
 
 	void change_button_state(gamepad_button b, bool down);
 	void change_axis_state(gamepad_axis ax, float x, float y);
@@ -193,7 +194,7 @@ template <typename F> struct callback_list
 		return *this;
 	}
 
-	template <typename... Args> void operator()(Args&&... args) const
+	template <typename... Args> void call(Args&&... args) const
 	{
 		for (auto &&ci : callbacks)
 			ci.callback(args...);
@@ -252,7 +253,7 @@ void keyboard_state::change_key_state(key k, bool down, window_id_t id)
 		event e(down ? event_type::key_down : event_type::key_up, id);
 		e.keyboard.key = k;
 		e.keyboard.key_char = 0;
-		on_event(e);
+		on_event.call(e);
 	}
 }
 
@@ -268,7 +269,7 @@ void mouse_state::change_button_state(mouse_button b, bool down, window_id_t id)
 		e.mouse.x = this->x;
 		e.mouse.y = this->y;
 		e.mouse.dx = e.mouse.dy = 0;
-		on_event(e);
+		on_event.call(e);
 	}
 }
 
@@ -285,7 +286,7 @@ void mouse_state::change_position(int mx, int my, window_id_t id)
 		e.mouse.dy = my - this->y;
 		this->x = mx;
 		this->y = my;
-		on_event(e);
+		on_event.call(e);
 	}
 }
 
@@ -299,7 +300,7 @@ void gamepad_state::change_button_state(gamepad_button b, bool down)
 		event e(down ? event_type::gamepad_down : event_type::gamepad_up, invalid_window_id);
 		e.gamepad.port = port;
 		e.gamepad.button = b;
-		on_event(e);
+		on_event.call(e);
 	}
 }
 
@@ -319,7 +320,7 @@ void gamepad_state::change_axis_state(gamepad_axis ax, float x, float y)
 		e.gamepad.y = y;
 		e.gamepad.dx = x - oldX;
 		e.gamepad.dy = y - oldY;
-		on_event(e);
+		on_event.call(e);
 	}
 }
 
