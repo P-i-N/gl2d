@@ -21,7 +21,7 @@ struct transform
   transform() { }
 
   void set_rotation(float yawDeg, float pitchDeg, float rollDeg)
-  { rot = mat3::rotate(yawDeg, vec3::unit_z()) * mat3::rotate(pitchDeg, vec3::unit_y()) * mat3::rotate(rollDeg, vec3::unit_x()); }
+  { rot = mat3::make_rotation(yawDeg, vec3::unit_z()) * mat3::make_rotation(pitchDeg, vec3::unit_y()) * mat3::make_rotation(rollDeg, vec3::unit_x()); }
 
   vec3 rotation_euler() const
   { return vec3(degrees(atan2(rot[1], rot[0])), degrees(-asin(rot[2])), degrees(atan2(rot[5], rot[8]))); }

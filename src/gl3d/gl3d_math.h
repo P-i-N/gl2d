@@ -193,9 +193,9 @@ template <class T> struct xmat3 : xmat_data<T, 3>
 	{
 		T c = static_cast<T>(cos(radians(angleDeg))), s = static_cast<T>(sin(radians(angleDeg))), c1 = 1 - c;
 
-		return xmat3(axis.x * axis.x * c1 + c, axis.x * axis,y * c1 + axis,z * s, axis.x * axis,z * c1 - axis,y * s,
-		             axis.x * axis,y * c1 - axis,z * s, axis,y * axis,y * c1 + c, axis,y * axis,z * c1 + axis.x * s,
-		             axis.x * axis,z * c1 + axis,y * s, axis,y * axis,z * c1 - axis.x * s, axis,z * axis,z * c1 + c);
+		return xmat3(axis.x * axis.x * c1 + c, axis.x * axis.y * c1 + axis.z * s, axis.x * axis.z * c1 - axis.y * s,
+		             axis.x * axis.y * c1 - axis.z * s, axis.y * axis.y * c1 + c, axis.y * axis.z * c1 + axis.x * s,
+		             axis.x * axis.z * c1 + axis.y * s, axis.y * axis.z * c1 - axis.x * s, axis.z * axis.z * c1 + c);
 	}
 };
 
@@ -361,7 +361,7 @@ auto dot(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b) { return a.x*b.
 //---------------------------------------------------------------------------------------------------------------------
 template <class TA, class TB>
 auto cross(const detail::xvec3<TA> &a, const detail::xvec3<TB> &b)
-{ return { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x }; }
+{ return detail::xvec3<detail::precision<TA, TB>>(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x); }
 
 //---------------------------------------------------------------------------------------------------------------------
 template <class TA, class TB>
