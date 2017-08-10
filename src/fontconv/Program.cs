@@ -230,6 +230,54 @@ namespace fontconv
       Console.WriteLine();
     }
 
+		/// <summary>
+		/// Apply simple run length encoding on Base64 text using ~ character
+		/// </summary>
+		/// <param name="text">Input Base64 text</param>
+		/// <returns>RLE Base64 text</returns>
+		public static string CompressBase64(string text)
+		{
+			const string Base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+			if (string.IsNullOrEmpty(text))
+				return "";
+
+			string result = "";
+
+			int cursor = 1;
+			char rleChar = text[0];
+			int length = 1;
+
+			while (cursor <= text.Length)
+			{
+				char ch = cursor < text.Length ? text[cursor] : '\0';
+
+				if (ch != rleChar || length == 67)
+				{
+					if (length <= 3)
+					{
+						for (int i = 0; i < length; ++i)
+							result += rleChar;
+					}
+					else
+					{
+						result += rleChar;
+						result += '~';
+						result += Base64Alphabet[length - 4];
+					}
+
+					rleChar = ch;
+					length = 1;
+				}
+				else
+					++length;
+
+				++cursor;
+			}
+
+			return result;
+		}
+
     public int Run(string[] args)
     {
       try
@@ -281,17 +329,17 @@ namespace fontconv
         fontDesc.Write(bw);
 
         // Get bytes
-        var base64 = System.Convert.ToBase64String(memStream.GetBuffer());
-        int base64Len = base64.Length;
+        var rleBase64 = CompressBase64(System.Convert.ToBase64String(memStream.GetBuffer()));
+        int base64Len = rleBase64.Length;
 
         // Write final output C-source file
         string outFileName = args[0] + ".h";
         TextWriter tw = File.CreateText(outFileName);
 
         int step = 120;
-        for (int i = 0; i < base64.Length; i += step)
+        for (int i = 0; i < rleBase64.Length; i += step)
         {
-          string line = (i + step < base64.Length) ? base64.Substring(i, step) : base64.Substring(i);
+          string line = (i + step < rleBase64.Length) ? rleBase64.Substring(i, step) : rleBase64.Substring(i);
           tw.WriteLine("\"" + line + "\"");
         }
 

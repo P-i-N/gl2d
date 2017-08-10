@@ -2,7 +2,7 @@
 fileVersion=1
 
 # font settings
-fontName=Segoe UI
+fontName=Tahoma
 fontFile=
 charSet=0
 fontSize=15
@@ -30,7 +30,7 @@ useFixedHeight=0
 forceZero=0
 
 # output file
-outWidth=96
+outWidth=128
 outHeight=64
 outBitDepth=32
 fontDescFormat=0
