@@ -53,18 +53,38 @@ void main()
 static bool is_base64(uint8_t c) { return (isalnum(c) || (c == '+') || (c == '/')); }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::vector<uint8_t> base64_decode(const char *encoded_string)
+std::vector<uint8_t> base64_decode(const char *encoded_string, size_t length = 0)
 {
 	static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+	const char *data = encoded_string;
 	size_t len = strlen(encoded_string);
+
+	if (len != length)
+	{
+		char *unrolled = new char[length + 1];
+		unrolled[length] = 0;
+
+		for (size_t i = 0, j = 0; i < len; ++i)
+		{
+			if (encoded_string[i] != '~')
+				unrolled[j++] = encoded_string[i];
+			else
+				for (size_t k = 0, S = 3 + base64_chars.find(encoded_string[++i]); k < S; ++k)
+					unrolled[j++] = encoded_string[i - 2];
+		}
+
+		data = unrolled;
+		len = length;
+	}
+
 	int i = 0, cursor = 0;
 	uint8_t char_array_4[4], char_array_3[3];
 	std::vector<uint8_t> result;
 
-	while (len-- && (encoded_string[cursor] != '=') && is_base64(encoded_string[cursor]))
+	while (len-- && (data[cursor] != '=') && is_base64(data[cursor]))
 	{
-		char_array_4[i++] = encoded_string[cursor++];
+		char_array_4[i++] = data[cursor++];
 
 		if (i == 4)
 		{
@@ -91,6 +111,9 @@ std::vector<uint8_t> base64_decode(const char *encoded_string)
 
 		for (int j = 0; (j < i - 1); j++) result.push_back(char_array_3[j]);
 	}
+
+	if (data != encoded_string)
+		delete [] data;
 
 	return result;
 }
@@ -188,7 +211,7 @@ struct font : public detail::ref_counted
 #undef GL3D_DATA_EXTRACT
 
 	font(const std::vector<uint8_t> &bytes): font(bytes.data(), bytes.size()) { }
-	font(const char *base64Data): font(base64_decode(base64Data)) { }
+	font(const char *base64Data, size_t length = 0): font(base64_decode(base64Data, length)) { }
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -528,7 +551,8 @@ static detail::font *default_font = nullptr;
 static detail::font *monospace_font = nullptr;
 
 //---------------------------------------------------------------------------------------------------------------------
-static const char *default_font_base64 =
+static const size_t default_base64_length = 5484;
+static const char *default_base64 =
 "gABAAAgHXACxN978GB9gAwMDbn8IDEYAGWbGhoEgYAMDA2NgPgyGgBhmxoZdXmADAwNjMEsMhoAMxsaGWVt+OzuzZzALDIaADMbGhllbY2dnG2MYHrgDQQzG"
 "xoZZW2NjYw9jGDwMBkEMxsaGWVtjY2MHYwxoDAYiDMbGhlk2Y2NjD2MMaQwGIgzGxvyYAHNjYxtjDD4MBiIYZsZgGB9uP2MzYwAIDAYUGGbGwA0A~EwCAccF"
 "LA33gAAMAz74ePjMwA~GP3gMGzM2NjQOwogNDIkHP2N4DBs2NjY0G8GcHQ7JjGFjzAwbNjY2MJvAnD3P34xhY8z8G+YzNjCbwJT1zZ+HYT/MDBs25jcATo73"
@@ -566,10 +590,10 @@ bool context2d::init()
 	_technique->set_vert_source(vertex_shader_code2d);
 	_technique->set_frag_source(fragment_shader_code2d);
 
-	if (!default_font) default_font = new detail::font(default_font_base64);
+	if (!default_font) default_font = new detail::font(default_base64, default_base64_length);
 	default_font->ref();
 
-	if (!monospace_font) monospace_font = new detail::font(default_font_base64);
+	if (!monospace_font) monospace_font = new detail::font(default_base64, default_base64_length);
 	monospace_font->ref();
 	
 	_state.font = default_font;
