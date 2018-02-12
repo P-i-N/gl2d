@@ -242,9 +242,10 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 
 	template <typename T2> xvec4<T2> operator*(const xvec4<T2> &rhs) const
 	{
-		return xvec3<T2>(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12]*rhs.w,
+		return xvec4<T2>(m[0]*rhs.x + m[4]*rhs.y + m[ 8]*rhs.z + m[12]*rhs.w,
 										 m[1]*rhs.x + m[5]*rhs.y + m[ 9]*rhs.z + m[13]*rhs.w,
-										 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w);
+										 m[2]*rhs.x + m[6]*rhs.y + m[10]*rhs.z + m[14]*rhs.w,
+										 m[3]*rhs.x + m[7]*rhs.y + m[11]*rhs.z + m[15]*rhs.w);
 	}
 	template <typename TV> static xmat4 make_translation(const xvec3<TV> &pos)
 	{

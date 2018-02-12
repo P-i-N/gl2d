@@ -26,6 +26,9 @@
 #define GL3D_UNIFORM_PROJECTION_MATRIX "u_ProjectionMatrix"
 #define GL3D_UNIFORM_MODELVIEW_MATRIX "u_ModelviewMatrix"
 
+#define GL3D_OFFSET_OF(_Class, _Member) \
+	reinterpret_cast<size_t>( &( ( reinterpret_cast<const _Class *>( nullptr ) )->_Member ) )
+
 // Include base 3D math library
 #include "gl3d_math.h"
 
@@ -502,7 +505,7 @@ template <typename... T> class layout
     {
       gl.EnableVertexAttribArray(index);
       detail::init_vao_arg<Head>::apply(index, size, reinterpret_cast<const void *>(offset));
-      tail.init_vao(index + 1, size, offset + offsetof(std::remove_pointer_t<decltype(this)>, tail));
+      tail.init_vao(index + 1, size, offset + GL3D_OFFSET_OF(std::remove_pointer_t<decltype(this)>, tail));
     }
   };
 
