@@ -41,6 +41,10 @@ int main()
 			ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::make_look_at(5.0f * sin(state.time), 2.0f, 5.0f * cos(state.time), 0.0f, 0.0f, 0.0f).invert());
 			ctx->draw();
 		}
+		else if (e.type == event_type::mouse_move)
+		{
+			printf("%d %d\n", e.mouse.dx, e.mouse.dy);
+		}
 	});
 
 	on_tick([&]()

@@ -71,6 +71,7 @@ struct window
 	context3d ctx3d;
 	int mouse_x = 0, mouse_y = 0;
 	int mouse_dx = 0, mouse_dy = 0;
+	int mouse_capture_ref = 0;
 
 	window(window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags);
 
@@ -512,6 +513,9 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case WM_LBUTTONDOWN:
 				case WM_RBUTTONDOWN:
 				case WM_MBUTTONDOWN:
+					if (!(kvp.second->mouse_capture_ref++))
+						SetCapture(hWnd);
+
 					mouse.change_button_state(mbutton_to_mouse_button(message), true, kvp.second->id);
 					return 0;
 
@@ -519,6 +523,10 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case WM_RBUTTONUP:
 				case WM_MBUTTONUP:
 					mouse.change_button_state(mbutton_to_mouse_button(message), false, kvp.second->id);
+
+					if (!(--kvp.second->mouse_capture_ref))
+						ReleaseCapture();
+
 					return 0;
 
 				case WM_XBUTTONDOWN:
@@ -593,6 +601,10 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				case WM_CLOSE:
 					window_close(kvp.first);
+					return 0;
+
+				case WM_CAPTURECHANGED:
+					kvp.second->mouse_capture_ref = 0;
 					return 0;
 
 				default:
