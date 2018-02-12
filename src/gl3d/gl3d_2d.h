@@ -53,17 +53,17 @@ void main()
 static bool is_base64(uint8_t c) { return (isalnum(c) || (c == '+') || (c == '/')); }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::vector<uint8_t> base64_decode(const char *encoded_string, size_t length = 0)
+std::vector<uint8_t> base64_decode(const char *encoded_string, size_t decompressedLength = 0)
 {
 	static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 	const char *data = encoded_string;
 	size_t len = strlen(encoded_string);
 
-	if (len != length)
+	if (len < decompressedLength)
 	{
-		char *unrolled = new char[length + 1];
-		unrolled[length] = 0;
+		char *unrolled = new char[decompressedLength + 1];
+		unrolled[decompressedLength] = 0;
 
 		for (size_t i = 0, j = 0; i < len; ++i)
 		{
@@ -75,7 +75,7 @@ std::vector<uint8_t> base64_decode(const char *encoded_string, size_t length = 0
 		}
 
 		data = unrolled;
-		len = length;
+		len = decompressedLength;
 	}
 
 	int i = 0, cursor = 0;
