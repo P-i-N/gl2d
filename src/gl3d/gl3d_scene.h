@@ -1,3 +1,5 @@
+#if 0
+
 #ifndef __GL3D_SCENE_H__
 #define __GL3D_SCENE_H__
 
@@ -32,10 +34,10 @@ struct transform
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-class node : public detail::ref_counted
+class node
 {
 public:
-  typedef detail::ptr<node> ptr;
+	using ptr = std::shared_ptr<node>;
 
   node();
 
@@ -234,3 +236,5 @@ bool root::set_main_camera(camera *node)
 
 #endif // __GL3D_SCENE_H_IMPL__
 #endif // GL3D_IMPLEMENTATION
+
+#endif
