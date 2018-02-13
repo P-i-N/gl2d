@@ -17,7 +17,8 @@ template <class TA, class TB>
 using precision = typename precision_filter<TA, TB, precision_rank<TA>::value >= precision_rank<TB>::value>::best;
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T, size_t Dimensions> struct xmath_traits { typedef T elem_type; static const size_t dimensions = Dimensions; };
+template <typename T, size_t Dimensions> struct xmath_traits
+{ using elem_type = T; static constexpr size_t dimensions = Dimensions; };
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T, size_t Dimensions> struct xvec_data { };
@@ -114,8 +115,9 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 //---------------------------------------------------------------------------------------------------------------------
 template <class TV> struct basic_xbox
 {
-	typedef TV type;
-	typedef typename TV::elem_type elem_type;
+	using type = TV;
+	using elem_type = typename type::elem_type;
+
 	static const size_t dimensions = TV::dimensions;
 
 	TV min, max;
@@ -421,21 +423,21 @@ template <class T> T degrees(T radians) { return radians / static_cast<T>(pi) * 
 template <class T> T radians(T degrees) { return degrees / 180 * static_cast<T>(pi); }
 
 //---------------------------------------------------------------------------------------------------------------------
-typedef detail::xvec2<float> vec2;
-typedef detail::xvec2<double> dvec2;
-typedef detail::xvec2<int> ivec2;
-typedef detail::xvec3<float> vec3;
-typedef detail::xvec3<double> dvec3;
-typedef detail::xvec3<int> ivec3;
-typedef detail::xvec4<float> vec4;
-typedef detail::xvec4<double> dvec4;
-typedef detail::xvec4<int> ivec4;
-typedef detail::xmat3<float> mat3;
-typedef detail::xmat3<double> dmat3;
-typedef detail::xmat4<float> mat4;
-typedef detail::xmat4<double> dmat4;
-typedef detail::xbox2<vec2> box2;
-typedef detail::xbox2<ivec2> ibox2;
-typedef detail::xbox3<vec3> box3;
+using vec2 = detail::xvec2<float>;
+using dvec2 = detail::xvec2<double>;
+using ivec2 = detail::xvec2<int>;
+using vec3 = detail::xvec3<float>;
+using dvec3 = detail::xvec3<double>;
+using ivec3 = detail::xvec3<int>;
+using vec4 = detail::xvec4<float>;
+using dvec4 = detail::xvec4<double>;
+using ivec4 = detail::xvec4<int>;
+using mat3 = detail::xmat3<float>;
+using dmat3 = detail::xmat3<double>;
+using mat4 = detail::xmat4<float>;
+using dmat4 = detail::xmat4<double>;
+using box2 = detail::xbox2<vec2>;
+using ibox2 = detail::xbox2<ivec2>;
+using box3 = detail::xbox3<vec3>;
 
 }
