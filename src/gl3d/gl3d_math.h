@@ -293,42 +293,43 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 								 -(r + l) / (r - l), -(t + b) / (t - b), -(farClip + nearClip) / (farClip - nearClip), 1);
 	}
 
-	xmat4 &invert()
+	static xmat4 make_inverse(const xmat4 &mat)
 	{
-		T inv[16] = {
-			 m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10],
-			-m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10],
-			 m[1]*m[ 6]*m[15] - m[1]*m[ 7]*m[14] - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[ 7] - m[13]*m[3]*m[ 6],
-			-m[1]*m[ 6]*m[11] + m[1]*m[ 7]*m[10] + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[ 9]*m[2]*m[ 7] + m[ 9]*m[3]*m[ 6],
-			-m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10],
-			 m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10],
-			-m[0]*m[ 6]*m[15] + m[0]*m[ 7]*m[14] + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[ 7] + m[12]*m[3]*m[ 6],
-			 m[0]*m[ 6]*m[11] - m[0]*m[ 7]*m[10] - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[ 8]*m[2]*m[ 7] - m[ 8]*m[3]*m[ 6],
-			 m[4]*m[ 9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[ 9],
-			-m[0]*m[ 9]*m[15] + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[ 9],
-			 m[0]*m[ 5]*m[15] - m[0]*m[ 7]*m[13] - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[ 7] - m[12]*m[3]*m[ 5],
-			-m[0]*m[ 5]*m[11] + m[0]*m[ 7]*m[ 9] + m[4]*m[1]*m[11] - m[4]*m[3]*m[ 9] - m[ 8]*m[1]*m[ 7] + m[ 8]*m[3]*m[ 5],
-			-m[4]*m[ 9]*m[14] + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[ 9],
-			 m[0]*m[ 9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[ 9],
-			-m[0]*m[ 5]*m[14] + m[0]*m[ 6]*m[13] + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[ 6] + m[12]*m[2]*m[ 5],
-			 m[0]*m[ 5]*m[10] - m[0]*m[ 6]*m[ 9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[ 9] + m[ 8]*m[1]*m[ 6] - m[ 8]*m[2]*m[ 5] };
+		auto m = mat.m;
 
-		T det = 1 / (m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12]), *pm = m;
+		T s0 = m[0] * m[5] - m[1] * m[4];
+		T s1 = m[0] * m[6] - m[2] * m[4];
+		T s2 = m[0] * m[7] - m[3] * m[4];
+		T s3 = m[1] * m[6] - m[2] * m[5];
+		T s4 = m[1] * m[7] - m[3] * m[5];
+		T s5 = m[2] * m[7] - m[3] * m[6];
 
-		*pm++ = inv[ 0]*det; *pm++ = inv[ 1]*det; *pm++ = inv[ 2]*det; *pm++ = inv[ 3]*det;
-		*pm++ = inv[ 4]*det; *pm++ = inv[ 5]*det; *pm++ = inv[ 6]*det; *pm++ = inv[ 7]*det;
-		*pm++ = inv[ 8]*det; *pm++ = inv[ 9]*det; *pm++ = inv[10]*det; *pm++ = inv[11]*det;
-		*pm++ = inv[12]*det; *pm++ = inv[13]*det; *pm++ = inv[14]*det; *pm   = inv[15]*det;
+		T c5 = m[10] * m[15] - m[11] * m[14];
+		T c4 = m[9] * m[15] - m[11] * m[13];
+		T c3 = m[9] * m[14] - m[10] * m[13];
+		T c2 = m[8] * m[15] - m[11] * m[12];
+		T c1 = m[8] * m[14] - m[10] * m[12];
+		T c0 = m[8] * m[13] - m[9] * m[12];
 
-		return *this;
-	}
+		T det = 1 / (s0 * c5 - s1 * c4 + s2 * c3 + s3 * c2 - s4 * c1 + s5 * c0);
 
-	xmat4 &transpose()
-	{
-		swap(m[1], m[4]); swap(m[2], m[ 8]); swap(m[ 3], m[12]);
-		swap(m[6], m[9]); swap(m[7], m[13]); swap(m[11], m[14]);
-
-		return *this;
+		return {
+			(m[5] * c5 - m[6] * c4 + m[7] * c3) * det,
+			(m[2] * c4 - m[1] * c5 - m[3] * c3) * det,
+			(m[13] * s5 - m[14] * s4 + m[15] * s3) * det,
+			(m[10] * s4 - m[9] * s5 - m[11] * s3) * det,
+			(m[6] * c2 - m[4] * c5 - m[7] * c1) * det,
+			(m[0] * c5 - m[2] * c2 + m[3] * c1) * det,
+			(m[14] * s2 - m[12] * s5 - m[15] * s1) * det,
+			(m[8] * s5 - m[10] * s2 + m[11] * s1) * det,
+			(m[4] * c4 - m[5] * c2 + m[7] * c0) * det,
+			(m[1] * c2 - m[0] * c4 - m[3] * c0) * det,
+			(m[12] * s4 - m[13] * s2 + m[15] * s0) * det,
+			(m[9] * s2 - m[8] * s4 - m[11] * s0) * det,
+			(m[5] * c1 - m[4] * c3 - m[6] * c0) * det,
+			(m[0] * c3 - m[1] * c1 + m[2] * c0) * det,
+			(m[13] * s1 - m[12] * s3 - m[14] * s0) * det,
+			(m[8] * s3 - m[9] * s1 + m[10] * s0) * det };
 	}
 };
 
@@ -343,6 +344,7 @@ static constexpr double dpi = 3.14159265358;
 static constexpr double dtwo_pi = 2.0 * 3.14159265358;
 static constexpr double dpi2 = 0.5 * 3.14159265358;
 static constexpr double dpi4 = 0.25 * 3.14159265358;
+
 static constexpr float pi = static_cast<float>(dpi);
 static constexpr float two_pi = static_cast<float>(dtwo_pi);
 static constexpr float pi2 = static_cast<float>(dpi2);

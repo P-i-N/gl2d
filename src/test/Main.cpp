@@ -38,7 +38,7 @@ int main()
 			auto ctx = state.ctx3d;
 			ctx->bind_geometry(geom);
 			ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::make_perspective(60.0f, aspectRatio, 0.01f, 1000.0f));
-			ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::make_look_at(5.0f * sin(state.time), 2.0f, 5.0f * cos(state.time), 0.0f, 0.0f, 0.0f).invert());
+			ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::make_inverse(mat4::make_look_at(5.0f * sin(state.time), 2.0f, 5.0f * cos(state.time), 0.0f, 0.0f, 0.0f)));
 			ctx->draw();
 		}
 		else if (e.type == event_type::mouse_move)
