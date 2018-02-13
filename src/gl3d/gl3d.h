@@ -35,8 +35,6 @@
 
 namespace gl3d {
 
-typedef uint32_t hash_t;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region OpenGL API
 
@@ -266,27 +264,16 @@ public:
     return macroString;
   }
 
-  void flush_cache()
-  {
-    for (auto &&kvp : _cache)
-      if (kvp.second.id != _program.id)
-        kvp.second.destroy();
-
-    _cache.clear();
-  }
-
   virtual bool bind() = 0;
   virtual void unbind() { gl.UseProgram(0); }
   
 protected:
   virtual ~compiled_program()
   {
-    flush_cache();
     _program.destroy();
   }
 
   std::map<std::string, std::string> _macros;
-  std::unordered_map<hash_t, detail::gl_resource_program> _cache;
   detail::gl_resource_program _program;
   std::string _glslVersion = "330";
   std::string _lastError;
