@@ -120,9 +120,9 @@ std::vector<uint8_t> base64_decode(const char *encoded_string, size_t decompress
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct font : public detail::ref_counted
+struct font
 {
-	typedef detail::ptr<font> ptr;
+	using ptr = std::shared_ptr<font>;
 
 	struct char_info
 	{
@@ -138,7 +138,7 @@ struct font : public detail::ref_counted
 	int line_height;
 	std::map<int, char_info> char_infos;
 	std::map<uint64_t, int> kernings;
-	texture::ptr font_texture = new texture();
+	texture::ptr font_texture = std::make_shared<texture>();
 
 #define GL3D_DATA_EXTRACT(_Type) \
 	(*reinterpret_cast<const _Type *>(data)); data = reinterpret_cast<const uint8_t *>(data) + sizeof(_Type)
@@ -487,8 +487,8 @@ public:
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		ctx.bind(_geometry);
-		ctx.bind(_technique);
+		ctx.bind_geometry(_geometry);
+		ctx.bind_program(_technique);
 		ctx.set_uniform("u_ScreenSize", vec2(width, height));
 		ctx.set_uniform("u_FontTexture", _state.font->font_texture);
 	}
@@ -527,14 +527,14 @@ private:
 
 	bool _initialized = false;
 	detail::state _state;
-	detail::ptr<technique> _technique = new technique();
-	detail::ptr<custom_geometry<detail::vertex2d>> _geometry = new custom_geometry<detail::vertex2d>();
+	technique::ptr _technique = std::make_shared<technique>();
+	custom_geometry<detail::vertex2d>::ptr _geometry = std::make_shared<custom_geometry<detail::vertex2d>>();
 	std::vector<detail::draw_call> _drawCalls;
 	std::vector<size_t> _layers;
 };
 
-extern detail::font *default_font;
-extern detail::font *monospace_font;
+extern detail::font::ptr default_font;
+extern detail::font::ptr monospace_font;
 
 }
 
@@ -547,8 +547,8 @@ extern detail::font *monospace_font;
 #define __GL3D_2D_H_IMPL__
 namespace gl3d {
 
-static detail::font *default_font = nullptr;
-static detail::font *monospace_font = nullptr;
+detail::font::ptr default_font;
+detail::font::ptr monospace_font; // TODO
 
 //---------------------------------------------------------------------------------------------------------------------
 static const size_t default_base64_length = 5484;
@@ -590,11 +590,11 @@ bool context2d::init()
 	_technique->set_vert_source(vertex_shader_code2d);
 	_technique->set_frag_source(fragment_shader_code2d);
 
-	if (!default_font) default_font = new detail::font(default_base64, default_base64_length);
-	default_font->ref();
+	if (!default_font)
+		default_font = std::make_shared<detail::font>(default_base64, default_base64_length);
 
-	if (!monospace_font) monospace_font = new detail::font(default_base64, default_base64_length);
-	monospace_font->ref();
+	if (!monospace_font)
+		monospace_font = std::make_shared<detail::font>(default_base64, default_base64_length);
 	
 	_state.font = default_font;
 	_initialized = true;
@@ -608,8 +608,8 @@ void context2d::done()
 	if (!_initialized)
 		return;
 
-	if (!default_font->unref_check()) default_font = nullptr;
-	if (!monospace_font->unref_check()) monospace_font = nullptr;
+	default_font = nullptr;
+	monospace_font = nullptr;
 	_initialized = false;
 }
 

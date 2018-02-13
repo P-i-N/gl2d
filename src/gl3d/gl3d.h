@@ -5,6 +5,7 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#include <memory>
 #include <set>
 #include <unordered_map>
 
@@ -138,20 +139,6 @@ namespace detail
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region Utilities
 
-static const hash_t fnv_offset = 0x811C9DC5u;
-static const hash_t fnv_prime = 0x01000193u;
-
-//---------------------------------------------------------------------------------------------------------------------
-constexpr hash_t hash(const char *str, const hash_t val = fnv_offset)
-{
-  return (str[0] == '\0') ? val : hash(&str[1], (val ^ hash_t(str[0])) * fnv_prime);
-}
-
-constexpr hash_t hash(const char *str, const size_t length, const hash_t val)
-{
-  return (length == 0) ? val : hash(str + 1, length - 1, (val ^ hash_t(str[0])) * fnv_prime);
-}
-
 //---------------------------------------------------------------------------------------------------------------------
 inline ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
 {
@@ -205,6 +192,9 @@ struct gl_resource
 {
   GLuint id = 0;
   operator GLuint() const { return id; }
+
+protected:
+	gl_resource() = default;
 };
 
 struct gl_resource_buffer : gl_resource { void destroy(); };
@@ -214,7 +204,7 @@ struct gl_resource_texture : gl_resource { void destroy(); };
 struct gl_resource_shader : gl_resource
 {
   void destroy();
-  bool compile(GLenum shaderType, const std::string &source);
+  bool compile(GLenum shaderType, std::string_view source);
 };
 
 struct gl_resource_program : gl_resource
@@ -226,64 +216,10 @@ struct gl_resource_program : gl_resource
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#pragma region Reference counting
-
-//---------------------------------------------------------------------------------------------------------------------
-class ref_counted
-{
-  mutable std::atomic_int _refCount = { 0 };
-
-public:
-  void ref() const { ++_refCount; }
-  void unref() const { if (!(--_refCount)) delete this; }
-  bool unref_check() const { if (!(--_refCount)) { delete this; return false; } return true; }
-
-protected:
-  virtual ~ref_counted() { }
-};
-
-//---------------------------------------------------------------------------------------------------------------------
-template <typename T> class ptr
-{
-public:
-  ptr(): _ptr(nullptr) { }
-  ptr(T *p): _ptr(p) { if (p) p->ref(); }
-  ptr(const ptr &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
-  ptr(ptr &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
-  template <typename T2> ptr(const ptr<T2> &p): _ptr(p._ptr) { if (_ptr) _ptr->ref(); }
-  template <typename T2> ptr(ptr<T2> &&rhs): _ptr(rhs._ptr) { rhs._ptr = nullptr; }
-  ~ptr() { if (_ptr) _ptr->unref(); }
-
-  T *operator->() const { return _ptr; }
-  operator T*() const { return _ptr; }
-  ptr &operator=(T *p) { assign(p); return *this; }
-  ptr &operator=(const ptr &p) { assign(p._ptr); return *this; }
-  template <typename T2> ptr &operator=(T2 *p) { assign(p); return *this; }
-  template <typename T2> ptr &operator=(const ptr<T2> &p) { assign(p._ptr); return *this; }
-
-  bool empty() const { return _ptr == nullptr; }
-
-private:
-  template <typename T2> void assign(T2 *p)
-  {
-    if (p == _ptr) return;
-    T *oldPtr = _ptr;
-    if (p) p->ref();
-    if (oldPtr) oldPtr->unref();
-    _ptr = p;
-  }
-
-  template <typename T2> friend class ptr;
-  T *_ptr;
-};
-
-#pragma endregion
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region Base classes
 
 //---------------------------------------------------------------------------------------------------------------------
-class compiled_object : public ref_counted
+class compiled_object
 {
 public:
   void set_dirty(bool set = true) { _dirty = set; }
@@ -297,22 +233,24 @@ protected:
 class compiled_program : public compiled_object
 {
 public:
+	using ptr = std::shared_ptr<compiled_program>;
+
   GLuint id() const { return _program.id; }
 
   const std::string &last_error() const { return _lastError; }
 
-  void set_glsl_version(const std::string &verString) { _glslVersion = verString; set_dirty(); }
+  void set_glsl_version(std::string_view verString) { _glslVersion = verString; set_dirty(); }
   const std::string &glsl_version() const { return _glslVersion; }
 
-  void define(const std::string &name, const std::string &value)
+  void define(std::string_view name, std::string_view value)
   {
-    _macros[name] = value;
+    _macros[std::string(name)] = value;
     set_dirty();
   }
 
-  bool undef(const std::string &name)
+  bool undef(std::string_view name)
   {
-    auto iter = _macros.find(name);
+    auto iter = _macros.find(std::string(name));
     if (iter == _macros.end()) return false;
     _macros.erase(iter);
     set_dirty();
@@ -358,7 +296,15 @@ protected:
 class buffer : public compiled_object
 {
 public:
-  buffer() { }
+	using ptr = std::shared_ptr<buffer>;
+
+	buffer() = default;
+
+	virtual ~buffer()
+	{
+		clear();
+		_buffer.destroy();
+	}
 
   GLuint id() const { return _buffer.id; }
 
@@ -373,7 +319,7 @@ public:
     set_dirty();
   }
 
-  void *alloc_data(const void *ptr, size_t size, bool keep = false)
+  void *alloc_data(const void *data, size_t size, bool keep = false)
   {
     if (_owner && _size != size)
       clear();
@@ -382,7 +328,7 @@ public:
     {
       _size = size;
       if (!_data) _data = new uint8_t[_size];
-      if (ptr) memcpy(_data, ptr, _size);
+      if (data) memcpy(_data, data, _size);
     }
 
     _owner = true;
@@ -390,10 +336,10 @@ public:
     return _data;
   }
 
-  void set_data(const void *ptr, size_t size)
+  void set_data(const void *data, size_t size)
   {
     clear();
-    _data = const_cast<uint8_t *>(static_cast<const uint8_t *>(ptr));
+    _data = const_cast<uint8_t *>(static_cast<const uint8_t *>(data));
     _size = size;
   }
 
@@ -405,12 +351,6 @@ public:
   void unbind(GLenum type);
 
 protected:
-  virtual ~buffer()
-  {
-    clear();
-    _buffer.destroy();
-  }
-
   bool _keepData = false;
   bool _owner = false;
   uint8_t *_data = nullptr;
@@ -422,12 +362,14 @@ protected:
 class base_geometry : public compiled_object
 {
 public:
+	using ptr = std::shared_ptr<base_geometry>;
+
   GLuint id() const { return _vao.id; }
 
-  void set_vertex_buffer(buffer *vb) { _vertexBuffer = vb; set_dirty(); }
-  buffer *vertex_buffer() const { return _vertexBuffer; }
-  void set_index_buffer(buffer *ib) { _indexBuffer = ib; set_dirty(); }
-  buffer *index_buffer() const { return _indexBuffer; }
+  void set_vertex_buffer(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
+  buffer::ptr vertex_buffer() const { return _vertexBuffer; }
+  void set_index_buffer(buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
+  buffer::ptr index_buffer() const { return _indexBuffer; }
 
   virtual size_t size_vertices() const = 0;
   virtual size_t size_indices() const = 0;
@@ -442,8 +384,8 @@ protected:
   }
 
   detail::gl_resource_vao _vao;
-  ptr<buffer> _vertexBuffer = new buffer();
-  ptr<buffer> _indexBuffer;
+	std::shared_ptr<buffer> _vertexBuffer = std::make_shared<buffer>();
+	std::shared_ptr<buffer> _indexBuffer;
 };
 
 #pragma endregion
@@ -540,12 +482,10 @@ struct vertex3d : layout<vec3, vec3, vec4, vec2>
 template <typename T> class custom_geometry : public detail::base_geometry
 {
 public:
-  typedef detail::ptr<custom_geometry> ptr;
+	using ptr = std::shared_ptr<custom_geometry>;
 
-  custom_geometry()
-  {
-    
-  }
+	custom_geometry() = default;
+	virtual ~custom_geometry() = default;
 
   void clear_vertices() { _vertexCursor = 0; set_dirty(); }
   void clear_indices() { _indexCursor = 0; set_dirty(); }
@@ -591,12 +531,6 @@ public:
     return detail::base_geometry::bind();
   }
 
-protected:
-  virtual ~custom_geometry()
-  {
-
-  }
-
   std::vector<T> _vertices;
   size_t _vertexCursor = 0;
 
@@ -612,32 +546,33 @@ typedef custom_geometry<vertex3d> geometry;
 class technique : public detail::compiled_program
 {
 public:
-  typedef detail::ptr<technique> ptr;
+	using ptr = std::shared_ptr<technique>;
 
-  technique() { }
-  
-  void set_vert_source(const std::string &code) { _vertSource = code; set_dirty(); }
+	technique() = default;
+
+	virtual ~technique()
+	{
+		_vertShader.destroy();
+		_geomShader.destroy();
+		_fragShader.destroy();
+	}
+
+  void set_vert_source(std::string_view code) { _vertSource = code; set_dirty(); }
   const std::string &vert_source() const { return _vertSource; }
 
-  void set_geom_source(const std::string &code) { _geomSource = code; set_dirty(); }
+  void set_geom_source(std::string_view code) { _geomSource = code; set_dirty(); }
   const std::string &geom_source() const { return _geomSource; }
 
-  void set_frag_source(const std::string &code) { _fragSource = code; set_dirty(); }
+  void set_frag_source(std::string_view code) { _fragSource = code; set_dirty(); }
   const std::string &frag_source() const { return _fragSource; }
 
   bool bind() override;
 
 protected:
-  virtual ~technique()
-  {
-    _vertShader.destroy();
-    _geomShader.destroy();
-    _fragShader.destroy();
-  }
-
   std::string _vertSource;
   std::string _geomSource;
   std::string _fragSource;
+
   detail::gl_resource_shader _vertShader;
   detail::gl_resource_shader _geomShader;
   detail::gl_resource_shader _fragShader;
@@ -648,22 +583,22 @@ protected:
 class compute : public detail::compiled_program
 {
 public:
-  typedef detail::ptr<compute> ptr;
+	using ptr = std::shared_ptr<compute>;
 
-  compute() { }
+	compute() = default;
 
-  void set_source(const std::string &code) { _source = code; set_dirty(); }
+	virtual ~compute()
+	{
+		_shader.destroy();
+	}
+
+  void set_source(std::string_view code) { _source = code; set_dirty(); }
   const std::string &source() const { return _source; }
 
   bool bind() override;
   void dispatch(int numGroupsX, int numGroupsY, int numGroupsZ = 1);
 
 protected:
-  virtual ~compute()
-  {
-    _shader.destroy();
-  }
-
   std::string _source;
   detail::gl_resource_shader _shader;
 };
@@ -673,9 +608,14 @@ protected:
 class texture : public detail::compiled_object
 {
 public:
-  typedef detail::ptr<texture> ptr;
+	using ptr = std::shared_ptr<texture>;
 
   texture(GLenum textureType = GL_TEXTURE_2D): _type(textureType) { }
+
+	virtual ~texture()
+	{
+		_texture.destroy();
+	}
 
   GLenum type() const { return _type; }
   GLuint id() const { return _texture.id; }
@@ -712,8 +652,8 @@ public:
   
   size_t size_bytes() const { return _sizeBytes; }
 
-  void set_pixel_buffer(detail::buffer *pb) { _pbo = pb; set_dirty(); }
-  detail::buffer *pixel_buffer() const { return _pbo; }
+  void set_pixel_buffer(detail::buffer::ptr pb) { _pbo = pb; set_dirty(); }
+  detail::buffer::ptr pixel_buffer() const { return _pbo; }
 
   void set_filter(GLenum minFilter, GLenum magFilter);
   GLenum min_filter() const { return _minFilter; }
@@ -722,33 +662,28 @@ public:
   void set_wrap(GLenum wrap) { if (wrap != _wrap) { _wrap = wrap; set_dirty(); } }
   GLenum wrap() const { return _wrap; }
 
-  void *alloc_pixels(const void *ptr, bool keep = false)
+  void *alloc_pixels(const void *data, bool keep = false)
   {
     if (!_pbo || !_sizeBytes) return nullptr;
     set_dirty();
-    return _pbo->alloc_data(ptr, _sizeBytes, keep);
+    return _pbo->alloc_data(data, _sizeBytes, keep);
   }
 
-  void set_pixels(const void *ptr)
-  {
+  void set_pixels(const void *data)
+	{
     if (!_pbo || !_sizeBytes) return;
     set_dirty();
-    _pbo->set_data(ptr, _sizeBytes);
+    _pbo->set_data(data, _sizeBytes);
   }
   
   bool bind(int slot = 0);
 
 protected:
-  virtual ~texture()
-  {
-    _texture.destroy();
-  }
-
   void update_parts();
 
   GLenum _type;
   detail::gl_resource_texture _texture;
-  detail::ptr<detail::buffer> _pbo = new detail::buffer();
+	detail::buffer::ptr _pbo = std::make_shared<detail::buffer>();
   std::vector<part> _parts;
   GLenum _format = GL_RGBA;
   ivec2 _size;
@@ -764,18 +699,14 @@ protected:
 class render_target : public detail::compiled_object
 {
 public:
-  typedef detail::ptr<render_target> ptr;
+	using ptr = std::shared_ptr<render_target>;
 
-  render_target()
-  {
-    
-  }
+	render_target() = default;
+
+	virtual ~render_target() = default;
 
 protected:
-  virtual ~render_target()
-  {
-    
-  }
+	// TODO
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -788,31 +719,28 @@ public:
 
   void clear();
 
-  bool bind(detail::base_geometry *geom);
-  bool bind(detail::compiled_program *prog);
-  bool bind(texture *tex, int slot = 0);
+  bool bind_geometry(detail::base_geometry::ptr geom);
+  bool bind_program(detail::compiled_program::ptr prog);
+  bool bind_texture(texture::ptr tex, int slot = 0);
 
-  bool set_uniform(const char *name, int value);
-  bool set_uniform(const char *name, const vec2 &value);
-  bool set_uniform(const char *name, const mat4 &value);
-  bool set_uniform(const char *name, texture *value);
+	GLint get_uniform_location(std::string_view name) const;
+
+  bool set_uniform(std::string_view name, int value);
+  bool set_uniform(std::string_view name, const vec2 &value);
+  bool set_uniform(std::string_view name, const mat4 &value);
+  bool set_uniform(std::string_view name, texture::ptr value);
     
-  int get_free_texture_slot() const { for (int i = 0; i < 16; ++i) if (_textures[i].empty()) return i; return -1; }
+  int get_free_texture_slot() const { for (int i = 0; i < 16; ++i) if (!_textures[i]) return i; return -1; }
 
   bool draw(GLenum primitive = GL_TRIANGLES, size_t offset = 0, size_t length = static_cast<size_t>(-1));
 
 private:
   technique::ptr _basicTechnique;
-  detail::ptr<detail::base_geometry> _geometry;
-  detail::ptr<detail::compiled_program> _program;
-  detail::ptr<texture> _textures[16];
+	detail::base_geometry::ptr _geometry;
+	detail::compiled_program::ptr _program;
+  texture::ptr _textures[16];
 };
 
-}
-
-constexpr gl3d::hash_t operator "" _hash(const char *str, const size_t length)
-{
-  return gl3d::detail::hash(str, length, gl3d::detail::fnv_offset);
 }
 
 #endif // __GL3D_H__
@@ -849,11 +777,12 @@ bool gl_api::init()
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool gl_resource_shader::compile(GLenum shaderType, const std::string &source)
+bool gl_resource_shader::compile(GLenum shaderType, std::string_view source)
 {
   if (!id) id = gl.CreateShader(shaderType);
-  auto srcPtr = source.c_str();
-  gl.ShaderSource(id, 1, &srcPtr, nullptr);
+	auto srcData = source.data();
+	auto srcLen = static_cast<int>(source.length());
+  gl.ShaderSource(id, 1, &srcData, &srcLen);
   gl.CompileShader(id);
 
   GLint status; gl.GetShaderiv(id, gl.COMPILE_STATUS, &status);
@@ -1092,7 +1021,7 @@ void texture::set_filter(GLenum minFilter, GLenum magFilter)
 //------------------------------------------------------------------------------------------------------------------------
 context3d::context3d()
 {
-  _basicTechnique = new technique();
+	_basicTechnique = std::make_shared<technique>();
   _basicTechnique->set_vert_source(detail::vertex_shader_code3d);
   _basicTechnique->set_frag_source(detail::fragment_shader_code3d);
 }
@@ -1107,16 +1036,14 @@ void context3d::clear()
   _program = nullptr;
 
   for (size_t i = 0; i < 16; ++i)
-  {
     _textures[i] = nullptr;
-  }
 
-  bind(_basicTechnique);
+  bind_program(_basicTechnique);
   glEnable(GL_DEPTH_TEST);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind(detail::base_geometry *geom)
+bool context3d::bind_geometry(detail::base_geometry::ptr geom)
 {
   if (geom != _geometry)
   {
@@ -1128,7 +1055,7 @@ bool context3d::bind(detail::base_geometry *geom)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind(detail::compiled_program *prog)
+bool context3d::bind_program(detail::compiled_program::ptr prog)
 {
   if (prog != _program)
   {
@@ -1140,17 +1067,30 @@ bool context3d::bind(detail::compiled_program *prog)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind(texture *tex, int slot)
+bool context3d::bind_texture(texture::ptr tex, int slot)
 {
   return true;
 }
 
-//------------------------------------------------------------------------------------------------------------------------
-bool context3d::set_uniform(const char *name, int value)
+//---------------------------------------------------------------------------------------------------------------------
+GLint context3d::get_uniform_location(std::string_view name) const
 {
-  if (!_program) return false;
-  auto id = gl.GetUniformLocation(_program->id(), name);
-  if (id >= 0)
+	if (!_program) return -1;
+
+	char buff[32];
+	if (auto len = name.length(); len < sizeof(buff))
+	{
+		memcpy(buff, name.data(), len); buff[len] = 0;
+		return gl.GetUniformLocation(_program->id(), buff);
+	}
+
+	return gl.GetUniformLocation(_program->id(), std::string(name).c_str());
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+bool context3d::set_uniform(std::string_view name, int value)
+{
+	if (auto id = get_uniform_location(name); id >= 0)
   {
     gl.Uniform1i(id, value);
     return true;      
@@ -1159,39 +1099,33 @@ bool context3d::set_uniform(const char *name, int value)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::set_uniform(const char *name, const vec2 &value)
+bool context3d::set_uniform(std::string_view name, const vec2 &value)
 {
-  if (!_program) return false;
-  auto id = gl.GetUniformLocation(_program->id(), name);
-  if (id >= 0)
-  {
+	if (auto id = get_uniform_location(name); id >= 0)
+	{
     gl.Uniform2fv(id, 1, value.data);
-    return true;      
+    return true;
   }
   return false;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::set_uniform(const char *name, const mat4 &value)
+bool context3d::set_uniform(std::string_view name, const mat4 &value)
 {
-  if (!_program) return false;
-  auto id = gl.GetUniformLocation(_program->id(), name);
-  if (id >= 0)
-  {
-    gl.UniformMatrix4fv(id, 1, GL_FALSE, value.data);
-    return true;      
+	if (auto id = get_uniform_location(name); id >= 0)
+	{
+		gl.UniformMatrix4fv(id, 1, GL_FALSE, value.data);
+    return true;
   }
   return false;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::set_uniform(const char *name, texture *value)
+bool context3d::set_uniform(std::string_view name, texture::ptr value)
 {
-  if (!_program) return false;
-  auto id = gl.GetUniformLocation(_program->id(), name);
-  if (id >= 0)
-  {
-    auto slot = get_free_texture_slot(); if (slot < 0) return false;
+	if (auto id = get_uniform_location(name); id >= 0)
+	{
+		auto slot = get_free_texture_slot(); if (slot < 0) return false;
     value->bind(slot);
     gl.Uniform1i(id, slot);
     return true;
