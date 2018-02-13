@@ -53,9 +53,9 @@ template <class T> struct xvec2 : xvec_impl<T, 2>
 	T length_sq() const { return x*x + y*y; }
 	T length() const { return sqrt(length_sq()); }
 
-	static const xvec2 &unit_x() { static xvec2 v(1, 0); return v; }
-	static const xvec2 &unit_y() { static xvec2 v(0, 1); return v; }
-	static const xvec2 &one()    { static xvec2 v(1, 1); return v; }
+	static constexpr xvec2 &unit_x() { static xvec2 v(1, 0); return v; }
+	static constexpr xvec2 &unit_y() { static xvec2 v(0, 1); return v; }
+	static constexpr xvec2 &one()    { static xvec2 v(1, 1); return v; }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -74,10 +74,10 @@ template <class T> struct xvec3 : xvec_impl<T, 3>
 	T length_sq() const { return x*x + y*y + z*z; }
 	T length() const { return sqrt(length_sq()); }
 
-	static const xvec3 &unit_x() { static xvec3 v(1, 0, 0); return v; }
-	static const xvec3 &unit_y() { static xvec3 v(0, 1, 0); return v; }
-	static const xvec3 &unit_z() { static xvec3 v(0, 0, 1); return v; }
-	static const xvec3 &one()    { static xvec3 v(1, 1, 1); return v; }
+	static constexpr xvec3 &unit_x() { static xvec3 v(1, 0, 0); return v; }
+	static constexpr xvec3 &unit_y() { static xvec3 v(0, 1, 0); return v; }
+	static constexpr xvec3 &unit_z() { static xvec3 v(0, 0, 1); return v; }
+	static constexpr xvec3 &one()    { static xvec3 v(1, 1, 1); return v; }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -102,14 +102,14 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 	T length_sq() const { return x*x + y*y + z*z + w*w; }
 	T length() const { return sqrt(length_sq()); }
 
-	static const xvec4 &unit_x() { static xvec4 v(1, 0, 0, 0); return v; }
-	static const xvec4 &unit_y() { static xvec4 v(0, 1, 0, 0); return v; }
-	static const xvec4 &unit_z() { static xvec4 v(0, 0, 1, 0); return v; }
-	static const xvec4 &unit_w() { static xvec4 v(0, 0, 0, 1); return v; }
-	static const xvec4 &one()    { static xvec4 v(1, 1, 1, 1); return v; }
-	static const xvec4 &red()    { static xvec4 v(1, 0, 0, 1); return v; }
-	static const xvec4 &green()  { static xvec4 v(0, 1, 0, 1); return v; }
-	static const xvec4 &blue()   { static xvec4 v(0, 0, 1, 1); return v; }
+	static constexpr xvec4 &unit_x() { static xvec4 v(1, 0, 0, 0); return v; }
+	static constexpr xvec4 &unit_y() { static xvec4 v(0, 1, 0, 0); return v; }
+	static constexpr xvec4 &unit_z() { static xvec4 v(0, 0, 1, 0); return v; }
+	static constexpr xvec4 &unit_w() { static xvec4 v(0, 0, 0, 1); return v; }
+	static constexpr xvec4 &one()    { static xvec4 v(1, 1, 1, 1); return v; }
+	static constexpr xvec4 &red()    { static xvec4 v(1, 0, 0, 1); return v; }
+	static constexpr xvec4 &green()  { static xvec4 v(0, 1, 0, 1); return v; }
+	static constexpr xvec4 &blue()   { static xvec4 v(0, 0, 1, 1); return v; }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
