@@ -10,15 +10,15 @@
 #include <unordered_map>
 
 #if !defined(GL3D_APIENTRY)
-#if defined(WIN32)
-#define GL3D_APIENTRY __stdcall
-#else
-#define GL3D_APIENTRY
-#endif
+	#if defined(WIN32)
+		#define GL3D_APIENTRY __stdcall
+	#else
+		#define GL3D_APIENTRY
+	#endif
 #endif
 
 #if defined(WIN32)
-#include <windows.h>
+	#include <windows.h>
 #else
 #endif
 
@@ -41,84 +41,84 @@ namespace gl3d {
 namespace detail {
 
 #define GL3D_API_FUNC(retValue, name, ...) \
-  public: typedef retValue(GL3D_APIENTRY *gl_ ## name ## _ptr_t)(__VA_ARGS__); \
-  gl_ ## name ## _ptr_t name = nullptr; \
-  private: \
-  __init __init ## name = __init(_initializers, reinterpret_cast<void **>(&name), [](void **ptr)->bool{ \
-    *ptr = wglGetProcAddress("gl" ## #name); return (*ptr) != nullptr; }); \
-  public:
+	public: typedef retValue(GL3D_APIENTRY *gl_ ## name ## _ptr_t)(__VA_ARGS__); \
+	gl_ ## name ## _ptr_t name = nullptr; \
+	private: \
+	__init __init ## name = __init(_initializers, reinterpret_cast<void **>(&name), [](void **ptr)->bool{ \
+		*ptr = wglGetProcAddress("gl" ## #name); return (*ptr) != nullptr; }); \
+	public:
 
 //---------------------------------------------------------------------------------------------------------------------
 class gl_api
 {
-  typedef bool(*init_proc_address_t)(void **);
+	using init_proc_address_t = bool( * )( void ** );
 
-  struct __init
-  {
-    void **proc_address;
-    init_proc_address_t lambda;
+	struct __init
+	{
+		void **proc_address;
+		init_proc_address_t lambda;
 
-    __init(std::vector<__init *> &output, void **target, init_proc_address_t l): proc_address(target), lambda(l)
-    { output.push_back(this); }
-  };
-  
-  std::vector<__init *> _initializers;
+		__init( std::vector<__init *> &output, void **target, init_proc_address_t l ): proc_address( target ), lambda( l )
+		{ output.push_back( this ); }
+	};
+
+	std::vector<__init *> _initializers;
 
 public:
-  GL3D_API_FUNC(void, GenBuffers, GLsizei, GLuint *)
-  GL3D_API_FUNC(void, DeleteBuffers, GLsizei, const GLuint *)
-  GL3D_API_FUNC(void, BindBuffer, GLenum, GLuint)
-  GL3D_API_FUNC(void, BufferData, GLenum, ptrdiff_t, const GLvoid *, GLenum)
-  GL3D_API_FUNC(void, GenVertexArrays, GLsizei, GLuint *)
-  GL3D_API_FUNC(void, BindVertexArray, GLuint)
-  GL3D_API_FUNC(void, EnableVertexAttribArray, GLuint)
-  GL3D_API_FUNC(void, VertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const GLvoid *)
-  GL3D_API_FUNC(void, BindAttribLocation, GLuint, GLuint, const char *)
-  GL3D_API_FUNC(void, DeleteVertexArrays, GLsizei, const GLuint *)
-  GL3D_API_FUNC(GLuint, CreateShader, GLenum)
-  GL3D_API_FUNC(void, DeleteShader, GLuint)
-  GL3D_API_FUNC(void, ShaderSource, GLuint, GLsizei, const char **, const GLint *)
-  GL3D_API_FUNC(void, CompileShader, GLuint)
-  GL3D_API_FUNC(void, GetShaderiv, GLuint, GLenum, GLint *)
-  GL3D_API_FUNC(GLuint, CreateProgram)
-  GL3D_API_FUNC(void, DeleteProgram, GLuint)
-  GL3D_API_FUNC(void, AttachShader, GLuint, GLuint)
-  GL3D_API_FUNC(void, DetachShader, GLuint, GLuint)
-  GL3D_API_FUNC(void, LinkProgram, GLuint)
-  GL3D_API_FUNC(void, UseProgram, GLuint)
-  GL3D_API_FUNC(void, GetProgramiv, GLuint, GLenum, GLint *)
-  GL3D_API_FUNC(GLint, GetUniformLocation, GLuint, const char *)
-  GL3D_API_FUNC(void, Uniform1i, GLint, GLint)
-  GL3D_API_FUNC(void, Uniform2fv, GLint, GLsizei, const GLfloat *)
-  GL3D_API_FUNC(void, UniformMatrix4fv, GLint, GLsizei, GLboolean, const GLfloat *)
-  GL3D_API_FUNC(void, ActiveTexture, GLenum)
-    
-  static const GLenum CLAMP_TO_EDGE = 0x812F;
-  static const GLenum TEXTURE0 = 0x84C0;
-  static const GLenum TEXTURE_CUBE_MAP = 0x8513;
-  static const GLenum ARRAY_BUFFER = 0x8892;
-  static const GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
-  static const GLenum STREAM_DRAW = 0x88E0;
-  static const GLenum STREAM_READ = 0x88E1;
-  static const GLenum STREAM_COPY = 0x88E2;
-  static const GLenum STATIC_DRAW = 0x88E4;
-  static const GLenum STATIC_READ = 0x88E5;
-  static const GLenum STATIC_COPY = 0x88E6;
-  static const GLenum DYNAMIC_DRAW = 0x88E8;
-  static const GLenum DYNAMIC_READ = 0x88E9;
-  static const GLenum DYNAMIC_COPY = 0x88EA;
-  static const GLenum PIXEL_PACK_BUFFER = 0x88EB;
-  static const GLenum PIXEL_UNPACK_BUFFER = 0x88EC;
-  static const GLenum FRAGMENT_SHADER = 0x8B30;
-  static const GLenum VERTEX_SHADER = 0x8B31;
-  static const GLenum COMPILE_STATUS = 0x8B81;
-  static const GLenum LINK_STATUS = 0x8B82;
-  static const GLenum TEXTURE_2D_ARRAY = 0x8C1A;
-  static const GLenum GEOMETRY_SHADER = 0x8DD9;
-  static const GLenum TEXTURE_CUBE_MAP_ARRAY = 0x9009;
-  static const GLenum COMPUTE_SHADER = 0x91B9;
+	GL3D_API_FUNC( void, GenBuffers, GLsizei, GLuint * )
+	GL3D_API_FUNC( void, DeleteBuffers, GLsizei, const GLuint * )
+	GL3D_API_FUNC( void, BindBuffer, GLenum, GLuint )
+	GL3D_API_FUNC( void, BufferData, GLenum, ptrdiff_t, const GLvoid *, GLenum )
+	GL3D_API_FUNC( void, GenVertexArrays, GLsizei, GLuint * )
+	GL3D_API_FUNC( void, BindVertexArray, GLuint )
+	GL3D_API_FUNC( void, EnableVertexAttribArray, GLuint )
+	GL3D_API_FUNC( void, VertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const GLvoid * )
+	GL3D_API_FUNC( void, BindAttribLocation, GLuint, GLuint, const char * )
+	GL3D_API_FUNC( void, DeleteVertexArrays, GLsizei, const GLuint * )
+	GL3D_API_FUNC( GLuint, CreateShader, GLenum )
+	GL3D_API_FUNC( void, DeleteShader, GLuint )
+	GL3D_API_FUNC( void, ShaderSource, GLuint, GLsizei, const char **, const GLint * )
+	GL3D_API_FUNC( void, CompileShader, GLuint )
+	GL3D_API_FUNC( void, GetShaderiv, GLuint, GLenum, GLint * )
+	GL3D_API_FUNC( GLuint, CreateProgram )
+	GL3D_API_FUNC( void, DeleteProgram, GLuint )
+	GL3D_API_FUNC( void, AttachShader, GLuint, GLuint )
+	GL3D_API_FUNC( void, DetachShader, GLuint, GLuint )
+	GL3D_API_FUNC( void, LinkProgram, GLuint )
+	GL3D_API_FUNC( void, UseProgram, GLuint )
+	GL3D_API_FUNC( void, GetProgramiv, GLuint, GLenum, GLint * )
+	GL3D_API_FUNC( GLint, GetUniformLocation, GLuint, const char * )
+	GL3D_API_FUNC( void, Uniform1i, GLint, GLint )
+	GL3D_API_FUNC( void, Uniform2fv, GLint, GLsizei, const GLfloat * )
+	GL3D_API_FUNC( void, UniformMatrix4fv, GLint, GLsizei, GLboolean, const GLfloat * )
+	GL3D_API_FUNC( void, ActiveTexture, GLenum )
 
-  bool init();
+	static const GLenum CLAMP_TO_EDGE = 0x812F;
+	static const GLenum TEXTURE0 = 0x84C0;
+	static const GLenum TEXTURE_CUBE_MAP = 0x8513;
+	static const GLenum ARRAY_BUFFER = 0x8892;
+	static const GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
+	static const GLenum STREAM_DRAW = 0x88E0;
+	static const GLenum STREAM_READ = 0x88E1;
+	static const GLenum STREAM_COPY = 0x88E2;
+	static const GLenum STATIC_DRAW = 0x88E4;
+	static const GLenum STATIC_READ = 0x88E5;
+	static const GLenum STATIC_COPY = 0x88E6;
+	static const GLenum DYNAMIC_DRAW = 0x88E8;
+	static const GLenum DYNAMIC_READ = 0x88E9;
+	static const GLenum DYNAMIC_COPY = 0x88EA;
+	static const GLenum PIXEL_PACK_BUFFER = 0x88EB;
+	static const GLenum PIXEL_UNPACK_BUFFER = 0x88EC;
+	static const GLenum FRAGMENT_SHADER = 0x8B30;
+	static const GLenum VERTEX_SHADER = 0x8B31;
+	static const GLenum COMPILE_STATUS = 0x8B81;
+	static const GLenum LINK_STATUS = 0x8B82;
+	static const GLenum TEXTURE_2D_ARRAY = 0x8C1A;
+	static const GLenum GEOMETRY_SHADER = 0x8DD9;
+	static const GLenum TEXTURE_CUBE_MAP_ARRAY = 0x9009;
+	static const GLenum COMPUTE_SHADER = 0x91B9;
+
+	bool init();
 };
 
 #undef GL3D_API_FUNC
@@ -131,54 +131,55 @@ extern detail::gl_api gl;
 
 #pragma endregion
 
-namespace detail
-{
+namespace detail {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma region Utilities
 
 //---------------------------------------------------------------------------------------------------------------------
-inline ivec2 calculate_mip_size(int width, int height, size_t mipLevel)
+inline ivec2 calculate_mip_size( int width, int height, size_t mipLevel )
 {
-  return ivec2(
-    maximum(1.0f, floor(width / pow(2.0f, static_cast<float>(mipLevel)))),
-    maximum(1.0f, floor(height / pow(2.0f, static_cast<float>(mipLevel)))));
+	return ivec2(
+	           maximum( 1.0f, floor( width / pow( 2.0f, static_cast<float>( mipLevel ) ) ) ),
+	           maximum( 1.0f, floor( height / pow( 2.0f, static_cast<float>( mipLevel ) ) ) ) );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T> struct init_vao_arg { };
 
 #define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
-  template <> struct init_vao_arg<_Type> { \
-    static void apply(GLuint index, size_t size, const void *offset) { \
-      gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, static_cast<GLsizei>(size), offset); } };
+	template <> struct init_vao_arg<_Type> { \
+		static void apply(GLuint index, size_t size, const void *offset) { \
+			gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, static_cast<GLsizei>(size), offset); } };
 
-GL3D_INIT_VAO_ARG(int, 1, GL_INT)
-GL3D_INIT_VAO_ARG(float, 1, GL_FLOAT)
-GL3D_INIT_VAO_ARG(vec2, 2, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec2, 2, GL_INT)
-GL3D_INIT_VAO_ARG(vec3, 3, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec3, 3, GL_INT)
-GL3D_INIT_VAO_ARG(vec4, 4, GL_FLOAT)
-GL3D_INIT_VAO_ARG(ivec4, 4, GL_INT)
+GL3D_INIT_VAO_ARG( int, 1, GL_INT )
+GL3D_INIT_VAO_ARG( float, 1, GL_FLOAT )
+GL3D_INIT_VAO_ARG( vec2, 2, GL_FLOAT )
+GL3D_INIT_VAO_ARG( ivec2, 2, GL_INT )
+GL3D_INIT_VAO_ARG( vec3, 3, GL_FLOAT )
+GL3D_INIT_VAO_ARG( ivec3, 3, GL_INT )
+GL3D_INIT_VAO_ARG( vec4, 4, GL_FLOAT )
+GL3D_INIT_VAO_ARG( ivec4, 4, GL_INT )
 
 #undef GL3D_INIT_VAO_ARG
 
 //---------------------------------------------------------------------------------------------------------------------
 struct gl_format_descriptor
 {
-  size_t pixel_size;
-  GLenum layout;
-  GLenum element_format;
+	size_t pixel_size;
+	GLenum layout;
+	GLenum element_format;
 
-  static gl_format_descriptor get(GLenum format)
-  {
-    switch (format)
-    {
-      case GL_RGBA: return { 4, GL_RGBA, GL_UNSIGNED_BYTE };
-      default: return { 0, GL_NONE, GL_NONE };
-    }
-  }
+	static gl_format_descriptor get( GLenum format )
+	{
+		switch ( format )
+		{
+			case GL_RGBA:
+				return { 4, GL_RGBA, GL_UNSIGNED_BYTE };
+			default:
+				return { 0, GL_NONE, GL_NONE };
+		}
+	}
 };
 
 #pragma endregion
@@ -188,8 +189,8 @@ struct gl_format_descriptor
 
 struct gl_resource
 {
-  GLuint id = 0;
-  operator GLuint() const { return id; }
+	GLuint id = 0;
+	operator GLuint() const { return id; }
 
 protected:
 	gl_resource() = default;
@@ -201,14 +202,14 @@ struct gl_resource_texture : gl_resource { void destroy(); };
 
 struct gl_resource_shader : gl_resource
 {
-  void destroy();
-  bool compile(GLenum shaderType, std::string_view source);
+	void destroy();
+	bool compile( GLenum shaderType, std::string_view source );
 };
 
 struct gl_resource_program : gl_resource
 {
-  void destroy();
-  bool link(const std::initializer_list<gl_resource_shader> &shaders);
+	void destroy();
+	bool link( const std::initializer_list<gl_resource_shader> &shaders );
 };
 
 #pragma endregion
@@ -220,11 +221,11 @@ struct gl_resource_program : gl_resource
 class compiled_object
 {
 public:
-  void set_dirty(bool set = true) { _dirty = set; }
-  bool dirty() const { return _dirty; }
+	void set_dirty( bool set = true ) { _dirty = set; }
+	bool dirty() const { return _dirty; }
 
 protected:
-  bool _dirty = true;
+	bool _dirty = true;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -233,50 +234,50 @@ class compiled_program : public compiled_object
 public:
 	using ptr = std::shared_ptr<compiled_program>;
 
-  GLuint id() const { return _program.id; }
+	GLuint id() const { return _program.id; }
 
-  const std::string &last_error() const { return _lastError; }
+	const std::string &last_error() const { return _lastError; }
 
-  void set_glsl_version(std::string_view verString) { _glslVersion = verString; set_dirty(); }
-  const std::string &glsl_version() const { return _glslVersion; }
+	void set_glsl_version( std::string_view verString ) { _glslVersion = verString; set_dirty(); }
+	const std::string &glsl_version() const { return _glslVersion; }
 
-  void define(std::string_view name, std::string_view value)
-  {
-    _macros[std::string(name)] = value;
-    set_dirty();
-  }
+	void define( std::string_view name, std::string_view value )
+	{
+		_macros[std::string( name )] = value;
+		set_dirty();
+	}
 
-  bool undef(std::string_view name)
-  {
-    auto iter = _macros.find(std::string(name));
-    if (iter == _macros.end()) return false;
-    _macros.erase(iter);
-    set_dirty();
-    return true;
-  }
+	bool undef( std::string_view name )
+	{
+		auto iter = _macros.find( std::string( name ) );
+		if ( iter == _macros.end() ) return false;
+		_macros.erase( iter );
+		set_dirty();
+		return true;
+	}
 
-  void undef_all() { if (!_macros.empty()) { _macros.clear(); set_dirty(); } }
+	void undef_all() { if ( !_macros.empty() ) { _macros.clear(); set_dirty(); } }
 
-  std::string get_macro_string() const
-  {
-    std::string macroString = "#version " + _glslVersion + "\n";
-    for (auto &&kvp : _macros) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
-    return macroString;
-  }
+	std::string get_macro_string() const
+	{
+		std::string macroString = "#version " + _glslVersion + "\n";
+		for ( auto && kvp : _macros ) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
+		return macroString;
+	}
 
-  virtual bool bind() = 0;
-  virtual void unbind() { gl.UseProgram(0); }
-  
+	virtual bool bind() = 0;
+	virtual void unbind() { gl.UseProgram( 0 ); }
+
 protected:
-  virtual ~compiled_program()
-  {
-    _program.destroy();
-  }
+	virtual ~compiled_program()
+	{
+		_program.destroy();
+	}
 
-  std::map<std::string, std::string> _macros;
-  detail::gl_resource_program _program;
-  std::string _glslVersion = "330";
-  std::string _lastError;
+	std::map<std::string, std::string> _macros;
+	detail::gl_resource_program _program;
+	std::string _glslVersion = "330";
+	std::string _lastError;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -293,56 +294,56 @@ public:
 		_buffer.destroy();
 	}
 
-  GLuint id() const { return _buffer.id; }
+	GLuint id() const { return _buffer.id; }
 
-  void clear()
-  {
-    if (_owner && _data) { delete [] _data; _data = nullptr; }
+	void clear()
+	{
+		if ( _owner && _data ) { delete [] _data; _data = nullptr; }
 
-    _keepData = false;
-    _owner = false;
-    _data = nullptr;
-    _size = 0;
-    set_dirty();
-  }
+		_keepData = false;
+		_owner = false;
+		_data = nullptr;
+		_size = 0;
+		set_dirty();
+	}
 
-  void *alloc_data(const void *data, size_t size, bool keep = false)
-  {
-    if (_owner && _size != size)
-      clear();
+	void *alloc_data( const void *data, size_t size, bool keep = false )
+	{
+		if ( _owner && _size != size )
+			clear();
 
-    if (size)
-    {
-      _size = size;
-      if (!_data) _data = new uint8_t[_size];
-      if (data) memcpy(_data, data, _size);
-    }
+		if ( size )
+		{
+			_size = size;
+			if ( !_data ) _data = new uint8_t[_size];
+			if ( data ) memcpy( _data, data, _size );
+		}
 
-    _owner = true;
-    _keepData = keep;
-    return _data;
-  }
+		_owner = true;
+		_keepData = keep;
+		return _data;
+	}
 
-  void set_data(const void *data, size_t size)
-  {
-    clear();
-    _data = const_cast<uint8_t *>(static_cast<const uint8_t *>(data));
-    _size = size;
-  }
+	void set_data( const void *data, size_t size )
+	{
+		clear();
+		_data = const_cast<uint8_t *>( static_cast<const uint8_t *>( data ) );
+		_size = size;
+	}
 
-  const uint8_t *data() const { return _data; }
+	const uint8_t *data() const { return _data; }
 
-  size_t size() const { return _size; }
+	size_t size() const { return _size; }
 
-  bool bind(GLenum type);
-  void unbind(GLenum type);
+	bool bind( GLenum type );
+	void unbind( GLenum type );
 
 protected:
-  bool _keepData = false;
-  bool _owner = false;
-  uint8_t *_data = nullptr;
-  size_t _size = 0;
-  gl_resource_buffer _buffer;
+	bool _keepData = false;
+	bool _owner = false;
+	uint8_t *_data = nullptr;
+	size_t _size = 0;
+	gl_resource_buffer _buffer;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -351,26 +352,26 @@ class base_geometry : public compiled_object
 public:
 	using ptr = std::shared_ptr<base_geometry>;
 
-  GLuint id() const { return _vao.id; }
+	GLuint id() const { return _vao.id; }
 
-  void set_vertex_buffer(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
-  buffer::ptr vertex_buffer() const { return _vertexBuffer; }
-  void set_index_buffer(buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
-  buffer::ptr index_buffer() const { return _indexBuffer; }
+	void set_vertex_buffer( buffer::ptr vb ) { _vertexBuffer = vb; set_dirty(); }
+	buffer::ptr vertex_buffer() const { return _vertexBuffer; }
+	void set_index_buffer( buffer::ptr ib ) { _indexBuffer = ib; set_dirty(); }
+	buffer::ptr index_buffer() const { return _indexBuffer; }
 
-  virtual size_t size_vertices() const = 0;
-  virtual size_t size_indices() const = 0;
+	virtual size_t size_vertices() const = 0;
+	virtual size_t size_indices() const = 0;
 
-  virtual bool bind();
-  virtual void unbind();
-  
+	virtual bool bind();
+	virtual void unbind();
+
 protected:
-  virtual ~base_geometry()
-  {
-    _vao.destroy();
-  }
+	virtual ~base_geometry()
+	{
+		_vao.destroy();
+	}
 
-  detail::gl_resource_vao _vao;
+	detail::gl_resource_vao _vao;
 	std::shared_ptr<buffer> _vertexBuffer = std::make_shared<buffer>();
 	std::shared_ptr<buffer> _indexBuffer;
 };
@@ -526,7 +527,7 @@ public:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-typedef custom_geometry<vertex3d> geometry;
+using geometry = custom_geometry<vertex3d>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1022,8 +1023,8 @@ void context3d::clear()
   if (_program) _program->unbind();
   _program = nullptr;
 
-  for (size_t i = 0; i < 16; ++i)
-    _textures[i] = nullptr;
+  for (auto &texture : _textures)
+    texture = nullptr;
 
   bind_program(_basicTechnique);
   glEnable(GL_DEPTH_TEST);
