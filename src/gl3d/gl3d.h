@@ -27,6 +27,19 @@
 #define GL3D_UNIFORM_PROJECTION_MATRIX "u_ProjectionMatrix"
 #define GL3D_UNIFORM_MODELVIEW_MATRIX "u_ModelviewMatrix"
 
+#define GL3D_LAYOUT_LOCATION_POS 0
+#define GL3D_LAYOUT_LOCATION_NORMAL 1
+#define GL3D_LAYOUT_LOCATION_TANGENT 2
+#define GL3D_LAYOUT_LOCATION_COLOR 3
+#define GL3D_LAYOUT_LOCATION_UV0 4
+#define GL3D_LAYOUT_LOCATION_UV1 5
+#define GL3D_LAYOUT_LOCATION_UV2 6
+#define GL3D_LAYOUT_LOCATION_UV3 7
+
+#define __GL3D_TOSTRING2(arg) #arg
+#define __GL3D_TOSTRING(arg) __GL3D_TOSTRING2(arg)
+#define GL3D_TOSTRING(arg) __GL3D_TOSTRING(arg)
+
 #define GL3D_OFFSET_OF(_Class, _Member) \
 	reinterpret_cast<size_t>( &( ( reinterpret_cast<const _Class *>( nullptr ) )->_Member ) )
 
@@ -149,8 +162,9 @@ template <typename T> struct init_vao_arg { };
 
 #define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
 	template <> struct init_vao_arg<_Type> { \
-		static void apply(GLuint index, size_t size, const void *offset) { \
-			gl.VertexAttribPointer(index, _NumElements, _ElementType, GL_FALSE, static_cast<GLsizei>(size), offset); } };
+		static void apply(GLuint location, size_t size, const void *offset) { \
+			gl.EnableVertexAttribArray(location); \
+			gl.VertexAttribPointer(location, _NumElements, _ElementType, GL_FALSE, static_cast<GLsizei>(size), offset); } };
 
 GL3D_INIT_VAO_ARG( int, 1, GL_INT )
 GL3D_INIT_VAO_ARG( float, 1, GL_FLOAT )
@@ -261,6 +275,22 @@ public:
 	std::string get_macro_string() const
 	{
 		std::string macroString = "#version " + _glslVersion + "\n";
+
+#define GL3D_LAYOUT_MACRO(_Suffix, _Location, _NameSuffix) macroString += \
+        "#define GL3D_VERTEX_" _Suffix "(_Type) layout(location = " GL3D_TOSTRING(_Location) \
+        ") in _Type vertex_" _NameSuffix "\n";
+
+		GL3D_LAYOUT_MACRO( "POS", GL3D_LAYOUT_LOCATION_POS, "pos" )
+		GL3D_LAYOUT_MACRO( "NORMAL", GL3D_LAYOUT_LOCATION_NORMAL, "normal" )
+		GL3D_LAYOUT_MACRO( "TANGENT", GL3D_LAYOUT_LOCATION_TANGENT, "tangent" )
+		GL3D_LAYOUT_MACRO( "COLOR", GL3D_LAYOUT_LOCATION_COLOR, "color" )
+		GL3D_LAYOUT_MACRO( "UV0", GL3D_LAYOUT_LOCATION_UV0, "uv0" )
+		GL3D_LAYOUT_MACRO( "UV1", GL3D_LAYOUT_LOCATION_UV1, "uv1" )
+		GL3D_LAYOUT_MACRO( "UV2", GL3D_LAYOUT_LOCATION_UV2, "uv2" )
+		GL3D_LAYOUT_MACRO( "UV3", GL3D_LAYOUT_LOCATION_UV3, "uv3" )
+
+#undef GL3D_LAYOUT_MACRO
+
 		for ( auto && kvp : _macros ) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
 		return macroString;
 	}
@@ -383,10 +413,10 @@ protected:
 
 //------------------------------------------------------------------------------------------------------------------------
 static const char *vertex_shader_code3d = R"GLSHADER(
-layout(location = 0) in vec3 vert_Position;
-layout(location = 1) in vec3 vert_Normal;
-layout(location = 2) in vec4 vert_Color;
-layout(location = 3) in vec2 vert_UV;
+GL3D_VERTEX_POS(vec3);
+GL3D_VERTEX_NORMAL(vec3);
+GL3D_VERTEX_COLOR(vec4);
+GL3D_VERTEX_UV0(vec2);
 
 uniform mat4 u_ProjectionMatrix;
 uniform mat4 u_ModelviewMatrix;
@@ -397,10 +427,10 @@ out vec2 UV;
 
 void main()
 {
-  gl_Position = u_ProjectionMatrix * u_ModelviewMatrix * vec4(vert_Position, 1);
-  Normal = vert_Normal;
-  Color = vert_Color;
-  UV = vert_UV;
+  gl_Position = u_ProjectionMatrix * u_ModelviewMatrix * vec4(vertex_pos, 1);
+  Normal = vertex_normal;
+  Color = vertex_color;
+  UV = vertex_uv0;
 }
 )GLSHADER";
 
@@ -424,44 +454,66 @@ void main()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename... T> class layout
+#define GL3D_VERTEX_STRUCT(_Name, _Location) \
+	template <typename T> struct vertex_ ## _Name { \
+	static constexpr size_t layout_location = _Location; \
+	using type = T; \
+	T _Name; };
+
+GL3D_VERTEX_STRUCT(pos, GL3D_LAYOUT_LOCATION_POS)
+GL3D_VERTEX_STRUCT(normal, GL3D_LAYOUT_LOCATION_NORMAL)
+GL3D_VERTEX_STRUCT(tangent, GL3D_LAYOUT_LOCATION_TANGENT)
+GL3D_VERTEX_STRUCT(color, GL3D_LAYOUT_LOCATION_COLOR)
+GL3D_VERTEX_STRUCT(uv0, GL3D_LAYOUT_LOCATION_UV0)
+GL3D_VERTEX_STRUCT(uv1, GL3D_LAYOUT_LOCATION_UV1)
+GL3D_VERTEX_STRUCT(uv2, GL3D_LAYOUT_LOCATION_UV2)
+GL3D_VERTEX_STRUCT(uv3, GL3D_LAYOUT_LOCATION_UV3)
+
+#undef GL3D_VERTEX_STRUCT
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+template <typename H, typename... T> struct layout_expander : H, layout_expander<T...> { };
+template <typename H> struct layout_expander<H> : H { };
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename... T> class layout : public detail::layout_expander<T...>
 {
-  template <typename Head, typename... Tail> struct helper
-  {
-    Head head;
-    helper<Tail...> tail;
+	template <typename Head, typename... Tail> struct helper
+	{
+		Head head;
+		helper<Tail...> tail;
 
-    void init_vao(GLuint index, size_t size, size_t offset)
-    {
-      gl.EnableVertexAttribArray(index);
-      detail::init_vao_arg<Head>::apply(index, size, reinterpret_cast<const void *>(offset));
-      tail.init_vao(index + 1, size, offset + GL3D_OFFSET_OF(std::remove_pointer_t<decltype(this)>, tail));
-    }
-  };
+		void init_vao(size_t size, size_t offset)
+		{
+			detail::init_vao_arg<Head::type>::apply(Head::layout_location, size, reinterpret_cast<const void *>(offset));
+			tail.init_vao(size, offset + GL3D_OFFSET_OF(std::remove_pointer_t<decltype(this)>, tail));
+		}
+	};
 
-  template <typename Head> struct helper<Head>
-  {
-    Head head;
+	template <typename Head> struct helper<Head>
+	{
+		Head head;
 
-    void init_vao(GLuint index, size_t size, size_t offset)
-    {
-      gl.EnableVertexAttribArray(index);
-      detail::init_vao_arg<Head>::apply(index, size, reinterpret_cast<const void *>(offset));
-    }
-  };
+		void init_vao(size_t size, size_t offset)
+		{
+			detail::init_vao_arg<Head::type>::apply(Head::layout_location, size, reinterpret_cast<const void *>(offset));
+		}
+	};
 
 public:
-  static void init_vao() { helper<T...> h; h.init_vao(0, sizeof(h), 0); }
+	static void init_vao() { helper<T...> h; h.init_vao(sizeof(h), 0); }
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex3d : layout<vec3, vec3, vec4, vec2>
+struct vertex3d : layout<vertex_pos<vec3>, vertex_normal<vec3>, vertex_color<vec4>, vertex_uv0<vec2>>
 {
-  vec3 pos;
-  vec3 normal;
-  vec4 color = vec4::one();
-  vec2 uv;
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

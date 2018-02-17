@@ -10,9 +10,9 @@ namespace detail {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static const char *vertex_shader_code2d = R"GLSHADER(
-layout(location = 0) in vec2 vert_Position;
-layout(location = 1) in vec4 vert_Color;
-layout(location = 2) in vec2 vert_UV;
+GL3D_VERTEX_POS(vec2);
+GL3D_VERTEX_COLOR(vec4);
+GL3D_VERTEX_UV0(vec2);
 
 uniform vec2 u_ScreenSize;
 
@@ -21,13 +21,13 @@ out vec2 UV;
 
 void main()
 {
-	vec2 clipPos = ((vert_Position + vec2(0.375)) / u_ScreenSize);
+	vec2 clipPos = ((vertex_pos + vec2(0.375)) / u_ScreenSize);
 	clipPos.y = 1.0 - clipPos.y;
 	clipPos = clipPos * 2.0 - 1.0;
 
 	gl_Position = vec4(clipPos, 0, 1);
-	Color = vert_Color;
-	UV = vert_UV;
+	Color = vertex_color;
+	UV = vertex_uv0;
 }
 )GLSHADER";
 
@@ -216,12 +216,9 @@ struct font
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vertex2d : layout<vec2, vec4, vec2, ivec4>
+struct vertex2d : layout<vertex_pos<vec2>, vertex_color<vec4>, vertex_uv0<vec2>, vertex_uv1<ivec4>>
 {
-	vec2 pos;
-	vec4 color;
-	vec2 uv;
-	ivec4 scissors;
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,11 +306,11 @@ public:
 		auto *v = _geometry->alloc_vertices(2);
 		v->pos = a;
 		v->color = _state.color;
-		v->uv = vec2(1, 1);
+		v->uv0 = vec2(1, 1);
 		++v;
 		v->pos = b;
 		v->color = _state.color;
-		v->uv = vec2(1, 1);
+		v->uv0 = vec2(1, 1);
 	}
 
 	void line(float x1, float y1, float x2, float y2) { line(vec2(x1, y1), vec2(x2, y2)); }
@@ -332,15 +329,15 @@ public:
 			auto *v = _geometry->alloc_vertices(6);
 			v->pos = a;
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 			++v;
 			v->pos = vec2(b.x, a.y);
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 			++v;
 			v->pos = vec2(a.x, b.y);
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 			
 			v[1] = *v;
 			v[2] = v[-1];
@@ -348,7 +345,7 @@ public:
 
 			v->pos = vec2(b.x, b.y);
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 		}
 		else
 		{
@@ -376,15 +373,15 @@ public:
 			auto *v = _geometry->alloc_vertices(3);
 			v->pos = a;
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 			++v;
 			v->pos = b;
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 			++v;
 			v->pos = c;
 			v->color = _state.color;
-			v->uv = vec2(1, 1);
+			v->uv0 = vec2(1, 1);
 		}
 		else
 		{
@@ -665,21 +662,21 @@ void context2d::print_substring(float &x, float &y, const vec4 &color, const cha
 
 			v->pos = vec2(ox, oy);
 			v->color = color;
-			v->uv = chi.uv[0];
+			v->uv0 = chi.uv[0];
 			++v; // 1
 			v->pos = vec2(ox + chi.size.x, oy);
 			v->color = color;
-			v->uv = chi.uv[1];
+			v->uv0 = chi.uv[1];
 			++v; // 2
 			v->pos = vec2(ox + chi.size.x, oy + chi.size.y);
 			v->color = color;
-			v->uv = chi.uv[2];
+			v->uv0 = chi.uv[2];
 			++v; // 3
 			v[0] = v[-1];
 			++v; // 4
 			v->pos = vec2(ox, oy + chi.size.y);
 			v->color = color;
-			v->uv = chi.uv[3];
+			v->uv0 = chi.uv[3];
 			++v; // 5
 			v[0] = v[-5];
 			++v;
