@@ -10,14 +10,14 @@ class context2d;
 class context3d;
 
 //---------------------------------------------------------------------------------------------------------------------
-typedef int window_id_t;
-const window_id_t invalid_window_id = static_cast<window_id_t>(-1);
-const window_id_t main_window_id = 0;
+using window_id_t = int;
+static constexpr window_id_t invalid_window_id = static_cast<window_id_t>( -1 );
+static constexpr window_id_t main_window_id = 0;
 
 //---------------------------------------------------------------------------------------------------------------------
 struct window_flag
 {
-	enum 
+	enum
 	{
 		none = 0,
 		resizable = 1,
@@ -83,6 +83,15 @@ enum class gamepad_axis
 };
 
 //---------------------------------------------------------------------------------------------------------------------
+enum class space_navigator_button
+{
+	unknown = 0,
+	left, right,
+
+	last
+};
+
+//---------------------------------------------------------------------------------------------------------------------
 enum class event_type
 {
 	unknown = 0,
@@ -110,56 +119,74 @@ struct event
 		struct { int port; float x, y, dx, dy; gamepad_button button; gamepad_axis axis; } gamepad;
 	};
 
-	event(event_type et, window_id_t id)
-		: type(et)
-		, window_id(id)
+	event( event_type et, window_id_t id )
+		: type( et )
+		, window_id( id )
 	{
-		
+
 	}
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-namespace detail { struct keyboard_state
+namespace detail {
+struct keyboard_state
 {
-	bool key_down[static_cast<size_t>(key::last)];
-	bool operator[](key k) const { return key_down[static_cast<size_t>(k)]; }
+	bool key_down[static_cast<size_t>( key::last )];
+	bool operator[]( key k ) const { return key_down[static_cast<size_t>( k )]; }
 
-	void change_key_state(key k, bool down, window_id_t id = invalid_window_id);
-}; }
+	void change_key_state( key k, bool down, window_id_t id = invalid_window_id );
+};
+}
 
 extern detail::keyboard_state keyboard;
 
 //---------------------------------------------------------------------------------------------------------------------
-namespace detail { struct mouse_state
+namespace detail {
+struct mouse_state
 {
-	bool button_down[static_cast<size_t>(mouse_button::last)];
-	bool operator[](mouse_button b) const { return button_down[static_cast<size_t>(b)]; }
+	bool button_down[static_cast<size_t>( mouse_button::last )];
+	bool operator[]( mouse_button b ) const { return button_down[static_cast<size_t>( b )]; }
 	int x, y;
 
-	void change_button_state(mouse_button b, bool down, window_id_t id = invalid_window_id);
-	void change_position(int mx, int my, window_id_t id = invalid_window_id);
-}; }
+	void change_button_state( mouse_button b, bool down, window_id_t id = invalid_window_id );
+	void change_position( int mx, int my, window_id_t id = invalid_window_id );
+};
+}
 
 extern detail::mouse_state mouse;
 
 //---------------------------------------------------------------------------------------------------------------------
-namespace detail { struct gamepad_state
+namespace detail {
+struct gamepad_state
 {
 	int port = -1;
-	bool button_down[static_cast<size_t>(gamepad_button::last)];
-	float axis_x[static_cast<size_t>(gamepad_axis::last)];
-	float axis_y[static_cast<size_t>(gamepad_axis::last)];
-	bool operator[](gamepad_button b) const { return button_down[static_cast<size_t>(b)]; }
+	bool button_down[static_cast<size_t>( gamepad_button::last )];
+	float axis_x[static_cast<size_t>( gamepad_axis::last )];
+	float axis_y[static_cast<size_t>( gamepad_axis::last )];
+	bool operator[]( gamepad_button b ) const { return button_down[static_cast<size_t>( b )]; }
 	bool connected() const { return port >= 0 && port < GL3D_MAX_GAMEPADS; }
 
-	void change_button_state(gamepad_button b, bool down);
-	void change_axis_state(gamepad_axis ax, float x, float y);
+	void change_button_state( gamepad_button b, bool down );
+	void change_axis_state( gamepad_axis ax, float x, float y );
 
 	static int allocate_port();
-	static void release_port(int port);
-}; }
+	static void release_port( int port );
+};
+}
 
 extern detail::gamepad_state gamepad[GL3D_MAX_GAMEPADS];
+
+//---------------------------------------------------------------------------------------------------------------------
+namespace detail {
+struct space_navigator_state
+{
+	float pos_x, pos_y, pos_z;
+	float rot_x, rot_y, rot_z;
+	bool button_down[static_cast<size_t>( space_navigator_button::last )];
+};
+}
+
+extern detail::space_navigator_state space_navigator;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -174,34 +201,35 @@ template <typename F> struct callback_list
 	{
 		int priority = 0;
 		function_t callback;
-		bool operator<(const callback_info &rhs) const { return priority < rhs.priority; }
-		bool operator==(const function_t &f) const { return callback == f; }
+		bool operator<( const callback_info &rhs ) const { return priority < rhs.priority; }
+		bool operator==( const function_t &f ) const { return callback == f; }
 	};
 
 	std::set<callback_info> callbacks;
 
-	callback_list &operator()(function_t &&f, int priority = 0)
+	callback_list &operator()( function_t &&f, int priority = 0 )
 	{
-		callbacks.insert(callbacks.end(), { priority, f });
+		callbacks.insert( callbacks.end(), { priority, f } );
 		return *this;
 	}
-	
-	template <typename... Args> void call(Args&&... args) const
+
+	template <typename... Args> void call( Args &&... args ) const
 	{
-		for (auto &&ci : callbacks)
-			ci.callback(args...);
+		for ( auto && ci : callbacks )
+			ci.callback( args... );
 	}
 };
 
 }
 
 extern detail::callback_list<void()> on_tick;
-extern detail::callback_list<void(event &)> on_event;
+extern detail::callback_list<void( event & )> on_event;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-namespace detail { struct gl3d_state
+namespace detail {
+struct gl3d_state
 {
 	window_id_t focused_window_id = invalid_window_id;
 	window_id_t current_window_id = invalid_window_id;
@@ -209,7 +237,8 @@ namespace detail { struct gl3d_state
 	context3d *ctx3d = nullptr;
 	float time = 0.0f;
 	float delta = 0.0f;
-}; }
+};
+}
 
 extern detail::gl3d_state state;
 
@@ -224,53 +253,54 @@ extern detail::gl3d_state state;
 #define __GL3D_EVENTS_H_IMPL__
 
 namespace gl3d {
-	
+
 static detail::keyboard_state keyboard;
 static detail::mouse_state mouse;
 static detail::gamepad_state gamepad[GL3D_MAX_GAMEPADS];
+static detail::space_navigator_state space_navigator;
 static detail::gl3d_state state;
 
-static decltype(on_tick) on_tick;
-static decltype(on_event) on_event;
+static decltype( on_tick ) on_tick;
+static decltype( on_event ) on_event;
 
 namespace detail {
-	
+
 //---------------------------------------------------------------------------------------------------------------------
-void keyboard_state::change_key_state(key k, bool down, window_id_t id)
+void keyboard_state::change_key_state( key k, bool down, window_id_t id )
 {
-	bool old = (*this)[k];
-	if (old != down)
+	bool old = ( *this )[k];
+	if ( old != down )
 	{
-		key_down[static_cast<size_t>(k)] = down;
-		event e(down ? event_type::key_down : event_type::key_up, id);
+		key_down[static_cast<size_t>( k )] = down;
+		event e( down ? event_type::key_down : event_type::key_up, id );
 		e.keyboard.key = k;
 		e.keyboard.key_char = 0;
-		on_event.call(e);
+		on_event.call( e );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void mouse_state::change_button_state(mouse_button b, bool down, window_id_t id)
+void mouse_state::change_button_state( mouse_button b, bool down, window_id_t id )
 {
-	bool old = (*this)[b];
-	if (old != down)
+	bool old = ( *this )[b];
+	if ( old != down )
 	{
-		button_down[static_cast<size_t>(b)] = down;
-		event e(down ? event_type::mouse_down : event_type::mouse_up, id);
+		button_down[static_cast<size_t>( b )] = down;
+		event e( down ? event_type::mouse_down : event_type::mouse_up, id );
 		e.mouse.button = b;
 		e.mouse.x = this->x;
 		e.mouse.y = this->y;
 		e.mouse.dx = e.mouse.dy = 0;
-		on_event.call(e);
+		on_event.call( e );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void mouse_state::change_position(int mx, int my, window_id_t id)
+void mouse_state::change_position( int mx, int my, window_id_t id )
 {
-	if (x != mx || y != my)
+	if ( x != mx || y != my )
 	{
-		event e(event_type::mouse_move, id);
+		event e( event_type::mouse_move, id );
 		e.mouse.button = mouse_button::unknown;
 		e.mouse.x = mx;
 		e.mouse.y = my;
@@ -278,58 +308,58 @@ void mouse_state::change_position(int mx, int my, window_id_t id)
 		e.mouse.dy = my - this->y;
 		this->x = mx;
 		this->y = my;
-		on_event.call(e);
+		on_event.call( e );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void gamepad_state::change_button_state(gamepad_button b, bool down)
+void gamepad_state::change_button_state( gamepad_button b, bool down )
 {
-	bool old = (*this)[b];
-	if (old != down)
+	bool old = ( *this )[b];
+	if ( old != down )
 	{
-		button_down[static_cast<size_t>(b)] = down;
-		event e(down ? event_type::gamepad_down : event_type::gamepad_up, invalid_window_id);
+		button_down[static_cast<size_t>( b )] = down;
+		event e( down ? event_type::gamepad_down : event_type::gamepad_up, invalid_window_id );
 		e.gamepad.port = port;
 		e.gamepad.button = b;
-		on_event.call(e);
+		on_event.call( e );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void gamepad_state::change_axis_state(gamepad_axis ax, float x, float y)
+void gamepad_state::change_axis_state( gamepad_axis ax, float x, float y )
 {
-	float oldX = axis_x[static_cast<size_t>(ax)];
-	float oldY = axis_y[static_cast<size_t>(ax)];
-	if (oldX != x || oldY != y)
+	float oldX = axis_x[static_cast<size_t>( ax )];
+	float oldY = axis_y[static_cast<size_t>( ax )];
+	if ( oldX != x || oldY != y )
 	{
-		axis_x[static_cast<size_t>(ax)] = x;
-		axis_y[static_cast<size_t>(ax)] = y;
-		event e(event_type::gamepad_move, invalid_window_id);
+		axis_x[static_cast<size_t>( ax )] = x;
+		axis_y[static_cast<size_t>( ax )] = y;
+		event e( event_type::gamepad_move, invalid_window_id );
 		e.gamepad.port = port;
 		e.gamepad.axis = ax;
 		e.gamepad.x = x;
 		e.gamepad.y = y;
 		e.gamepad.dx = x - oldX;
 		e.gamepad.dy = y - oldY;
-		on_event.call(e);
+		on_event.call( e );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 int gamepad_state::allocate_port()
 {
-	for (int i = 0; i < GL3D_MAX_GAMEPADS; ++i)
-		if (gamepad[i].port < 0)
+	for ( int i = 0; i < GL3D_MAX_GAMEPADS; ++i )
+		if ( gamepad[i].port < 0 )
 			return gamepad[i].port = i;
 
-	return -1;  
+	return -1;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void gamepad_state::release_port(int port)
+void gamepad_state::release_port( int port )
 {
-	if (port >= 0 && port < GL3D_MAX_GAMEPADS && gamepad[port].port == port)
+	if ( port >= 0 && port < GL3D_MAX_GAMEPADS && gamepad[port].port == port )
 		gamepad[port].port = -1;
 }
 
