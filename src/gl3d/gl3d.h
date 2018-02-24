@@ -1039,6 +1039,8 @@ bool program::bind()
 		set_dirty(false);
 
 	}
+
+	gl.UseProgram(_program.id);
 	return _program.id != 0;
 }
 
