@@ -32,9 +32,9 @@ Projects =
     type = "console",
   },
 
-  -- test_scene
+  -- test_immediate
   {
-    dir = "src/test_scene",
+    dir = "src/test_immediate",
     type = "console",
   },
 
