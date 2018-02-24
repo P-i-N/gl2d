@@ -557,7 +557,12 @@ class index_buffer : public buffer
 public:
 	using ptr = std::shared_ptr<index_buffer>;
 
+	index_buffer()
+	{
 
+	}
+
+	virtual ~index_buffer() = default;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -568,10 +573,10 @@ public:
 
 	GLuint id() const { return _vao.id; }
 
-	void set_vertex_buffer(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
-	buffer::ptr vertex_buffer() const { return _vertexBuffer; }
-	void set_index_buffer(buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
-	buffer::ptr index_buffer() const { return _indexBuffer; }
+	void set_vertices(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
+	buffer::ptr vertices() const { return _vertexBuffer; }
+	void set_indices(index_buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
+	index_buffer::ptr indices() const { return _indexBuffer; }
 
 	virtual size_t size_vertices() const = 0;
 	virtual size_t size_indices() const = 0;
@@ -587,7 +592,7 @@ protected:
 
 	detail::gl_resource_vao _vao;
 	std::shared_ptr<buffer> _vertexBuffer;
-	std::shared_ptr<buffer> _indexBuffer;
+	std::shared_ptr<index_buffer> _indexBuffer;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -599,7 +604,7 @@ public:
 	custom_geometry()
 		: geometry()
 	{
-		set_vertex_buffer(std::make_shared<buffer>(T::layout_desc()));
+		set_vertices(std::make_shared<buffer>(T::layout_desc()));
 	}
 
 	virtual ~custom_geometry() = default;
