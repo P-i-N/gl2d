@@ -2,7 +2,9 @@
 #define __GL3D_H__
 
 #include <atomic>
+#include <bitset>
 #include <cassert>
+#include <functional>
 #include <vector>
 #include <map>
 #include <memory>
@@ -105,31 +107,38 @@ public:
 	GL3D_API_FUNC( void, Uniform2fv, GLint, GLsizei, const GLfloat * )
 	GL3D_API_FUNC( void, UniformMatrix4fv, GLint, GLsizei, GLboolean, const GLfloat * )
 	GL3D_API_FUNC( void, ActiveTexture, GLenum )
+	GL3D_API_FUNC( void, Enablei, GLenum, GLuint )
+	GL3D_API_FUNC( void, Disablei, GLenum, GLuint )
+	GL3D_API_FUNC( void, BlendFunci, GLuint, GLenum, GLenum )
+	GL3D_API_FUNC( void, BlendEquationi, GLuint, GLenum )
 
-	static const GLenum CLAMP_TO_EDGE = 0x812F;
-	static const GLenum TEXTURE0 = 0x84C0;
-	static const GLenum TEXTURE_CUBE_MAP = 0x8513;
-	static const GLenum ARRAY_BUFFER = 0x8892;
-	static const GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
-	static const GLenum STREAM_DRAW = 0x88E0;
-	static const GLenum STREAM_READ = 0x88E1;
-	static const GLenum STREAM_COPY = 0x88E2;
-	static const GLenum STATIC_DRAW = 0x88E4;
-	static const GLenum STATIC_READ = 0x88E5;
-	static const GLenum STATIC_COPY = 0x88E6;
-	static const GLenum DYNAMIC_DRAW = 0x88E8;
-	static const GLenum DYNAMIC_READ = 0x88E9;
-	static const GLenum DYNAMIC_COPY = 0x88EA;
-	static const GLenum PIXEL_PACK_BUFFER = 0x88EB;
-	static const GLenum PIXEL_UNPACK_BUFFER = 0x88EC;
-	static const GLenum FRAGMENT_SHADER = 0x8B30;
-	static const GLenum VERTEX_SHADER = 0x8B31;
-	static const GLenum COMPILE_STATUS = 0x8B81;
-	static const GLenum LINK_STATUS = 0x8B82;
-	static const GLenum TEXTURE_2D_ARRAY = 0x8C1A;
-	static const GLenum GEOMETRY_SHADER = 0x8DD9;
-	static const GLenum TEXTURE_CUBE_MAP_ARRAY = 0x9009;
-	static const GLenum COMPUTE_SHADER = 0x91B9;
+
+	static constexpr GLenum FUNC_ADD = 0x8006;
+	static constexpr GLenum CLAMP_TO_EDGE = 0x812F;
+	static constexpr GLenum TEXTURE0 = 0x84C0;
+	static constexpr GLenum TEXTURE_CUBE_MAP = 0x8513;
+	static constexpr GLenum DEPTH_CLAMP = 0x8650;
+	static constexpr GLenum ARRAY_BUFFER = 0x8892;
+	static constexpr GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
+	static constexpr GLenum STREAM_DRAW = 0x88E0;
+	static constexpr GLenum STREAM_READ = 0x88E1;
+	static constexpr GLenum STREAM_COPY = 0x88E2;
+	static constexpr GLenum STATIC_DRAW = 0x88E4;
+	static constexpr GLenum STATIC_READ = 0x88E5;
+	static constexpr GLenum STATIC_COPY = 0x88E6;
+	static constexpr GLenum DYNAMIC_DRAW = 0x88E8;
+	static constexpr GLenum DYNAMIC_READ = 0x88E9;
+	static constexpr GLenum DYNAMIC_COPY = 0x88EA;
+	static constexpr GLenum PIXEL_PACK_BUFFER = 0x88EB;
+	static constexpr GLenum PIXEL_UNPACK_BUFFER = 0x88EC;
+	static constexpr GLenum FRAGMENT_SHADER = 0x8B30;
+	static constexpr GLenum VERTEX_SHADER = 0x8B31;
+	static constexpr GLenum COMPILE_STATUS = 0x8B81;
+	static constexpr GLenum LINK_STATUS = 0x8B82;
+	static constexpr GLenum TEXTURE_2D_ARRAY = 0x8C1A;
+	static constexpr GLenum GEOMETRY_SHADER = 0x8DD9;
+	static constexpr GLenum TEXTURE_CUBE_MAP_ARRAY = 0x9009;
+	static constexpr GLenum COMPUTE_SHADER = 0x91B9;
 
 	bool init();
 };
@@ -162,6 +171,7 @@ template <typename T> struct init_vao_arg { };
 
 #define GL3D_INIT_VAO_ARG(_Type, _NumElements, _ElementType) \
 	template <> struct init_vao_arg<_Type> { \
+		static constexpr char *name = #_Type; \
 		static void apply(GLuint location, size_t size, const void *offset) { \
 			gl.EnableVertexAttribArray(location); \
 			gl.VertexAttribPointer(location, _NumElements, _ElementType, GL_FALSE, static_cast<GLsizei>(size), offset); } };
@@ -176,6 +186,52 @@ GL3D_INIT_VAO_ARG( vec4, 4, GL_FLOAT )
 GL3D_INIT_VAO_ARG( ivec4, 4, GL_INT )
 
 #undef GL3D_INIT_VAO_ARG
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename H, typename... T> struct layout_expander : H, layout_expander<T...>
+{
+	static constexpr size_t attribute_mask = ( 1 << H::layout_location ) | layout_expander<T...>::attribute_mask;
+
+protected:
+	static const std::string &layout_string()
+	{
+		static std::string str = detail::init_vao_arg<H::type>::name + std::string( ";" ) + layout_expander<T...>::layout_string();
+		return str;
+	}
+};
+
+template <typename H> struct layout_expander<H> : H
+{
+	static constexpr size_t attribute_mask = ( 1 << H::layout_location );
+
+protected:
+	static const std::string &layout_string()
+	{
+		static std::string str = detail::init_vao_arg<H::type>::name + std::string( ";" );
+		return str;
+	}
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+struct layout_desc
+{
+	unsigned attribute_mask = 0;
+	std::string attribute_string = "";
+	std::function<void()> vao_initializer = nullptr;
+	size_t hash = 0;
+	size_t size = 1;
+
+	layout_desc() = default;
+
+	layout_desc( unsigned attrMask, std::string_view attrString, std::function<void()> vaoInit )
+		: attribute_mask( attrMask )
+		, attribute_string( attrString )
+		, vao_initializer( vaoInit )
+		, hash( std::hash<std::string> {}( attribute_string + std::to_string( attribute_mask ) ) )
+	{
+
+	}
+};
 
 //---------------------------------------------------------------------------------------------------------------------
 struct gl_format_descriptor
@@ -310,102 +366,6 @@ protected:
 	std::string _lastError;
 };
 
-//---------------------------------------------------------------------------------------------------------------------
-class buffer : public compiled_object
-{
-public:
-	using ptr = std::shared_ptr<buffer>;
-
-	buffer() = default;
-
-	virtual ~buffer()
-	{
-		clear();
-		_buffer.destroy();
-	}
-
-	GLuint id() const { return _buffer.id; }
-
-	void clear()
-	{
-		if ( _owner && _data ) { delete [] _data; _data = nullptr; }
-
-		_keepData = false;
-		_owner = false;
-		_data = nullptr;
-		_size = 0;
-		set_dirty();
-	}
-
-	void *alloc_data( const void *data, size_t size, bool keep = false )
-	{
-		if ( _owner && _size != size )
-			clear();
-
-		if ( size )
-		{
-			_size = size;
-			if ( !_data ) _data = new uint8_t[_size];
-			if ( data ) memcpy( _data, data, _size );
-		}
-
-		_owner = true;
-		_keepData = keep;
-		return _data;
-	}
-
-	void set_data( const void *data, size_t size )
-	{
-		clear();
-		_data = const_cast<uint8_t *>( static_cast<const uint8_t *>( data ) );
-		_size = size;
-	}
-
-	const uint8_t *data() const { return _data; }
-
-	size_t size() const { return _size; }
-
-	bool bind( GLenum type );
-	void unbind( GLenum type );
-
-protected:
-	bool _keepData = false;
-	bool _owner = false;
-	uint8_t *_data = nullptr;
-	size_t _size = 0;
-	gl_resource_buffer _buffer;
-};
-
-//---------------------------------------------------------------------------------------------------------------------
-class base_geometry : public compiled_object
-{
-public:
-	using ptr = std::shared_ptr<base_geometry>;
-
-	GLuint id() const { return _vao.id; }
-
-	void set_vertex_buffer( buffer::ptr vb ) { _vertexBuffer = vb; set_dirty(); }
-	buffer::ptr vertex_buffer() const { return _vertexBuffer; }
-	void set_index_buffer( buffer::ptr ib ) { _indexBuffer = ib; set_dirty(); }
-	buffer::ptr index_buffer() const { return _indexBuffer; }
-
-	virtual size_t size_vertices() const = 0;
-	virtual size_t size_indices() const = 0;
-
-	virtual bool bind();
-	virtual void unbind();
-
-protected:
-	virtual ~base_geometry()
-	{
-		_vao.destroy();
-	}
-
-	detail::gl_resource_vao _vao;
-	std::shared_ptr<buffer> _vertexBuffer = std::make_shared<buffer>();
-	std::shared_ptr<buffer> _indexBuffer;
-};
-
 #pragma endregion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,9 +416,10 @@ void main()
 
 #define GL3D_VERTEX_STRUCT(_Name, _Location) \
 	template <typename T> struct vertex_ ## _Name { \
-	static constexpr size_t layout_location = _Location; \
-	using type = T; \
-	T _Name; };
+	T _Name; \
+	protected: \
+		static constexpr size_t layout_location = _Location; \
+		using type = T; };
 
 GL3D_VERTEX_STRUCT(pos, GL3D_LAYOUT_LOCATION_POS)
 GL3D_VERTEX_STRUCT(normal, GL3D_LAYOUT_LOCATION_NORMAL)
@@ -472,13 +433,6 @@ GL3D_VERTEX_STRUCT(uv3, GL3D_LAYOUT_LOCATION_UV3)
 #undef GL3D_VERTEX_STRUCT
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace detail {
-
-template <typename H, typename... T> struct layout_expander : H, layout_expander<T...> { };
-template <typename H> struct layout_expander<H> : H { };
-
-}
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename... T> class layout : public detail::layout_expander<T...>
@@ -506,7 +460,12 @@ template <typename... T> class layout : public detail::layout_expander<T...>
 	};
 
 public:
-	static void init_vao() { helper<T...> h; h.init_vao(sizeof(h), 0); }
+	static const detail::layout_desc &layout_desc()
+	{
+		static detail::layout_desc desc(attribute_mask, detail::layout_expander<T...>::layout_string(), []()
+		{ static helper<T...> h; h.init_vao(sizeof(h), 0); });
+		return desc;
+	}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -519,12 +478,130 @@ struct vertex3d : layout<vertex_pos<vec3>, vertex_normal<vec3>, vertex_color<vec
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> class custom_geometry : public detail::base_geometry
+class buffer : public detail::compiled_object
+{
+public:
+	using ptr = std::shared_ptr<buffer>;
+
+	buffer(const detail::layout_desc &desc = detail::layout_desc())
+		: detail::compiled_object()
+		, _layout_desc(desc)
+	{
+
+	}
+
+	virtual ~buffer()
+	{
+		clear();
+		_buffer.destroy();
+	}
+
+	GLuint id() const { return _buffer.id; }
+
+	const detail::layout_desc &get_layout_desc() const { return _layout_desc; }
+
+	void clear()
+	{
+		if (_owner && _data) { delete[] _data; _data = nullptr; }
+
+		_keepData = false;
+		_owner = false;
+		_data = nullptr;
+		_size = 0;
+		set_dirty();
+	}
+
+	void *alloc_data(const void *data, size_t size, bool keep = false)
+	{
+		if (_owner && _size != size)
+			clear();
+
+		if (size)
+		{
+			_size = size;
+			if (!_data) _data = new uint8_t[_size];
+			if (data) memcpy(_data, data, _size);
+		}
+
+		_owner = true;
+		_keepData = keep;
+		return _data;
+	}
+
+	void set_data(const void *data, size_t size)
+	{
+		clear();
+		_data = const_cast<uint8_t *>(static_cast<const uint8_t *>(data));
+		_size = size;
+	}
+
+	const uint8_t *data() const { return _data; }
+
+	size_t size() const { return _size; }
+
+	bool bind(GLenum type);
+	void unbind(GLenum type);
+
+protected:
+	detail::layout_desc _layout_desc;
+	bool _keepData = false;
+	bool _owner = false;
+	uint8_t *_data = nullptr;
+	size_t _size = 0;
+	detail::gl_resource_buffer _buffer;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class index_buffer : public buffer
+{
+public:
+	using ptr = std::shared_ptr<index_buffer>;
+
+
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class geometry : public detail::compiled_object
+{
+public:
+	using ptr = std::shared_ptr<geometry>;
+
+	GLuint id() const { return _vao.id; }
+
+	void set_vertex_buffer(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
+	buffer::ptr vertex_buffer() const { return _vertexBuffer; }
+	void set_index_buffer(buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
+	buffer::ptr index_buffer() const { return _indexBuffer; }
+
+	virtual size_t size_vertices() const = 0;
+	virtual size_t size_indices() const = 0;
+
+	virtual bool bind();
+	virtual void unbind();
+
+protected:
+	virtual ~geometry()
+	{
+		_vao.destroy();
+	}
+
+	detail::gl_resource_vao _vao;
+	std::shared_ptr<buffer> _vertexBuffer;
+	std::shared_ptr<buffer> _indexBuffer;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> class custom_geometry : public geometry
 {
 public:
 	using ptr = std::shared_ptr<custom_geometry>;
 
-	custom_geometry() = default;
+	custom_geometry()
+		: geometry()
+	{
+		set_vertex_buffer(std::make_shared<buffer>(T::layout_desc()));
+	}
+
 	virtual ~custom_geometry() = default;
 
   void clear_vertices() { _vertexCursor = 0; set_dirty(); }
@@ -565,10 +642,10 @@ public:
       _vertexBuffer->bind(gl.ARRAY_BUFFER);
       gl.GenVertexArrays(1, &_vao.id);
       gl.BindVertexArray(_vao);
-      T::init_vao();
+			_vertexBuffer->get_layout_desc().vao_initializer();
     }
 
-    return detail::base_geometry::bind();
+    return geometry::bind();
   }
 
   std::vector<T> _vertices;
@@ -577,9 +654,6 @@ public:
   std::vector<int> _indices;
   size_t _indexCursor = 0;
 };
-
-//---------------------------------------------------------------------------------------------------------------------
-using geometry = custom_geometry<vertex3d>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -692,8 +766,8 @@ public:
   
   size_t size_bytes() const { return _sizeBytes; }
 
-  void set_pixel_buffer(detail::buffer::ptr pb) { _pbo = pb; set_dirty(); }
-  detail::buffer::ptr pixel_buffer() const { return _pbo; }
+  void set_pixel_buffer(buffer::ptr pb) { _pbo = pb; set_dirty(); }
+  buffer::ptr pixel_buffer() const { return _pbo; }
 
   void set_filter(GLenum minFilter, GLenum magFilter);
   GLenum min_filter() const { return _minFilter; }
@@ -723,7 +797,7 @@ protected:
 
   GLenum _type;
   detail::gl_resource_texture _texture;
-	detail::buffer::ptr _pbo = std::make_shared<detail::buffer>();
+	buffer::ptr _pbo = std::make_shared<buffer>();
   std::vector<part> _parts;
   GLenum _format = GL_RGBA;
   ivec2 _size;
@@ -751,6 +825,48 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct rasterizer_state
+{
+	GLenum face_cull_mode = GL_NONE;
+	bool front_ccw = false;
+	bool wireframe = false;
+	bool depth_clamp = false;
+	bool scissor_test = false;
+
+	void bind();
+};
+
+struct blend_state
+{
+	struct slot_desc
+	{
+		GLenum src = GL_ONE;
+		GLenum dst = GL_ZERO;
+		GLenum op = detail::gl_api::FUNC_ADD;
+		GLenum src_alpha = GL_ONE;
+		GLenum dst_alpha = GL_ZERO;
+		GLenum op_alpha = GL_NONE;
+	} slot[8];
+
+	std::bitset<8> enabled_slots = { 0 };
+
+	void bind();
+};
+
+struct depth_stencil_state
+{
+	GLenum depth_func = GL_LESS;
+	uint8_t stencil_read_mask = 0;
+	uint8_t stencil_write_mask = 0;
+	bool stencil_test = false;
+	bool depth_test = true;
+	bool depth_write = true;
+
+	void bind();
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class context3d
 {
 public:
@@ -759,7 +875,7 @@ public:
 
   void clear();
 
-  bool bind_geometry(detail::base_geometry::ptr geom);
+  bool bind_geometry(geometry::ptr geom);
   bool bind_program(detail::compiled_program::ptr prog);
   bool bind_texture(texture::ptr tex, int slot = 0);
 
@@ -776,7 +892,7 @@ public:
 
 private:
   technique::ptr _basicTechnique;
-	detail::base_geometry::ptr _geometry;
+	geometry::ptr _geometry;
 	detail::compiled_program::ptr _program;
   texture::ptr _textures[16];
 };
@@ -854,57 +970,57 @@ bool gl_resource_program::link(const std::initializer_list<gl_resource_shader> &
   return true;
 }
 
+}
+
 //------------------------------------------------------------------------------------------------------------------------
 bool buffer::bind(GLenum type)
 {
-  if (dirty())
-  {
-    if (!_buffer.id) gl.GenBuffers(1, &_buffer.id);
-    gl.BindBuffer(type, _buffer.id);
-    gl.BufferData(type, _size, _data, gl.STREAM_DRAW);
+	if (dirty())
+	{
+		if (!_buffer.id) gl.GenBuffers(1, &_buffer.id);
+		gl.BindBuffer(type, _buffer.id);
+		gl.BufferData(type, _size, _data, gl.STREAM_DRAW);
 
-    if (_owner && !_keepData && _data) { delete [] _data; _data = nullptr; }
-    set_dirty(false);
-  }
-  else
-    gl.BindBuffer(type, _buffer.id);
+		if (_owner && !_keepData && _data) { delete[] _data; _data = nullptr; }
+		set_dirty(false);
+	}
+	else
+		gl.BindBuffer(type, _buffer.id);
 
-  return _buffer.id > 0;
+	return _buffer.id > 0;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
 void buffer::unbind(GLenum type)
 {
-  gl.BindBuffer(type, 0);
+	gl.BindBuffer(type, 0);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool base_geometry::bind()
+bool geometry::bind()
 {
-  if (!_vertexBuffer || !_vao.id)
-    return false;
+	if (!_vertexBuffer || !_vao.id)
+		return false;
 
-  _vertexBuffer->bind(gl.ARRAY_BUFFER);
-  gl.BindVertexArray(_vao);
+	_vertexBuffer->bind(gl.ARRAY_BUFFER);
+	gl.BindVertexArray(_vao);
 
-  if (_indexBuffer)
-    _indexBuffer->bind(gl.ELEMENT_ARRAY_BUFFER);
-  
-  return true;
+	if (_indexBuffer)
+		_indexBuffer->bind(gl.ELEMENT_ARRAY_BUFFER);
+
+	return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void base_geometry::unbind()
+void geometry::unbind()
 {
-  if (_vertexBuffer)
-    _vertexBuffer->unbind(gl.ARRAY_BUFFER);
-  
-  gl.BindVertexArray(0);
+	if (_vertexBuffer)
+		_vertexBuffer->unbind(gl.ARRAY_BUFFER);
 
-  if (_indexBuffer)
-    _indexBuffer->unbind(gl.ELEMENT_ARRAY_BUFFER);
-}
+	gl.BindVertexArray(0);
 
+	if (_indexBuffer)
+		_indexBuffer->unbind(gl.ELEMENT_ARRAY_BUFFER);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1058,6 +1174,36 @@ void texture::set_filter(GLenum minFilter, GLenum magFilter)
   }
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+void rasterizer_state::bind()
+{
+	glFrontFace(front_ccw ? GL_CCW : GL_CW);
+	face_cull_mode != GL_NONE ? (glEnable(GL_CULL_FACE), glCullFace(face_cull_mode)) : glDisable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
+	depth_clamp ? glEnable(gl.DEPTH_CLAMP) : glDisable(gl.DEPTH_CLAMP);
+	scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void blend_state::bind()
+{
+	for (GLuint i = 0; i < 8; ++i)
+	{
+		enabled_slots[i] ? gl.Enablei(GL_BLEND, i) : gl.Disablei(GL_BLEND, i);
+		gl.BlendFunci(i, slot[i].src, slot[i].dst);
+		gl.BlendEquationi(i, slot[i].op);
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void depth_stencil_state::bind()
+{
+	depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+	stencil_test ? glEnable(GL_STENCIL_TEST) : glDisable(GL_STENCIL_TEST);
+	glDepthMask(depth_write ? GL_TRUE : GL_FALSE);
+	glDepthFunc(depth_func);
+}
+
 //------------------------------------------------------------------------------------------------------------------------
 context3d::context3d()
 {
@@ -1083,7 +1229,7 @@ void context3d::clear()
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind_geometry(detail::base_geometry::ptr geom)
+bool context3d::bind_geometry(geometry::ptr geom)
 {
   if (geom != _geometry)
   {

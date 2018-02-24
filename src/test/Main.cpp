@@ -8,7 +8,7 @@ int main()
 	using namespace gl3d;
 
 	// Triangle geometry
-	auto geom = std::make_shared<geometry>();
+	auto geom = std::make_shared<custom_geometry<vertex3d>>();
 	auto vertices = geom->alloc_vertices( 3 );
 
 	vertices->pos = vec3( 0,  1, 0 );
