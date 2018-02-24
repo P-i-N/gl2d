@@ -26,6 +26,10 @@
 
 #include <gl/GL.h>
 
+#if !defined(GL3D_GLSL_VERSION)
+	#define GL3D_GLSL_VERSION "330"
+#endif
+
 #define GL3D_UNIFORM_PROJECTION_MATRIX "u_ProjectionMatrix"
 #define GL3D_UNIFORM_MODELVIEW_MATRIX "u_ModelviewMatrix"
 
@@ -80,65 +84,65 @@ class gl_api
 	std::vector<__init *> _initializers;
 
 public:
-	GL3D_API_FUNC( void, GenBuffers, GLsizei, GLuint * )
-	GL3D_API_FUNC( void, DeleteBuffers, GLsizei, const GLuint * )
-	GL3D_API_FUNC( void, BindBuffer, GLenum, GLuint )
-	GL3D_API_FUNC( void, BufferData, GLenum, ptrdiff_t, const GLvoid *, GLenum )
-	GL3D_API_FUNC( void, GenVertexArrays, GLsizei, GLuint * )
-	GL3D_API_FUNC( void, BindVertexArray, GLuint )
-	GL3D_API_FUNC( void, EnableVertexAttribArray, GLuint )
-	GL3D_API_FUNC( void, VertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const GLvoid * )
-	GL3D_API_FUNC( void, BindAttribLocation, GLuint, GLuint, const char * )
-	GL3D_API_FUNC( void, DeleteVertexArrays, GLsizei, const GLuint * )
+	GL3D_API_FUNC( void,   GenBuffers, GLsizei, GLuint * )
+	GL3D_API_FUNC( void,   DeleteBuffers, GLsizei, const GLuint * )
+	GL3D_API_FUNC( void,   BindBuffer, GLenum, GLuint )
+	GL3D_API_FUNC( void,   BufferData, GLenum, ptrdiff_t, const GLvoid *, GLenum )
+	GL3D_API_FUNC( void,   GenVertexArrays, GLsizei, GLuint * )
+	GL3D_API_FUNC( void,   BindVertexArray, GLuint )
+	GL3D_API_FUNC( void,   EnableVertexAttribArray, GLuint )
+	GL3D_API_FUNC( void,   VertexAttribPointer, GLuint, GLint, GLenum, GLboolean, GLsizei, const GLvoid * )
+	GL3D_API_FUNC( void,   BindAttribLocation, GLuint, GLuint, const char * )
+	GL3D_API_FUNC( void,   DeleteVertexArrays, GLsizei, const GLuint * )
 	GL3D_API_FUNC( GLuint, CreateShader, GLenum )
-	GL3D_API_FUNC( void, DeleteShader, GLuint )
-	GL3D_API_FUNC( void, ShaderSource, GLuint, GLsizei, const char **, const GLint * )
-	GL3D_API_FUNC( void, CompileShader, GLuint )
-	GL3D_API_FUNC( void, GetShaderiv, GLuint, GLenum, GLint * )
+	GL3D_API_FUNC( void,   DeleteShader, GLuint )
+	GL3D_API_FUNC( void,   ShaderSource, GLuint, GLsizei, const char **, const GLint * )
+	GL3D_API_FUNC( void,   CompileShader, GLuint )
+	GL3D_API_FUNC( void,   GetShaderiv, GLuint, GLenum, GLint * )
 	GL3D_API_FUNC( GLuint, CreateProgram )
-	GL3D_API_FUNC( void, DeleteProgram, GLuint )
-	GL3D_API_FUNC( void, AttachShader, GLuint, GLuint )
-	GL3D_API_FUNC( void, DetachShader, GLuint, GLuint )
-	GL3D_API_FUNC( void, LinkProgram, GLuint )
-	GL3D_API_FUNC( void, UseProgram, GLuint )
-	GL3D_API_FUNC( void, GetProgramiv, GLuint, GLenum, GLint * )
-	GL3D_API_FUNC( GLint, GetUniformLocation, GLuint, const char * )
-	GL3D_API_FUNC( void, Uniform1i, GLint, GLint )
-	GL3D_API_FUNC( void, Uniform2fv, GLint, GLsizei, const GLfloat * )
-	GL3D_API_FUNC( void, UniformMatrix4fv, GLint, GLsizei, GLboolean, const GLfloat * )
-	GL3D_API_FUNC( void, ActiveTexture, GLenum )
-	GL3D_API_FUNC( void, Enablei, GLenum, GLuint )
-	GL3D_API_FUNC( void, Disablei, GLenum, GLuint )
-	GL3D_API_FUNC( void, BlendFunci, GLuint, GLenum, GLenum )
-	GL3D_API_FUNC( void, BlendEquationi, GLuint, GLenum )
+	GL3D_API_FUNC( void,   DeleteProgram, GLuint )
+	GL3D_API_FUNC( void,   AttachShader, GLuint, GLuint )
+	GL3D_API_FUNC( void,   DetachShader, GLuint, GLuint )
+	GL3D_API_FUNC( void,   LinkProgram, GLuint )
+	GL3D_API_FUNC( void,   UseProgram, GLuint )
+	GL3D_API_FUNC( void,   GetProgramiv, GLuint, GLenum, GLint * )
+	GL3D_API_FUNC( GLint,  GetUniformLocation, GLuint, const char * )
+	GL3D_API_FUNC( void,   Uniform1i, GLint, GLint )
+	GL3D_API_FUNC( void,   Uniform2fv, GLint, GLsizei, const GLfloat * )
+	GL3D_API_FUNC( void,   UniformMatrix4fv, GLint, GLsizei, GLboolean, const GLfloat * )
+	GL3D_API_FUNC( void,   ActiveTexture, GLenum )
+	GL3D_API_FUNC( void,   Enablei, GLenum, GLuint )
+	GL3D_API_FUNC( void,   Disablei, GLenum, GLuint )
+	GL3D_API_FUNC( void,   BlendFunci, GLuint, GLenum, GLenum )
+	GL3D_API_FUNC( void,   BlendEquationi, GLuint, GLenum )
 
 
-	static constexpr GLenum FUNC_ADD = 0x8006;
-	static constexpr GLenum CLAMP_TO_EDGE = 0x812F;
-	static constexpr GLenum TEXTURE0 = 0x84C0;
-	static constexpr GLenum TEXTURE_CUBE_MAP = 0x8513;
-	static constexpr GLenum DEPTH_CLAMP = 0x8650;
-	static constexpr GLenum ARRAY_BUFFER = 0x8892;
-	static constexpr GLenum ELEMENT_ARRAY_BUFFER = 0x8893;
-	static constexpr GLenum STREAM_DRAW = 0x88E0;
-	static constexpr GLenum STREAM_READ = 0x88E1;
-	static constexpr GLenum STREAM_COPY = 0x88E2;
-	static constexpr GLenum STATIC_DRAW = 0x88E4;
-	static constexpr GLenum STATIC_READ = 0x88E5;
-	static constexpr GLenum STATIC_COPY = 0x88E6;
-	static constexpr GLenum DYNAMIC_DRAW = 0x88E8;
-	static constexpr GLenum DYNAMIC_READ = 0x88E9;
-	static constexpr GLenum DYNAMIC_COPY = 0x88EA;
-	static constexpr GLenum PIXEL_PACK_BUFFER = 0x88EB;
-	static constexpr GLenum PIXEL_UNPACK_BUFFER = 0x88EC;
-	static constexpr GLenum FRAGMENT_SHADER = 0x8B30;
-	static constexpr GLenum VERTEX_SHADER = 0x8B31;
-	static constexpr GLenum COMPILE_STATUS = 0x8B81;
-	static constexpr GLenum LINK_STATUS = 0x8B82;
-	static constexpr GLenum TEXTURE_2D_ARRAY = 0x8C1A;
-	static constexpr GLenum GEOMETRY_SHADER = 0x8DD9;
+	static constexpr GLenum FUNC_ADD               = 0x8006;
+	static constexpr GLenum CLAMP_TO_EDGE          = 0x812F;
+	static constexpr GLenum TEXTURE0               = 0x84C0;
+	static constexpr GLenum TEXTURE_CUBE_MAP       = 0x8513;
+	static constexpr GLenum DEPTH_CLAMP            = 0x8650;
+	static constexpr GLenum ARRAY_BUFFER           = 0x8892;
+	static constexpr GLenum ELEMENT_ARRAY_BUFFER   = 0x8893;
+	static constexpr GLenum STREAM_DRAW            = 0x88E0;
+	static constexpr GLenum STREAM_READ            = 0x88E1;
+	static constexpr GLenum STREAM_COPY            = 0x88E2;
+	static constexpr GLenum STATIC_DRAW            = 0x88E4;
+	static constexpr GLenum STATIC_READ            = 0x88E5;
+	static constexpr GLenum STATIC_COPY            = 0x88E6;
+	static constexpr GLenum DYNAMIC_DRAW           = 0x88E8;
+	static constexpr GLenum DYNAMIC_READ           = 0x88E9;
+	static constexpr GLenum DYNAMIC_COPY           = 0x88EA;
+	static constexpr GLenum PIXEL_PACK_BUFFER      = 0x88EB;
+	static constexpr GLenum PIXEL_UNPACK_BUFFER    = 0x88EC;
+	static constexpr GLenum FRAGMENT_SHADER        = 0x8B30;
+	static constexpr GLenum VERTEX_SHADER          = 0x8B31;
+	static constexpr GLenum COMPILE_STATUS         = 0x8B81;
+	static constexpr GLenum LINK_STATUS            = 0x8B82;
+	static constexpr GLenum TEXTURE_2D_ARRAY       = 0x8C1A;
+	static constexpr GLenum GEOMETRY_SHADER        = 0x8DD9;
 	static constexpr GLenum TEXTURE_CUBE_MAP_ARRAY = 0x9009;
-	static constexpr GLenum COMPUTE_SHADER = 0x91B9;
+	static constexpr GLenum COMPUTE_SHADER         = 0x91B9;
 
 	bool init();
 };
@@ -296,74 +300,6 @@ public:
 
 protected:
 	bool _dirty = true;
-};
-
-//---------------------------------------------------------------------------------------------------------------------
-class compiled_program : public compiled_object
-{
-public:
-	using ptr = std::shared_ptr<compiled_program>;
-
-	GLuint id() const { return _program.id; }
-
-	const std::string &last_error() const { return _lastError; }
-
-	void set_glsl_version( std::string_view verString ) { _glslVersion = verString; set_dirty(); }
-	const std::string &glsl_version() const { return _glslVersion; }
-
-	void define( std::string_view name, std::string_view value )
-	{
-		_macros[std::string( name )] = value;
-		set_dirty();
-	}
-
-	bool undef( std::string_view name )
-	{
-		auto iter = _macros.find( std::string( name ) );
-		if ( iter == _macros.end() ) return false;
-		_macros.erase( iter );
-		set_dirty();
-		return true;
-	}
-
-	void undef_all() { if ( !_macros.empty() ) { _macros.clear(); set_dirty(); } }
-
-	std::string get_macro_string() const
-	{
-		std::string macroString = "#version " + _glslVersion + "\n";
-
-#define GL3D_LAYOUT_MACRO(_Suffix, _Location, _NameSuffix) macroString += \
-        "#define GL3D_VERTEX_" _Suffix "(_Type) layout(location = " GL3D_TOSTRING(_Location) \
-        ") in _Type vertex_" _NameSuffix "\n";
-
-		GL3D_LAYOUT_MACRO( "POS", GL3D_LAYOUT_LOCATION_POS, "pos" )
-		GL3D_LAYOUT_MACRO( "NORMAL", GL3D_LAYOUT_LOCATION_NORMAL, "normal" )
-		GL3D_LAYOUT_MACRO( "TANGENT", GL3D_LAYOUT_LOCATION_TANGENT, "tangent" )
-		GL3D_LAYOUT_MACRO( "COLOR", GL3D_LAYOUT_LOCATION_COLOR, "color" )
-		GL3D_LAYOUT_MACRO( "UV0", GL3D_LAYOUT_LOCATION_UV0, "uv0" )
-		GL3D_LAYOUT_MACRO( "UV1", GL3D_LAYOUT_LOCATION_UV1, "uv1" )
-		GL3D_LAYOUT_MACRO( "UV2", GL3D_LAYOUT_LOCATION_UV2, "uv2" )
-		GL3D_LAYOUT_MACRO( "UV3", GL3D_LAYOUT_LOCATION_UV3, "uv3" )
-
-#undef GL3D_LAYOUT_MACRO
-
-		for ( auto && kvp : _macros ) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
-		return macroString;
-	}
-
-	virtual bool bind() = 0;
-	virtual void unbind() { gl.UseProgram( 0 ); }
-
-protected:
-	virtual ~compiled_program()
-	{
-		_program.destroy();
-	}
-
-	std::map<std::string, std::string> _macros;
-	detail::gl_resource_program _program;
-	std::string _glslVersion = "330";
-	std::string _lastError;
 };
 
 #pragma endregion
@@ -662,64 +598,98 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class technique : public detail::compiled_program
+//---------------------------------------------------------------------------------------------------------------------
+class program : public detail::compiled_object
 {
 public:
-	using ptr = std::shared_ptr<technique>;
+	using ptr = std::shared_ptr<program>;
 
-	technique() = default;
+	program() = default;
 
-	virtual ~technique()
+	virtual ~program()
 	{
 		_vertShader.destroy();
 		_geomShader.destroy();
 		_fragShader.destroy();
+		_computeShader.destroy();
+		_program.destroy();
 	}
 
-  void set_vert_source(std::string_view code) { _vertSource = code; set_dirty(); }
-  const std::string &vert_source() const { return _vertSource; }
+	GLuint id() const { return _program.id; }
 
-  void set_geom_source(std::string_view code) { _geomSource = code; set_dirty(); }
-  const std::string &geom_source() const { return _geomSource; }
+	const std::string &last_error() const { return _lastError; }
 
-  void set_frag_source(std::string_view code) { _fragSource = code; set_dirty(); }
-  const std::string &frag_source() const { return _fragSource; }
-
-  bool bind() override;
-
-protected:
-  std::string _vertSource;
-  std::string _geomSource;
-  std::string _fragSource;
-
-  detail::gl_resource_shader _vertShader;
-  detail::gl_resource_shader _geomShader;
-  detail::gl_resource_shader _fragShader;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class compute : public detail::compiled_program
-{
-public:
-	using ptr = std::shared_ptr<compute>;
-
-	compute() = default;
-
-	virtual ~compute()
+	void define(std::string_view name, std::string_view value)
 	{
-		_shader.destroy();
+		_macros[std::string(name)] = value;
+		set_dirty();
 	}
 
-  void set_source(std::string_view code) { _source = code; set_dirty(); }
-  const std::string &source() const { return _source; }
+	bool undef(std::string_view name)
+	{
+		auto iter = _macros.find(std::string(name));
+		if (iter == _macros.end()) return false;
+		_macros.erase(iter);
+		set_dirty();
+		return true;
+	}
 
-  bool bind() override;
-  void dispatch(int numGroupsX, int numGroupsY, int numGroupsZ = 1);
+	void undef_all() { if (!_macros.empty()) { _macros.clear(); set_dirty(); } }
+
+	std::string get_macro_string() const
+	{
+		std::string macroString = "#version " GL3D_GLSL_VERSION "\n";
+
+#define GL3D_LAYOUT_MACRO(_Suffix, _Location, _NameSuffix) macroString += \
+        "#define GL3D_VERTEX_" _Suffix "(_Type) layout(location = " GL3D_TOSTRING(_Location) \
+        ") in _Type vertex_" _NameSuffix "\n";
+
+		GL3D_LAYOUT_MACRO("POS", GL3D_LAYOUT_LOCATION_POS, "pos")
+		GL3D_LAYOUT_MACRO("NORMAL", GL3D_LAYOUT_LOCATION_NORMAL, "normal")
+		GL3D_LAYOUT_MACRO("TANGENT", GL3D_LAYOUT_LOCATION_TANGENT, "tangent")
+		GL3D_LAYOUT_MACRO("COLOR", GL3D_LAYOUT_LOCATION_COLOR, "color")
+		GL3D_LAYOUT_MACRO("UV0", GL3D_LAYOUT_LOCATION_UV0, "uv0")
+		GL3D_LAYOUT_MACRO("UV1", GL3D_LAYOUT_LOCATION_UV1, "uv1")
+		GL3D_LAYOUT_MACRO("UV2", GL3D_LAYOUT_LOCATION_UV2, "uv2")
+		GL3D_LAYOUT_MACRO("UV3", GL3D_LAYOUT_LOCATION_UV3, "uv3")
+
+#undef GL3D_LAYOUT_MACRO
+
+		for (auto && kvp : _macros) macroString += "#define " + kvp.first + " " + kvp.second + "\n";
+		return macroString;
+	}
+
+	void set_vert_source(std::string_view code) { _vertSource = code; set_dirty(); }
+	const std::string &vert_source() const { return _vertSource; }
+
+	void set_geom_source(std::string_view code) { _geomSource = code; set_dirty(); }
+	const std::string &geom_source() const { return _geomSource; }
+
+	void set_frag_source(std::string_view code) { _fragSource = code; set_dirty(); }
+	const std::string &frag_source() const { return _fragSource; }
+
+	void set_compute_source(std::string_view code) { _computeSource = code; set_dirty(); }
+	const std::string &compute_source() const { return _computeSource; }
+
+	bool bind();
+
+	void unbind() { gl.UseProgram(0); }
 
 protected:
-  std::string _source;
-  detail::gl_resource_shader _shader;
+	std::string _vertSource;
+	std::string _geomSource;
+	std::string _fragSource;
+	std::string _computeSource;
+
+	detail::gl_resource_shader _vertShader;
+	detail::gl_resource_shader _geomShader;
+	detail::gl_resource_shader _fragShader;
+	detail::gl_resource_shader _computeShader;
+
+	detail::gl_resource_program _program;
+
+	std::map<std::string, std::string> _macros;
+	std::string _lastError;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -881,7 +851,7 @@ public:
   void clear();
 
   bool bind_geometry(geometry::ptr geom);
-  bool bind_program(detail::compiled_program::ptr prog);
+  bool bind_program(program::ptr prog);
   bool bind_texture(texture::ptr tex, int slot = 0);
 
 	GLint get_uniform_location(std::string_view name) const;
@@ -896,9 +866,9 @@ public:
   bool draw(GLenum primitive = GL_TRIANGLES, size_t offset = 0, size_t length = static_cast<size_t>(-1));
 
 private:
-  technique::ptr _basicTechnique;
+  program::ptr _basicProgram;
 	geometry::ptr _geometry;
-	detail::compiled_program::ptr _program;
+	program::ptr _program;
   texture::ptr _textures[16];
 };
 
@@ -1028,60 +998,48 @@ void geometry::unbind()
 		_indexBuffer->unbind(gl.ELEMENT_ARRAY_BUFFER);
 }
 
-//------------------------------------------------------------------------------------------------------------------------
-bool technique::bind()
+//---------------------------------------------------------------------------------------------------------------------
+bool program::bind()
 {
-  if (dirty())
-  {
-    std::string macroString = get_macro_string();
+	if (dirty())
+	{
+		std::string macroString = get_macro_string();
 
-    if (!_vertSource.empty())
-      _vertShader.compile(gl.VERTEX_SHADER, macroString + _vertSource);
-    else
-      _vertShader.destroy();
+		if (_computeSource.empty())
+		{
+			_computeShader.destroy();
 
-    if (!_geomSource.empty())
-      _geomShader.compile(gl.GEOMETRY_SHADER, macroString + _geomSource);
-    else
-      _geomShader.destroy();
+			if (!_vertSource.empty())
+				_vertShader.compile(gl.VERTEX_SHADER, macroString + _vertSource);
+			else
+				_vertShader.destroy();
 
-    if (!_fragSource.empty())
-      _fragShader.compile(gl.FRAGMENT_SHADER, macroString + _fragSource);
-    else
-      _fragShader.destroy();
-    
-    _program.link({ _vertShader, _geomShader, _fragShader });
-    set_dirty(false);
-  }
+			if (!_geomSource.empty())
+				_geomShader.compile(gl.GEOMETRY_SHADER, macroString + _geomSource);
+			else
+				_geomShader.destroy();
 
-  gl.UseProgram(_program.id);
-  return _program.id != 0;
-}
+			if (!_fragSource.empty())
+				_fragShader.compile(gl.FRAGMENT_SHADER, macroString + _fragSource);
+			else
+				_fragShader.destroy();
 
-//------------------------------------------------------------------------------------------------------------------------
-bool compute::bind()
-{
-  if (dirty())
-  {
-    std::string macroString = get_macro_string();
+			_program.link({ _vertShader, _geomShader, _fragShader });
+		}
+		else
+		{
+			_vertShader.destroy();
+			_geomShader.destroy();
+			_fragShader.destroy();
+			
+			_computeShader.compile(gl.COMPUTE_SHADER, macroString + _computeSource);
+			_program.link({ _computeShader });
+		}
 
-    if (!_source.empty())
-      _shader.compile(gl.COMPUTE_SHADER, macroString + _source);
-    else
-      _shader.destroy();
-    
-    _program.link({ _shader });
-    set_dirty(false);
-  }
+		set_dirty(false);
 
-  gl.UseProgram(_program.id);
-  return _program.id != 0;
-}
-
-//------------------------------------------------------------------------------------------------------------------------
-void compute::dispatch(int numGroupsX, int numGroupsY, int numGroupsZ)
-{
-  
+	}
+	return _program.id != 0;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1212,9 +1170,9 @@ void depth_stencil_state::bind()
 //------------------------------------------------------------------------------------------------------------------------
 context3d::context3d()
 {
-	_basicTechnique = std::make_shared<technique>();
-  _basicTechnique->set_vert_source(detail::vertex_shader_code3d);
-  _basicTechnique->set_frag_source(detail::fragment_shader_code3d);
+	_basicProgram = std::make_shared<program>();
+  _basicProgram->set_vert_source(detail::vertex_shader_code3d);
+  _basicProgram->set_frag_source(detail::fragment_shader_code3d);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1229,7 +1187,7 @@ void context3d::clear()
   for (auto &texture : _textures)
     texture = nullptr;
 
-  bind_program(_basicTechnique);
+  bind_program(_basicProgram);
   glEnable(GL_DEPTH_TEST);
 }
 
@@ -1246,7 +1204,7 @@ bool context3d::bind_geometry(geometry::ptr geom)
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind_program(detail::compiled_program::ptr prog)
+bool context3d::bind_program(program::ptr prog)
 {
   if (prog != _program)
   {

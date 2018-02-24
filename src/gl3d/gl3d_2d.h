@@ -485,7 +485,7 @@ public:
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		ctx.bind_geometry(_geometry);
-		ctx.bind_program(_technique);
+		ctx.bind_program(_program);
 		ctx.set_uniform("u_ScreenSize", vec2(width, height));
 		ctx.set_uniform("u_FontTexture", _state.font->font_texture);
 	}
@@ -524,7 +524,7 @@ private:
 
 	bool _initialized = false;
 	detail::state _state;
-	technique::ptr _technique = std::make_shared<technique>();
+	program::ptr _program = std::make_shared<program>();
 	custom_geometry<detail::vertex2d>::ptr _geometry = std::make_shared<custom_geometry<detail::vertex2d>>();
 	std::vector<detail::draw_call> _drawCalls;
 	std::vector<size_t> _layers;
@@ -610,8 +610,8 @@ bool context2d::init()
 
 	gl.init();
 
-	_technique->set_vert_source(vertex_shader_code2d);
-	_technique->set_frag_source(fragment_shader_code2d);
+	_program->set_vert_source(vertex_shader_code2d);
+	_program->set_frag_source(fragment_shader_code2d);
 
 	if (!default_font)
 		default_font = std::make_shared<detail::font>(default_base64, default_base64_length);
