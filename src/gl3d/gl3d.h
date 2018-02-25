@@ -336,13 +336,12 @@ public:
 
 	void *alloc_data( const void *data, size_t size, bool keep = false )
 	{
-		if ( _owner && _size != size )
-			clear();
+		clear();
 
 		if ( size )
 		{
 			_size = size;
-			if ( !_data ) _data = new uint8_t[_size];
+			_data = new uint8_t[_size];
 			if ( data ) memcpy( _data, data, _size );
 		}
 
@@ -354,6 +353,7 @@ public:
 	void set_data( const void *data, size_t size )
 	{
 		clear();
+
 		_data = const_cast<uint8_t *>( static_cast<const uint8_t *>( data ) );
 		_size = size;
 	}
@@ -367,13 +367,21 @@ public:
 
 protected:
 	GLenum _type;
+	detail::gl_resource_buffer _buffer;
 	bool _keepData = false;
 	bool _owner = false;
 	uint8_t *_data = nullptr;
 	size_t _size = 0;
-	size_t _capacity = 0;
-	detail::gl_resource_buffer _buffer;
 };
+
+#pragma endregion
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma region GLSL std140 layout types
+
+namespace std140 {
+
+}
 
 #pragma endregion
 
