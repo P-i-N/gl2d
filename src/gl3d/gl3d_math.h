@@ -1,21 +1,7 @@
 #pragma once
+
 // *INDENT-OFF*
-
 namespace gl3d::detail {
-
-//---------------------------------------------------------------------------------------------------------------------
-template <class T> struct precision_rank              { static constexpr int value = 0; };
-template <>        struct precision_rank<int>         { static constexpr int value = 1; };
-template <>        struct precision_rank<float>       { static constexpr int value = 2; };
-template <>        struct precision_rank<double>      { static constexpr int value = 3; };
-template <>        struct precision_rank<long double> { static constexpr int value = 4; };
-
-//---------------------------------------------------------------------------------------------------------------------
-template <class TA, class TB, bool> struct precision_filter { using best = TA; using worst = TB; };
-template <class TA, class TB> struct precision_filter<TA, TB, false> { using best = TB; using worst = TA; };
-
-template <class TA, class TB>
-using precision = typename precision_filter<TA, TB, precision_rank<TA>::value >= precision_rank<TB>::value>::best;
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename T, size_t Dimensions> struct xmath_traits
@@ -307,30 +293,30 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 		T s5 = m[2] * m[7] - m[3] * m[6];
 
 		T c5 = m[10] * m[15] - m[11] * m[14];
-		T c4 = m[9] * m[15] - m[11] * m[13];
-		T c3 = m[9] * m[14] - m[10] * m[13];
-		T c2 = m[8] * m[15] - m[11] * m[12];
-		T c1 = m[8] * m[14] - m[10] * m[12];
-		T c0 = m[8] * m[13] - m[9] * m[12];
+		T c4 = m[ 9] * m[15] - m[11] * m[13];
+		T c3 = m[ 9] * m[14] - m[10] * m[13];
+		T c2 = m[ 8] * m[15] - m[11] * m[12];
+		T c1 = m[ 8] * m[14] - m[10] * m[12];
+		T c0 = m[ 8] * m[13] - m[ 9] * m[12];
 
 		T det = 1 / (s0 * c5 - s1 * c4 + s2 * c3 + s3 * c2 - s4 * c1 + s5 * c0);
 
-		return { (m[5] * c5 - m[6] * c4 + m[7] * c3) * det,
-		         (m[2] * c4 - m[1] * c5 - m[3] * c3) * det,
+		return { (m[ 5] * c5 - m[ 6] * c4 + m[ 7] * c3) * det,
+		         (m[ 2] * c4 - m[ 1] * c5 - m[ 3] * c3) * det,
 		         (m[13] * s5 - m[14] * s4 + m[15] * s3) * det,
-		         (m[10] * s4 - m[9] * s5 - m[11] * s3) * det,
-		         (m[6] * c2 - m[4] * c5 - m[7] * c1) * det,
-		         (m[0] * c5 - m[2] * c2 + m[3] * c1) * det,
+		         (m[10] * s4 - m[ 9] * s5 - m[11] * s3) * det,
+		         (m[ 6] * c2 - m[ 4] * c5 - m[ 7] * c1) * det,
+		         (m[ 0] * c5 - m[ 2] * c2 + m[ 3] * c1) * det,
 		         (m[14] * s2 - m[12] * s5 - m[15] * s1) * det,
-		         (m[8] * s5 - m[10] * s2 + m[11] * s1) * det,
-		         (m[4] * c4 - m[5] * c2 + m[7] * c0) * det,
-		         (m[1] * c2 - m[0] * c4 - m[3] * c0) * det,
+		         (m[ 8] * s5 - m[10] * s2 + m[11] * s1) * det,
+		         (m[ 4] * c4 - m[ 5] * c2 + m[ 7] * c0) * det,
+		         (m[ 1] * c2 - m[ 0] * c4 - m[ 3] * c0) * det,
 		         (m[12] * s4 - m[13] * s2 + m[15] * s0) * det,
-		         (m[9] * s2 - m[8] * s4 - m[11] * s0) * det,
-		         (m[5] * c1 - m[4] * c3 - m[6] * c0) * det,
-		         (m[0] * c3 - m[1] * c1 + m[2] * c0) * det,
+		         (m[ 9] * s2 - m[ 8] * s4 - m[11] * s0) * det,
+		         (m[ 5] * c1 - m[ 4] * c3 - m[ 6] * c0) * det,
+		         (m[ 0] * c3 - m[ 1] * c1 + m[ 2] * c0) * det,
 		         (m[13] * s1 - m[12] * s3 - m[14] * s0) * det,
-		         (m[8] * s3 - m[9] * s1 + m[10] * s0) * det };
+		         (m[ 8] * s3 - m[ 9] * s1 + m[10] * s0) * det };
 	}
 };
 
@@ -399,7 +385,7 @@ template <class T> T direction(const T &a, const T &b) { return normalize_safe(b
 template <class T> T maximum(T a) { return a; }
 template <class TA, class TB> auto maximum(TA a, TB b)
 {
-	using p = detail::precision<TA, TB>;
+	using p = decltype(a + b);
 	return (static_cast<p>(a) > static_cast<p>(b)) ? static_cast<p>(a) : static_cast<p>(b);
 }
 
@@ -408,7 +394,7 @@ template <class Head, class... Tail> auto maximum(Head a, Tail... b) { return ma
 template <class T> T minimum(T a) { return a; }
 template <class T> T minimum(T a, T b)
 {
-	using p = detail::precision<TA, TB>;
+	using p = decltype(a + b);
 	return (static_cast<p>(a) < static_cast<p>(b)) ? static_cast<p>(a) : static_cast<p>(b);
 }
 
@@ -444,5 +430,4 @@ using ibox2 = detail::xbox2<ivec2>;
 using box3 = detail::xbox3<vec3>;
 
 }
-
 // *INDENT-ON*
