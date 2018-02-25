@@ -493,10 +493,7 @@ class index_buffer : public buffer
 public:
 	using ptr = std::shared_ptr<index_buffer>;
 
-	index_buffer()
-	{
-
-	}
+	index_buffer() = default;
 
 	virtual ~index_buffer() = default;
 };
@@ -511,6 +508,7 @@ public:
 
 	void set_vertices(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
 	buffer::ptr vertices() const { return _vertexBuffer; }
+
 	void set_indices(index_buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
 	index_buffer::ptr indices() const { return _indexBuffer; }
 
@@ -537,11 +535,7 @@ template <typename T> class custom_geometry : public geometry
 public:
 	using ptr = std::shared_ptr<custom_geometry>;
 
-	custom_geometry()
-		: geometry()
-	{
-		set_vertices(std::make_shared<buffer>(T::layout_desc()));
-	}
+	custom_geometry() = default;
 
 	virtual ~custom_geometry() = default;
 
@@ -555,7 +549,7 @@ public:
   T *alloc_vertices(size_t count)
   {
     if (!_vertexBuffer)
-      return nullptr;
+			set_vertices(std::make_shared<buffer>(T::layout_desc()));
 
     if (_vertexCursor + count > size_vertices())
       _vertices.resize(_vertexCursor + count);
@@ -566,7 +560,21 @@ public:
     return result;
   }
 
-  void pop_vertices(size_t count) { _vertexCursor = (count > _vertexCursor) ? 0 : (_vertexCursor - count); }
+	int *alloc_indices(size_t count)
+	{
+		if (!_indexBuffer)
+			set_indices(std::make_shared<index_buffer>());
+
+		if (_indexCursor + count > size_indices())
+			_indices.resize(_indexCursor + count);
+
+		auto result = _indices.data() + _indexCursor;
+		_indexCursor += count;
+		set_dirty();
+		return result;
+	}
+
+	void pop_vertices(size_t count) { _vertexCursor = (count > _vertexCursor) ? 0 : (_vertexCursor - count); }
   void pop_indices(size_t count) { _indexCursor = (count > _indexCursor) ? 0 : (_indexCursor - count); }
 
   bool bind() override
