@@ -103,7 +103,7 @@ std::vector<uint8_t> base64_decode(const char *encoded_string, size_t decompress
 	if (i)
 	{
 		for (int j = i; j < 4; j++) char_array_4[j] = 0;
-		for (int j = 0; j < 4; j++) char_array_4[j] = static_cast<uint8_t>(base64_chars.find(char_array_4[j]));
+		for (auto &j : char_array_4) j = static_cast<uint8_t>(base64_chars.find(j));
 
 		char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
 		char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
@@ -525,7 +525,7 @@ private:
 	bool _initialized = false;
 	detail::state _state;
 	program::ptr _program = std::make_shared<program>();
-	custom_geometry<detail::vertex2d>::ptr _geometry = std::make_shared<custom_geometry<detail::vertex2d>>();
+	geometry<detail::vertex2d>::ptr _geometry = std::make_shared<geometry<detail::vertex2d>>();
 	std::vector<detail::draw_call> _drawCalls;
 	std::vector<size_t> _layers;
 };
