@@ -362,6 +362,10 @@ public:
 
 	size_t size() const { return _size; }
 
+	size_t stride() const { return _stride; }
+
+	size_t size_elements() const { return _size / _stride; }
+
 	virtual bool bind();
 	virtual void unbind();
 
@@ -372,6 +376,7 @@ protected:
 	bool _owner = false;
 	uint8_t *_data = nullptr;
 	size_t _size = 0;
+	size_t _stride = 1;
 };
 
 #pragma endregion
@@ -502,7 +507,7 @@ public:
 	structured_buffer(GLenum type)
 		: buffer(type)
 	{
-
+		_stride = sizeof(T);
 	}
 
 	virtual ~structured_buffer() = default;
@@ -1362,6 +1367,12 @@ bool context3d::set_uniform(std::string_view name, texture::ptr value)
 bool context3d::draw(GLenum primitive, size_t offset, size_t length)
 {
   if (!_vertexBuffer) return false;
+
+	auto numElements = _vertexBuffer->size_elements();
+	if (offset >= numElements) return false;
+
+	if (offset + length > numElements)
+		length = numElements - offset;
 
   glDrawArrays(primitive, static_cast<GLint>(offset), static_cast<GLsizei>(length));
   return true;
