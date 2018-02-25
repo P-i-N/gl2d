@@ -116,7 +116,6 @@ public:
 	GL3D_API_FUNC( void,   BlendFunci, GLuint, GLenum, GLenum )
 	GL3D_API_FUNC( void,   BlendEquationi, GLuint, GLenum )
 
-
 	static constexpr GLenum FUNC_ADD               = 0x8006;
 	static constexpr GLenum CLAMP_TO_EDGE          = 0x812F;
 	static constexpr GLenum TEXTURE0               = 0x84C0;
@@ -223,7 +222,6 @@ struct layout_desc
 	std::string attribute_string = "";
 	std::function<void()> vao_initializer = nullptr;
 	size_t hash = 0;
-	size_t size = 1;
 
 	layout_desc() = default;
 
@@ -300,6 +298,81 @@ public:
 
 protected:
 	bool _dirty = true;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class buffer : public compiled_object
+{
+public:
+	using ptr = std::shared_ptr<buffer>;
+
+	buffer( GLenum type )
+		: compiled_object()
+		, _type( type )
+	{
+
+	}
+
+	virtual ~buffer()
+	{
+		clear();
+		_buffer.destroy();
+	}
+
+	GLenum type() const { return _type; }
+
+	GLuint id() const { return _buffer.id; }
+
+	virtual void clear()
+	{
+		if ( _owner ) { delete[] _data; _data = nullptr; }
+
+		_keepData = false;
+		_owner = false;
+		_data = nullptr;
+		_size = 0;
+		set_dirty();
+	}
+
+	void *alloc_data( const void *data, size_t size, bool keep = false )
+	{
+		if ( _owner && _size != size )
+			clear();
+
+		if ( size )
+		{
+			_size = size;
+			if ( !_data ) _data = new uint8_t[_size];
+			if ( data ) memcpy( _data, data, _size );
+		}
+
+		_owner = true;
+		_keepData = keep;
+		return _data;
+	}
+
+	void set_data( const void *data, size_t size )
+	{
+		clear();
+		_data = const_cast<uint8_t *>( static_cast<const uint8_t *>( data ) );
+		_size = size;
+	}
+
+	const uint8_t *data() const { return _data; }
+
+	size_t size() const { return _size; }
+
+	virtual bool bind();
+	virtual void unbind();
+
+protected:
+	GLenum _type;
+	bool _keepData = false;
+	bool _owner = false;
+	uint8_t *_data = nullptr;
+	size_t _size = 0;
+	size_t _capacity = 0;
+	detail::gl_resource_buffer _buffer;
 };
 
 #pragma endregion
@@ -414,194 +487,191 @@ struct vertex3d : layout<vertex_pos<vec3>, vertex_normal<vec3>, vertex_color<vec
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-class buffer : public detail::compiled_object
+template <typename T>
+class structured_buffer : public detail::buffer
 {
 public:
-	using ptr = std::shared_ptr<buffer>;
-
-	buffer(const detail::layout_desc &desc = detail::layout_desc())
-		: detail::compiled_object()
-		, _layout_desc(desc)
+	structured_buffer(GLenum type)
+		: buffer(type)
 	{
 
 	}
 
-	virtual ~buffer()
+	virtual ~structured_buffer() = default;
+
+	size_t size_elements() const { return _elementCursor; }
+
+	T *alloc_elements(size_t count)
 	{
-		clear();
-		_buffer.destroy();
+		if (_elementCursor + count > _elements.size())
+			_elements.resize(_elementCursor + count);
+
+		auto result = _elements.data() + _elementCursor;
+		_elementCursor += count;
+		set_dirty();
+		return result;
 	}
 
-	GLuint id() const { return _buffer.id; }
-
-	const detail::layout_desc &get_layout_desc() const { return _layout_desc; }
-
-	void clear()
+	void pop_elements(size_t count)
 	{
-		if (_owner && _data) { delete[] _data; _data = nullptr; }
-
-		_keepData = false;
-		_owner = false;
-		_data = nullptr;
-		_size = 0;
+		_elementCursor = (count > _elementCursor) ? 0 : (_elementCursor - count);
 		set_dirty();
 	}
 
-	void *alloc_data(const void *data, size_t size, bool keep = false)
+	bool bind() override
 	{
-		if (_owner && _size != size)
-			clear();
+		if (dirty())
+			set_data(_elements.data(), _elementCursor * sizeof(T));
 
-		if (size)
-		{
-			_size = size;
-			if (!_data) _data = new uint8_t[_size];
-			if (data) memcpy(_data, data, _size);
-		}
-
-		_owner = true;
-		_keepData = keep;
-		return _data;
+		return buffer::bind();
 	}
-
-	void set_data(const void *data, size_t size)
-	{
-		clear();
-		_data = const_cast<uint8_t *>(static_cast<const uint8_t *>(data));
-		_size = size;
-	}
-
-	const uint8_t *data() const { return _data; }
-
-	size_t size() const { return _size; }
-
-	bool bind(GLenum type);
-	void unbind(GLenum type);
 
 protected:
-	detail::layout_desc _layout_desc;
-	bool _keepData = false;
-	bool _owner = false;
-	uint8_t *_data = nullptr;
-	size_t _size = 0;
-	detail::gl_resource_buffer _buffer;
+	std::vector<T> _elements;
+	size_t _elementCursor = 0;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class index_buffer : public buffer
+template <typename T>
+class vertex_buffer : public structured_buffer<T>
 {
 public:
-	using ptr = std::shared_ptr<index_buffer>;
+	using ptr = std::shared_ptr<vertex_buffer>;
 
-	index_buffer() = default;
+	const detail::layout_desc &get_layout_desc() const { return _layout_desc; }
 
-	virtual ~index_buffer() = default;
-};
+	vertex_buffer()
+		: structured_buffer(detail::gl_api::ARRAY_BUFFER)
+		, _layout_desc(T::layout_desc())
+	{
 
-//---------------------------------------------------------------------------------------------------------------------
-class geometry : public detail::compiled_object
-{
-public:
-	using ptr = std::shared_ptr<geometry>;
+	}
 
-	GLuint id() const { return _vao.id; }
-
-	void set_vertices(buffer::ptr vb) { _vertexBuffer = vb; set_dirty(); }
-	buffer::ptr vertices() const { return _vertexBuffer; }
-
-	void set_indices(index_buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
-	index_buffer::ptr indices() const { return _indexBuffer; }
-
-	virtual size_t size_vertices() const = 0;
-	virtual size_t size_indices() const = 0;
-
-	virtual bool bind();
-	virtual void unbind();
-
-protected:
-	virtual ~geometry()
+	virtual ~vertex_buffer()
 	{
 		_vao.destroy();
 	}
 
+	bool bind() override
+	{
+		if (!_vao.id)
+		{
+			structured_buffer::bind();
+			gl.GenVertexArrays(1, &_vao.id);
+			gl.BindVertexArray(_vao);
+			_layout_desc.vao_initializer();
+		}
+
+		if (!structured_buffer::bind())
+			return false;
+
+		gl.BindVertexArray(_vao);
+		return true;
+	}
+
+	void unbind() override
+	{
+		gl.BindVertexArray(0);
+		structured_buffer::unbind();
+	}
+
+protected:
+	detail::layout_desc _layout_desc;
+
 	detail::gl_resource_vao _vao;
-	std::shared_ptr<buffer> _vertexBuffer;
-	std::shared_ptr<index_buffer> _indexBuffer;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename T> class custom_geometry : public geometry
+class index_buffer : public structured_buffer<int>
 {
 public:
-	using ptr = std::shared_ptr<custom_geometry>;
+	using ptr = std::shared_ptr<index_buffer>;
 
-	custom_geometry() = default;
+	index_buffer()
+		: structured_buffer(detail::gl_api::ELEMENT_ARRAY_BUFFER)
+	{
 
-	virtual ~custom_geometry() = default;
+	}
 
-  void clear_vertices() { _vertexCursor = 0; set_dirty(); }
-  void clear_indices() { _indexCursor = 0; set_dirty(); }
-  void clear() { _vertexCursor = _indexCursor = 0; set_dirty(); }
+	virtual ~index_buffer() = default;
+};
 
-  size_t size_vertices() const override { return _vertexCursor; }
-  size_t size_indices() const override { return _indexCursor; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> class geometry : public detail::compiled_object
+{
+public:
+	using ptr = std::shared_ptr<geometry>;
+
+	geometry() = default;
+
+	virtual ~geometry() = default;
+
+	GLuint id() const { return _vao.id; }
+
+	void set_vertices(typename vertex_buffer<T>::ptr vb) { _vertexBuffer = vb; set_dirty(); }
+	typename vertex_buffer<T>::ptr vertices() const { return _vertexBuffer; }
+
+	void set_indices(index_buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
+	index_buffer::ptr indices() const { return _indexBuffer; }
+
+  void clear_vertices() { if (_vertexBuffer) { _vertexBuffer->clear(); set_dirty(); } }
+	void clear_indices() { if (_indexBuffer) { _indexBuffer->clear(); set_dirty(); } }
+	void clear() { clear_vertices(); clear_indices(); }
 
   T *alloc_vertices(size_t count)
   {
     if (!_vertexBuffer)
-			set_vertices(std::make_shared<buffer>(T::layout_desc()));
+			set_vertices(std::make_shared<vertex_buffer<T>>());
 
-    if (_vertexCursor + count > size_vertices())
-      _vertices.resize(_vertexCursor + count);
-
-    auto result = _vertices.data() + _vertexCursor;
-    _vertexCursor += count;
-    set_dirty();
-    return result;
+		return _vertexBuffer->alloc_elements(count);
   }
+
+	void pop_vertices(size_t count)
+	{
+		if (_vertexBuffer)
+			_vertexBuffer->pop_elements(count);
+	}
 
 	int *alloc_indices(size_t count)
 	{
 		if (!_indexBuffer)
 			set_indices(std::make_shared<index_buffer>());
 
-		if (_indexCursor + count > size_indices())
-			_indices.resize(_indexCursor + count);
-
-		auto result = _indices.data() + _indexCursor;
-		_indexCursor += count;
-		set_dirty();
-		return result;
+		return _indexBuffer->alloc_elements(count);
 	}
 
-	void pop_vertices(size_t count) { _vertexCursor = (count > _vertexCursor) ? 0 : (_vertexCursor - count); }
-  void pop_indices(size_t count) { _indexCursor = (count > _indexCursor) ? 0 : (_indexCursor - count); }
+	void pop_indices(size_t count)
+	{
+		if (_indexBuffer)
+			_indexBuffer->pop_elements(count);
+	}
 
-  bool bind() override
+  bool bind()
   {
-    if (dirty())
-    {
-      if (_vertexBuffer) _vertexBuffer->set_data(_vertices.data(), _vertexCursor * sizeof(T));
-      if (_indexBuffer) _indexBuffer->set_data(_indices.data(), _indexCursor * sizeof(int));
-      set_dirty(false);
-    }
+		bool result = true;
 
-    if (!_vao.id && _vertexBuffer)
-    {
-      _vertexBuffer->bind(gl.ARRAY_BUFFER);
-      gl.GenVertexArrays(1, &_vao.id);
-      gl.BindVertexArray(_vao);
-			_vertexBuffer->get_layout_desc().vao_initializer();
-    }
+		if (_vertexBuffer)
+			result = result && _vertexBuffer->bind();
 
-    return geometry::bind();
+		if (_indexBuffer)
+			result = result && _indexBuffer->bind();
+
+		return result;
   }
 
-  std::vector<T> _vertices;
-  size_t _vertexCursor = 0;
+	void unbind()
+	{
+		if (_vertexBuffer)
+			_vertexBuffer->unbind();
 
-  std::vector<int> _indices;
-  size_t _indexCursor = 0;
+		if (_indexBuffer)
+			_indexBuffer->unbind();
+	}
+
+	typename vertex_buffer<T>::ptr _vertexBuffer;
+	index_buffer::ptr _indexBuffer;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -652,14 +722,14 @@ public:
         "#define GL3D_VERTEX_" _Suffix "(_Type) layout(location = " GL3D_TOSTRING(_Location) \
         ") in _Type vertex_" _NameSuffix "\n";
 
-		GL3D_LAYOUT_MACRO("POS", GL3D_LAYOUT_LOCATION_POS, "pos")
-		GL3D_LAYOUT_MACRO("NORMAL", GL3D_LAYOUT_LOCATION_NORMAL, "normal")
+		GL3D_LAYOUT_MACRO("POS",     GL3D_LAYOUT_LOCATION_POS,     "pos")
+		GL3D_LAYOUT_MACRO("NORMAL",  GL3D_LAYOUT_LOCATION_NORMAL,  "normal")
 		GL3D_LAYOUT_MACRO("TANGENT", GL3D_LAYOUT_LOCATION_TANGENT, "tangent")
-		GL3D_LAYOUT_MACRO("COLOR", GL3D_LAYOUT_LOCATION_COLOR, "color")
-		GL3D_LAYOUT_MACRO("UV0", GL3D_LAYOUT_LOCATION_UV0, "uv0")
-		GL3D_LAYOUT_MACRO("UV1", GL3D_LAYOUT_LOCATION_UV1, "uv1")
-		GL3D_LAYOUT_MACRO("UV2", GL3D_LAYOUT_LOCATION_UV2, "uv2")
-		GL3D_LAYOUT_MACRO("UV3", GL3D_LAYOUT_LOCATION_UV3, "uv3")
+		GL3D_LAYOUT_MACRO("COLOR",   GL3D_LAYOUT_LOCATION_COLOR,   "color")
+		GL3D_LAYOUT_MACRO("UV0",     GL3D_LAYOUT_LOCATION_UV0,     "uv0")
+		GL3D_LAYOUT_MACRO("UV1",     GL3D_LAYOUT_LOCATION_UV1,     "uv1")
+		GL3D_LAYOUT_MACRO("UV2",     GL3D_LAYOUT_LOCATION_UV2,     "uv2")
+		GL3D_LAYOUT_MACRO("UV3",     GL3D_LAYOUT_LOCATION_UV3,     "uv3")
 
 #undef GL3D_LAYOUT_MACRO
 
@@ -707,7 +777,11 @@ class texture : public detail::compiled_object
 public:
 	using ptr = std::shared_ptr<texture>;
 
-  texture(GLenum textureType = GL_TEXTURE_2D): _type(textureType) { }
+  texture(GLenum textureType = GL_TEXTURE_2D)
+		: _type(textureType)
+	{
+
+	}
 
 	virtual ~texture()
 	{
@@ -715,17 +789,18 @@ public:
 	}
 
   GLenum type() const { return _type; }
+
   GLuint id() const { return _texture.id; }
 
-  struct part
-  {
-    size_t layer_index = 0; // texture layer index
-    size_t mip_level = 0;   // layer mip level
-    ivec2 size;             // width and height in pixels
-    size_t offset = 0;      // byte offset from start of the buffer
-    size_t row_stride = 0;  // row size in bytes
-    size_t length = 0;      // total part size in bytes
-  };
+	struct part
+	{
+		size_t layer_index = 0; // texture layer index
+		size_t mip_level = 0;   // layer mip level
+		ivec2 size;             // width and height in pixels
+		size_t offset = 0;      // byte offset from start of the buffer
+		size_t row_stride = 0;  // row size in bytes
+		size_t length = 0;      // total part size in bytes
+	};
 
   const part *find_part(size_t layerIndex, size_t mipLevel) const
   {
@@ -748,9 +823,6 @@ public:
   size_t size_mip_levels(bool calculate = false) const;
   
   size_t size_bytes() const { return _sizeBytes; }
-
-  void set_pixel_buffer(buffer::ptr pb) { _pbo = pb; set_dirty(); }
-  buffer::ptr pixel_buffer() const { return _pbo; }
 
   void set_filter(GLenum minFilter, GLenum magFilter);
   GLenum min_filter() const { return _minFilter; }
@@ -780,7 +852,7 @@ protected:
 
   GLenum _type;
   detail::gl_resource_texture _texture;
-	buffer::ptr _pbo = std::make_shared<buffer>();
+	detail::buffer::ptr _pbo = std::make_shared<detail::buffer>(detail::gl_api::PIXEL_UNPACK_BUFFER);
   std::vector<part> _parts;
   GLenum _format = GL_RGBA;
   ivec2 _size;
@@ -793,14 +865,14 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class render_target : public detail::compiled_object
+class fbo : public detail::compiled_object
 {
 public:
-	using ptr = std::shared_ptr<render_target>;
+	using ptr = std::shared_ptr<fbo>;
 
-	render_target() = default;
+	fbo() = default;
 
-	virtual ~render_target() = default;
+	virtual ~fbo() = default;
 
 protected:
 	// TODO
@@ -858,7 +930,27 @@ public:
 
   void clear();
 
-  bool bind_geometry(geometry::ptr geom);
+	template <typename T>
+	bool bind_geometry(std::shared_ptr<geometry<T>> geom)
+	{
+		if (!geom)
+		{
+			if (_vertexBuffer) { _vertexBuffer->unbind(); _vertexBuffer = nullptr; }
+			if (_indexBuffer) { _indexBuffer->unbind(); _indexBuffer = nullptr; }
+			return true;
+		}
+
+		bool result = true;
+
+		if (_vertexBuffer = geom->vertices())
+			result = result && _vertexBuffer->bind();
+
+		if (_indexBuffer = geom->indices())
+			result = result && _indexBuffer->bind();
+
+		return result;
+	}
+
   bool bind_program(program::ptr prog);
   bool bind_texture(texture::ptr tex, int slot = 0);
 
@@ -875,7 +967,9 @@ public:
 
 private:
   program::ptr _basicProgram;
-	geometry::ptr _geometry;
+
+	detail::buffer::ptr _vertexBuffer;
+	index_buffer::ptr _indexBuffer;
 	program::ptr _program;
   texture::ptr _textures[16];
 };
@@ -953,57 +1047,30 @@ bool gl_resource_program::link(const std::initializer_list<gl_resource_shader> &
   return true;
 }
 
-}
-
 //------------------------------------------------------------------------------------------------------------------------
-bool buffer::bind(GLenum type)
+bool buffer::bind()
 {
 	if (dirty())
 	{
 		if (!_buffer.id) gl.GenBuffers(1, &_buffer.id);
-		gl.BindBuffer(type, _buffer.id);
-		gl.BufferData(type, _size, _data, gl.STREAM_DRAW);
+		gl.BindBuffer(_type, _buffer.id);
+		gl.BufferData(_type, _size, _data, gl.STREAM_DRAW);
 
-		if (_owner && !_keepData && _data) { delete[] _data; _data = nullptr; }
+		if (_owner && !_keepData) { delete[] _data; _data = nullptr; }
 		set_dirty(false);
 	}
 	else
-		gl.BindBuffer(type, _buffer.id);
+		gl.BindBuffer(_type, _buffer.id);
 
 	return _buffer.id > 0;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void buffer::unbind(GLenum type)
+void buffer::unbind()
 {
-	gl.BindBuffer(type, 0);
+	gl.BindBuffer(_type, 0);
 }
 
-//------------------------------------------------------------------------------------------------------------------------
-bool geometry::bind()
-{
-	if (!_vertexBuffer || !_vao.id)
-		return false;
-
-	_vertexBuffer->bind(gl.ARRAY_BUFFER);
-	gl.BindVertexArray(_vao);
-
-	if (_indexBuffer)
-		_indexBuffer->bind(gl.ELEMENT_ARRAY_BUFFER);
-
-	return true;
-}
-
-//------------------------------------------------------------------------------------------------------------------------
-void geometry::unbind()
-{
-	if (_vertexBuffer)
-		_vertexBuffer->unbind(gl.ARRAY_BUFFER);
-
-	gl.BindVertexArray(0);
-
-	if (_indexBuffer)
-		_indexBuffer->unbind(gl.ELEMENT_ARRAY_BUFFER);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1112,14 +1179,14 @@ bool texture::bind(int slot)
 
     if (_pbo->dirty())
     {
-      _pbo->bind(gl.PIXEL_UNPACK_BUFFER);
+      _pbo->bind();
       auto desc = detail::gl_format_descriptor::get(_format);
       if (_type == GL_TEXTURE_1D || _type == GL_TEXTURE_2D)
       {
         for (auto &&p : _parts)
           glTexImage2D(_type, static_cast<GLint>(p.mip_level), desc.layout, p.size.x, p.size.y, 0, _format, desc.element_format, reinterpret_cast<const GLvoid *>(p.offset));
       }
-      _pbo->unbind(gl.PIXEL_UNPACK_BUFFER);
+      _pbo->unbind();
     }
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, _minFilter);
@@ -1188,8 +1255,11 @@ context3d::context3d()
 //------------------------------------------------------------------------------------------------------------------------
 void context3d::clear()
 {
-  if (_geometry) _geometry->unbind();
-  _geometry = nullptr;
+	if (_vertexBuffer) _vertexBuffer->unbind();
+	_vertexBuffer = nullptr;
+
+	if (_indexBuffer) _indexBuffer->unbind();
+	_indexBuffer = nullptr;
 
   if (_program) _program->unbind();
   _program = nullptr;
@@ -1199,18 +1269,6 @@ void context3d::clear()
 
   bind_program(_basicProgram);
   glEnable(GL_DEPTH_TEST);
-}
-
-//------------------------------------------------------------------------------------------------------------------------
-bool context3d::bind_geometry(geometry::ptr geom)
-{
-  if (geom != _geometry)
-  {
-    if (_geometry) _geometry->unbind();
-    if (_geometry = geom) return _geometry->bind();
-  }
-
-  return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -1295,14 +1353,8 @@ bool context3d::set_uniform(std::string_view name, texture::ptr value)
 //------------------------------------------------------------------------------------------------------------------------
 bool context3d::draw(GLenum primitive, size_t offset, size_t length)
 {
-  if (!_geometry) return false;
-  
-  auto numElements = _geometry->size_vertices();
-  if (offset >= numElements) return false;
-  
-  if (offset + length > numElements)
-    length = numElements - offset;
-  
+  if (!_vertexBuffer) return false;
+
   glDrawArrays(primitive, static_cast<GLint>(offset), static_cast<GLsizei>(length));
   return true;
 }
