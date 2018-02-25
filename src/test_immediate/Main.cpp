@@ -3,26 +3,48 @@
 
 #include <chrono>
 
-using namespace gl3d;
+namespace gl3d {
 
 class cmd_list
 {
 public:
+	using ptr = std::shared_ptr<cmd_list>;
+
+	cmd_list();
+
+	virtual ~cmd_list() = default;
 
 protected:
 	struct draw_call
 	{
-		std::shared_ptr<buffer> vertex_buffer;
-		std::shared_ptr<buffer> index_buffer;
-
-		size_t rasterizer_state_index;
-		size_t blend_state_index;
-		size_t depth_stencil_state_index;
+		size_t pipeline_state_index;
 	};
+
+	struct pipeline_state
+	{
+
+		rasterizer_state rs;
+		blend_state bs;
+		depth_stencil_state ds;
+	};
+
+	std::vector<pipeline_state> _pipeline_states;
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
+cmd_list::cmd_list()
+{
+
+}
+
+}
 
 int main()
 {
+	using namespace gl3d;
+
 	auto desc = vertex3d::layout_desc();
 
 	window_open( "Example", 400, 300 );
