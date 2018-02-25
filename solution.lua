@@ -7,13 +7,6 @@ Projects =
     defines = { "GL3D_IMPLEMENTATION" }
   },
 
-  -- gl3d_parts
-  {
-    dir = "src/gl3d_parts",
-    type = "headeronly",
-    defines = { "GL3D_IMPLEMENTATION" }
-  },
-
   -- test
   {
     dir = "src/test",

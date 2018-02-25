@@ -504,6 +504,8 @@ template <typename T>
 class structured_buffer : public detail::buffer
 {
 public:
+	using element_t = T;
+
 	structured_buffer(GLenum type)
 		: buffer(type)
 	{
@@ -616,6 +618,7 @@ template <typename T> class geometry : public detail::compiled_object
 {
 public:
 	using ptr = std::shared_ptr<geometry>;
+	using vertex_t = T;
 
 	geometry() = default;
 
@@ -683,6 +686,34 @@ public:
 			_indexBuffer->unbind();
 	}
 
+	bool draw(GLenum primitive = GL_TRIANGLES, size_t offset = 0, size_t length = static_cast<size_t>(-1))
+	{
+		if (!_vertexBuffer) return false;
+
+		auto numElements = _vertexBuffer->size_elements();
+		if (offset >= numElements) return false;
+
+		if (offset + length > numElements)
+			length = numElements - offset;
+
+		glDrawArrays(primitive, static_cast<GLint>(offset), static_cast<GLsizei>(length));
+		return true;
+	}
+
+	bool draw_instanced(size_t count, GLenum primitive = GL_TRIANGLES, size_t offset = 0, size_t length = static_cast<size_t>(-1))
+	{
+		if (!_vertexBuffer) return false;
+
+		auto numElements = _vertexBuffer->size_elements();
+		if (offset >= numElements) return false;
+
+		if (offset + length > numElements)
+			length = numElements - offset;
+
+		return true;
+	}
+
+protected:
 	typename vertex_buffer<T>::ptr _vertexBuffer;
 	index_buffer::ptr _indexBuffer;
 };
@@ -762,7 +793,9 @@ public:
 	void set_compute_source(std::string_view code) { _computeSource = code; set_dirty(); }
 	const std::string &compute_source() const { return _computeSource; }
 
-	bool bind();
+	size_t compile_permutation(std::string_view macros);
+
+	bool bind(size_t permutation = 0);
 
 	void unbind() { gl.UseProgram(0); }
 
@@ -781,6 +814,12 @@ protected:
 
 	std::map<std::string, std::string> _macros;
 	std::string _lastError;
+
+	struct permutation_desc
+	{
+		std::string macros;
+		detail::gl_resource_program _program;
+	};
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1087,7 +1126,14 @@ void buffer::unbind()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-bool program::bind()
+size_t program::compile_permutation(std::string_view macros)
+{
+	// TODO
+	return 0;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool program::bind(size_t permutation)
 {
 	if (dirty())
 	{

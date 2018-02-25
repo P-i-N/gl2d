@@ -22,7 +22,6 @@ protected:
 
 	struct pipeline_state
 	{
-
 		rasterizer_state rs;
 		blend_state bs;
 		depth_stencil_state ds;
