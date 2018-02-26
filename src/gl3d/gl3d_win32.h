@@ -11,19 +11,19 @@
 
 namespace gl3d {
 
-window_id_t window_open(const std::string &title, int width, int height, unsigned flags = default_window_flags);
+window_id_t window_open( const std::string &title, int width, int height, unsigned flags = default_window_flags );
 
-bool window_close(window_id_t id = main_window_id);
+bool window_close( window_id_t id = main_window_id );
 
-void set_window_title(const std::string &text, window_id_t id = main_window_id);
+void set_window_title( const std::string &text, window_id_t id = main_window_id );
 
-const std::string &window_title(window_id_t id = main_window_id);
+const std::string &window_title( window_id_t id = main_window_id );
 
-void set_window_size(int width, int height, window_id_t = main_window_id);
+void set_window_size( int width, int height, window_id_t = main_window_id );
 
-ivec2 get_window_size(window_id_t id = main_window_id);
+ivec2 get_window_size( window_id_t id = main_window_id );
 
-inline ivec2 get_window_center(window_id_t id = main_window_id) { return get_window_size(id) / 2; }
+inline ivec2 get_window_center( window_id_t id = main_window_id ) { return get_window_size( id ) / 2; }
 
 void run();
 
@@ -38,11 +38,11 @@ void run();
 #define __GL3D_WIN32_H_IMPL__
 
 #if defined(WIN32)
-#include <windowsx.h>
-#include <hidsdi.h>
-#include <Xinput.h>
-#pragma comment(lib, "hid.lib")
-#pragma comment(lib, "xinput.lib")
+	#include <windowsx.h>
+	#include <hidsdi.h>
+	#include <Xinput.h>
+	#pragma comment(lib, "hid.lib")
+	#pragma comment(lib, "xinput.lib")
 #else
 #endif
 
@@ -73,16 +73,16 @@ struct window
 	int mouse_dx = 0, mouse_dy = 0;
 	int mouse_capture_ref = 0;
 
-	window(window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags);
+	window( window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags );
 
 	virtual ~window();
 
 	void make_current();
 	void flip();
-	void set_title(const std::string &text);
-	void set_size(int w, int h);
+	void set_title( const std::string &text );
+	void set_size( int w, int h );
 
-	void fill_mouse_event(event &e)
+	void fill_mouse_event( event &e )
 	{
 		e.mouse.x = mouse_x;
 		e.mouse.y = mouse_y;
@@ -96,7 +96,7 @@ typedef std::map<window_id_t, std::unique_ptr<window>> windows_t;
 windows_t g_windows;
 
 /* Forward declaration */
-LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
 
 //---------------------------------------------------------------------------------------------------------------------
 struct window_class
@@ -107,17 +107,17 @@ struct window_class
 	{
 		wndclass = { 0 };
 		wndclass.lpfnWndProc = wnd_proc;
-		wndclass.hInstance = GetModuleHandle(nullptr);
-		wndclass.hbrBackground = GetStockBrush(BLACK_BRUSH);
-		wndclass.lpszClassName = TEXT(GL3D_WINDOW_CLASS);
+		wndclass.hInstance = GetModuleHandle( nullptr );
+		wndclass.hbrBackground = GetStockBrush( BLACK_BRUSH );
+		wndclass.lpszClassName = TEXT( GL3D_WINDOW_CLASS );
 		wndclass.style = CS_OWNDC;
-		wndclass.hCursor = LoadCursor(nullptr, IDC_ARROW);
-		RegisterClass(&wndclass);
+		wndclass.hCursor = LoadCursor( nullptr, IDC_ARROW );
+		RegisterClass( &wndclass );
 	}
 
 	~window_class()
 	{
-		UnregisterClass(TEXT(GL3D_WINDOW_CLASS), wndclass.hInstance);
+		UnregisterClass( TEXT( GL3D_WINDOW_CLASS ), wndclass.hInstance );
 	}
 } g_window_class;
 
@@ -125,11 +125,11 @@ struct window_class
 void update_timer()
 {
 	LARGE_INTEGER li;
-	QueryPerformanceCounter(&li);
+	QueryPerformanceCounter( &li );
 	li.QuadPart -= g_timer_offset;
 
-	state.time = static_cast<float>(li.QuadPart / static_cast<double>(g_timer_frequency));
-	state.delta = static_cast<float>((li.QuadPart - g_last_timer_counter) / static_cast<double>(g_timer_frequency));
+	state.time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
+	state.delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
 	g_last_timer_counter = li.QuadPart;
 }
 
@@ -138,54 +138,54 @@ void update_xinput()
 {
 	static std::map<int, int> g_xinput_port_map;
 
-	for (int i = 0; i < XUSER_MAX_COUNT; ++i)
+	for ( int i = 0; i < XUSER_MAX_COUNT; ++i )
 	{
-		auto iter = g_xinput_port_map.find(i);
+		auto iter = g_xinput_port_map.find( i );
 		int port = iter != g_xinput_port_map.end() ? iter->second : -1;
 		XINPUT_STATE state;
-		ZeroMemory(&state, sizeof(XINPUT_STATE));
-		if (XInputGetState(i, &state) == ERROR_SUCCESS)
+		ZeroMemory( &state, sizeof( XINPUT_STATE ) );
+		if ( XInputGetState( i, &state ) == ERROR_SUCCESS )
 		{
-			if (port == -1)
+			if ( port == -1 )
 			{
 				port = detail::gamepad_state::allocate_port();
 				g_xinput_port_map[i] = port;
-				event e(event_type::gamepad_connect, invalid_window_id);
+				event e( event_type::gamepad_connect, invalid_window_id );
 				e.gamepad.port = port;
-				on_event.call(e);
+				on_event.call( e );
 			}
 			else
 				port = iter->second;
 
 			auto &g = gamepad[port];
 
-			g.change_button_state(gamepad_button::a, (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) != 0);
-			g.change_button_state(gamepad_button::b, (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0);
-			g.change_button_state(gamepad_button::x, (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) != 0);
-			g.change_button_state(gamepad_button::y, (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) != 0);
-			g.change_button_state(gamepad_button::up, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0);
-			g.change_button_state(gamepad_button::down, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) != 0);
-			g.change_button_state(gamepad_button::left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) != 0);
-			g.change_button_state(gamepad_button::right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0);
-			g.change_button_state(gamepad_button::thumb_left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB) != 0);
-			g.change_button_state(gamepad_button::thumb_right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0);
-			g.change_button_state(gamepad_button::shoulder_left, (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0);
-			g.change_button_state(gamepad_button::shoulder_right, (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0);
+			g.change_button_state( gamepad_button::a, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_A ) != 0 );
+			g.change_button_state( gamepad_button::b, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_B ) != 0 );
+			g.change_button_state( gamepad_button::x, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_X ) != 0 );
+			g.change_button_state( gamepad_button::y, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_Y ) != 0 );
+			g.change_button_state( gamepad_button::up, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP ) != 0 );
+			g.change_button_state( gamepad_button::down, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN ) != 0 );
+			g.change_button_state( gamepad_button::left, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT ) != 0 );
+			g.change_button_state( gamepad_button::right, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT ) != 0 );
+			g.change_button_state( gamepad_button::thumb_left, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB ) != 0 );
+			g.change_button_state( gamepad_button::thumb_right, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB ) != 0 );
+			g.change_button_state( gamepad_button::shoulder_left, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER ) != 0 );
+			g.change_button_state( gamepad_button::shoulder_right, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER ) != 0 );
 
-			g.change_axis_state(gamepad_axis::thumb_left, state.Gamepad.sThumbLX / 32767.0f, state.Gamepad.sThumbLY / 32767.0f);
-			g.change_axis_state(gamepad_axis::thumb_right, state.Gamepad.sThumbRX / 32767.0f, state.Gamepad.sThumbRY / 32767.0f);
-			g.change_axis_state(gamepad_axis::trigger_left, state.Gamepad.bLeftTrigger / 255.0f, 0.0f);
-			g.change_axis_state(gamepad_axis::trigger_right, state.Gamepad.bRightTrigger / 255.0f, 0.0f);
+			g.change_axis_state( gamepad_axis::thumb_left, state.Gamepad.sThumbLX / 32767.0f, state.Gamepad.sThumbLY / 32767.0f );
+			g.change_axis_state( gamepad_axis::thumb_right, state.Gamepad.sThumbRX / 32767.0f, state.Gamepad.sThumbRY / 32767.0f );
+			g.change_axis_state( gamepad_axis::trigger_left, state.Gamepad.bLeftTrigger / 255.0f, 0.0f );
+			g.change_axis_state( gamepad_axis::trigger_right, state.Gamepad.bRightTrigger / 255.0f, 0.0f );
 		}
 		else
 		{
-			if (port != -1)
+			if ( port != -1 )
 			{
-				event e(event_type::gamepad_disconnect, invalid_window_id);
+				event e( event_type::gamepad_disconnect, invalid_window_id );
 				e.gamepad.port = port;
-				on_event.call(e);
-				detail::gamepad_state::release_port(port);
-				g_xinput_port_map.erase(iter);
+				on_event.call( e );
+				detail::gamepad_state::release_port( port );
+				g_xinput_port_map.erase( iter );
 			}
 		}
 	}
@@ -199,9 +199,9 @@ void update()
 
 	// Call global tick
 	{
-		auto iter = g_windows.find(main_window_id);
-		if (iter != g_windows.end())
-			state.ctx2d = &(iter->second->ctx2d);
+		auto iter = g_windows.find( main_window_id );
+		if ( iter != g_windows.end() )
+			state.ctx2d = &( iter->second->ctx2d );
 		else
 			state.ctx2d = nullptr;
 
@@ -210,18 +210,18 @@ void update()
 		on_tick.call();
 	}
 
-	for (auto &kvp : g_windows)
+	for ( auto &kvp : g_windows )
 	{
 		auto &w = *kvp.second;
-		
+
 		w.make_current();
-		state.ctx2d = &(w.ctx2d);
-		state.ctx3d = &(w.ctx3d);
+		state.ctx2d = &( w.ctx2d );
+		state.ctx3d = &( w.ctx3d );
 		state.current_window_id = w.id;
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		state.ctx3d->clear();
-		on_event.call(event(event_type::paint, w.id));
-		w.ctx2d.render(w.ctx3d, w.width, w.height);
+		on_event.call( event( event_type::paint, w.id ) );
+		w.ctx2d.render( w.ctx3d, w.width, w.height );
 		w.flip();
 	}
 
@@ -231,31 +231,31 @@ void update()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-window_id_t window_open(const std::string &title, int width, int height, unsigned flags)
+window_id_t window_open( const std::string &title, int width, int height, unsigned flags )
 {
 	auto id = g_next_id++;
-	auto w = std::make_unique<window>(id, title, width, height, flags);
+	auto w = std::make_unique<window>( id, title, width, height, flags );
 
-	if (!w->ctx2d.init())
+	if ( !w->ctx2d.init() )
 	{
-		window_close(id);
+		window_close( id );
 		return invalid_window_id;
 	}
 
-	g_windows[id] = std::move(w);
+	g_windows[id] = std::move( w );
 
-	on_event.call(event(event_type::open, id));
+	on_event.call( event( event_type::open, id ) );
 	return id;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-bool window_close(window_id_t id)
+bool window_close( window_id_t id )
 {
-	auto iter = g_windows.find(id);
-	if (iter != g_windows.end())
+	auto iter = g_windows.find( id );
+	if ( iter != g_windows.end() )
 	{
-		on_event.call(event(event_type::close, iter->second->id));
-		g_windows.erase(iter);
+		on_event.call( event( event_type::close, iter->second->id ) );
+		g_windows.erase( iter );
 		g_should_quit |= id == main_window_id || g_windows.empty();
 		return true;
 	}
@@ -263,18 +263,18 @@ bool window_close(window_id_t id)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void set_window_title(const std::string &text, window_id_t id)
+void set_window_title( const std::string &text, window_id_t id )
 {
-	auto iter = g_windows.find(id);
-	if (iter != g_windows.end())
-		iter->second->set_title(text);
+	auto iter = g_windows.find( id );
+	if ( iter != g_windows.end() )
+		iter->second->set_title( text );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-const std::string &window_title(window_id_t id)
+const std::string &window_title( window_id_t id )
 {
-	auto iter = g_windows.find(id);
-	if (iter != g_windows.end())
+	auto iter = g_windows.find( id );
+	if ( iter != g_windows.end() )
 		return iter->second->title;
 
 	static const std::string empty_title = "";
@@ -282,29 +282,29 @@ const std::string &window_title(window_id_t id)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void set_window_size(int width, int height, window_id_t id)
+void set_window_size( int width, int height, window_id_t id )
 {
-	auto iter = g_windows.find(id);
-	if (iter != g_windows.end())
-		iter->second->set_size(width, height);
+	auto iter = g_windows.find( id );
+	if ( iter != g_windows.end() )
+		iter->second->set_size( width, height );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-ivec2 get_window_size(window_id_t id)
+ivec2 get_window_size( window_id_t id )
 {
-	auto iter = g_windows.find(id);
-	if (iter != g_windows.end())
-		return ivec2(iter->second->width, iter->second->height);
+	auto iter = g_windows.find( id );
+	if ( iter != g_windows.end() )
+		return ivec2( iter->second->width, iter->second->height );
 
 	return ivec2();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-window::window(window_id_t win_id, const std::string &title, int width, int height, unsigned flags)
-	: id(win_id)
-	, title(title)
-	, width(width)
-	, height(height)
+window::window( window_id_t win_id, const std::string &title, int width, int height, unsigned flags )
+	: id( win_id )
+	, title( title )
+	, width( width )
+	, height( height )
 {
 	style =  WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
@@ -312,23 +312,24 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
 	adjustedRect.top = adjustedRect.left = 0;
 	adjustedRect.right = width;
 	adjustedRect.bottom = height;
-	AdjustWindowRectEx(&adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0);
+	AdjustWindowRectEx( &adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0 );
 
-	handle = CreateWindow(TEXT(GL3D_WINDOW_CLASS), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+	handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top, nullptr, nullptr,
+	                       GetModuleHandle( nullptr ), nullptr );
 
-	if (win_id == main_window_id)
+	if ( win_id == main_window_id )
 	{
 		RAWINPUTDEVICE rid;
 		rid.usUsagePage = 1;
 		rid.usUsage = 5;
 		rid.dwFlags = RIDEV_DEVNOTIFY | RIDEV_INPUTSINK;
 		rid.hwndTarget = handle;
-		RegisterRawInputDevices(&rid, 1, sizeof(RAWINPUTDEVICE));
+		RegisterRawInputDevices( &rid, 1, sizeof( RAWINPUTDEVICE ) );
 	}
 
 	PIXELFORMATDESCRIPTOR pfd =
 	{
-		sizeof(PIXELFORMATDESCRIPTOR),
+		sizeof( PIXELFORMATDESCRIPTOR ),
 		1,
 		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
 		PFD_TYPE_RGBA,
@@ -337,13 +338,13 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
 		24, 8,
 		0, PFD_MAIN_PLANE, 0, 0, 0, 0
 	};
- 
-	hdc = GetDC(handle);
 
-	auto pf = ChoosePixelFormat(hdc, &pfd); 
-	SetPixelFormat(hdc, pf, &pfd);
- 
-	hglrc = wglCreateContext(hdc);
+	hdc = GetDC( handle );
+
+	auto pf = ChoosePixelFormat( hdc, &pfd );
+	SetPixelFormat( hdc, pf, &pfd );
+
+	hglrc = wglCreateContext( hdc );
 	make_current();
 
 	ctx2d.init();
@@ -352,49 +353,49 @@ window::window(window_id_t win_id, const std::string &title, int width, int heig
 //---------------------------------------------------------------------------------------------------------------------
 window::~window()
 {
-	wglDeleteContext(hglrc);
-	DestroyWindow(handle);
+	wglDeleteContext( hglrc );
+	DestroyWindow( handle );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void window::make_current()
 {
-	if (wglGetCurrentContext() != hglrc)
-		wglMakeCurrent(hdc, hglrc);
+	if ( wglGetCurrentContext() != hglrc )
+		wglMakeCurrent( hdc, hglrc );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void window::flip()
 {
-	SwapBuffers(hdc);
+	SwapBuffers( hdc );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void window::set_title(const std::string &text)
+void window::set_title( const std::string &text )
 {
-	SetWindowTextA(handle, text.c_str());
+	SetWindowTextA( handle, text.c_str() );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void window::set_size(int w, int h)
+void window::set_size( int w, int h )
 {
-	if (width != w || height != h)
+	if ( width != w || height != h )
 	{
 		width = w;
 		height = h;
 		RECT rect;
-		GetClientRect(handle, &rect);
+		GetClientRect( handle, &rect );
 		int x = rect.left;
 		int y = rect.top;
 		rect.right = rect.left + w;
 		rect.bottom = rect.top + h;
-		AdjustWindowRectEx(&rect, style & ~WS_OVERLAPPED, FALSE, 0);
-		SetWindowPos(handle, handle, x, y, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOREPOSITION);
+		AdjustWindowRectEx( &rect, style & ~WS_OVERLAPPED, FALSE, 0 );
+		SetWindowPos( handle, handle, x, y, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOREPOSITION );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-key vk_to_key(WPARAM vk)
+key vk_to_key( WPARAM vk )
 {
 	static const std::map<WPARAM, key> vkToKeyMap =
 	{
@@ -415,32 +416,32 @@ key vk_to_key(WPARAM vk)
 		{ VK_CONTROL, key::ctrl }, { VK_MENU, key::alt }, { VK_SHIFT, key::shift }
 	};
 
-	auto iter = vkToKeyMap.find(vk);
-	if (iter != vkToKeyMap.end())
+	auto iter = vkToKeyMap.find( vk );
+	if ( iter != vkToKeyMap.end() )
 		return iter->second;
 
 	return key::unknown;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-mouse_button mbutton_to_mouse_button(UINT msg)
+mouse_button mbutton_to_mouse_button( UINT msg )
 {
-	if (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP)
+	if ( msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP )
 		return mouse_button::left;
-	if (msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP)
+	if ( msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP )
 		return mouse_button::right;
-	if (msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP)
+	if ( msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP )
 		return mouse_button::middle;
 
 	return mouse_button::unknown;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-mouse_button xbutton_to_mouse_button(WPARAM xb)
+mouse_button xbutton_to_mouse_button( WPARAM xb )
 {
-	auto lo = LOWORD(xb);
-	if (lo == 32) return mouse_button::back;
-	if (lo == 64) return mouse_button::forward;
+	auto lo = LOWORD( xb );
+	if ( lo == 32 ) return mouse_button::back;
+	if ( lo == 64 ) return mouse_button::forward;
 
 	return mouse_button::unknown;
 }
@@ -448,7 +449,7 @@ mouse_button xbutton_to_mouse_button(WPARAM xb)
 //---------------------------------------------------------------------------------------------------------------------
 std::vector<uint8_t> g_raw_input_buffer;
 
-void parse_raw_input(RAWINPUT *raw)
+void parse_raw_input( RAWINPUT *raw )
 {
 	// We can use statics here, this should be called from one thread only anyway
 	static std::vector<uint8_t> preparsedDataBuffer;
@@ -457,30 +458,30 @@ void parse_raw_input(RAWINPUT *raw)
 	static std::vector<USAGE> usages;
 	UINT bufferSize;
 
-	if (GetRawInputDeviceInfo(raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize)) return;
-	if (!bufferSize) return;
-	preparsedDataBuffer.resize(bufferSize);
-	GetRawInputDeviceInfo(raw->header.hDevice, RIDI_PREPARSEDDATA, preparsedDataBuffer.data(), &bufferSize);
-	PHIDP_PREPARSED_DATA preparsedData = reinterpret_cast<PHIDP_PREPARSED_DATA>(preparsedDataBuffer.data());
+	if ( GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) ) return;
+	if ( !bufferSize ) return;
+	preparsedDataBuffer.resize( bufferSize );
+	GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, preparsedDataBuffer.data(), &bufferSize );
+	PHIDP_PREPARSED_DATA preparsedData = reinterpret_cast<PHIDP_PREPARSED_DATA>( preparsedDataBuffer.data() );
 	HIDP_CAPS caps;
-	HidP_GetCaps(preparsedData, &caps);
+	HidP_GetCaps( preparsedData, &caps );
 
-	buttonCapsBuffer.resize(sizeof(HIDP_BUTTON_CAPS) * caps.NumberInputButtonCaps);
-	PHIDP_BUTTON_CAPS buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>(buttonCapsBuffer.data());
-	HidP_GetButtonCaps(HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, preparsedData);
+	buttonCapsBuffer.resize( sizeof( HIDP_BUTTON_CAPS ) * caps.NumberInputButtonCaps );
+	PHIDP_BUTTON_CAPS buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>( buttonCapsBuffer.data() );
+	HidP_GetButtonCaps( HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, preparsedData );
 
-	valueCapsBuffer.resize(sizeof(HIDP_VALUE_CAPS) * caps.NumberInputValueCaps);
-	PHIDP_VALUE_CAPS valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>(valueCapsBuffer.data());
-	HidP_GetValueCaps(HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData);
+	valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
+	PHIDP_VALUE_CAPS valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( valueCapsBuffer.data() );
+	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData );
 
 	// Check buttons
 	ULONG numButtons = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1;
-	usages.resize(numButtons);
-	HidP_GetUsages(HidP_Input,
-		buttonCaps->UsagePage, 0, usages.data(), &numButtons, preparsedData,
-		reinterpret_cast<PCHAR>(raw->data.hid.bRawData), raw->data.hid.dwSizeHid);
+	usages.resize( numButtons );
+	HidP_GetUsages( HidP_Input,
+	                buttonCaps->UsagePage, 0, usages.data(), &numButtons, preparsedData,
+	                reinterpret_cast<PCHAR>( raw->data.hid.bRawData ), raw->data.hid.dwSizeHid );
 
-	for (size_t i = 0; i < usages.size(); ++i)
+	for ( size_t i = 0; i < usages.size(); ++i )
 	{
 		// TODO
 		int index = usages[i];// - buttonCaps->Range.UsageMin;
@@ -488,110 +489,110 @@ void parse_raw_input(RAWINPUT *raw)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
-	for (auto &kvp : g_windows)
+	for ( auto &kvp : g_windows )
 	{
-		if (kvp.second->handle == hWnd)
+		if ( kvp.second->handle == hWnd )
 		{
-			switch (message)
+			switch ( message )
 			{
 				case WM_INPUT:
 				{
 					UINT bufferSize;
-					GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &bufferSize, sizeof(RAWINPUTHEADER));
-					g_raw_input_buffer.resize(bufferSize);
-					GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, g_raw_input_buffer.data(), &bufferSize, sizeof(RAWINPUTHEADER));
-					parse_raw_input(reinterpret_cast<RAWINPUT *>(g_raw_input_buffer.data()));
+					GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, nullptr, &bufferSize, sizeof( RAWINPUTHEADER ) );
+					g_raw_input_buffer.resize( bufferSize );
+					GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, g_raw_input_buffer.data(), &bufferSize, sizeof( RAWINPUTHEADER ) );
+					parse_raw_input( reinterpret_cast<RAWINPUT *>( g_raw_input_buffer.data() ) );
 				}
 				return 0;
 
 				case WM_MOUSEMOVE:
-					mouse.change_position(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), kvp.second->id);
+					mouse.change_position( GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ), kvp.second->id );
 					return 0;
 
 				case WM_LBUTTONDOWN:
 				case WM_RBUTTONDOWN:
 				case WM_MBUTTONDOWN:
-					if (!(kvp.second->mouse_capture_ref++))
-						SetCapture(hWnd);
+					if ( !( kvp.second->mouse_capture_ref++ ) )
+						SetCapture( hWnd );
 
-					mouse.change_button_state(mbutton_to_mouse_button(message), true, kvp.second->id);
+					mouse.change_button_state( mbutton_to_mouse_button( message ), true, kvp.second->id );
 					return 0;
 
 				case WM_LBUTTONUP:
 				case WM_RBUTTONUP:
 				case WM_MBUTTONUP:
-					mouse.change_button_state(mbutton_to_mouse_button(message), false, kvp.second->id);
+					mouse.change_button_state( mbutton_to_mouse_button( message ), false, kvp.second->id );
 
-					if (!(--kvp.second->mouse_capture_ref))
+					if ( !( --kvp.second->mouse_capture_ref ) )
 						ReleaseCapture();
 
 					return 0;
 
 				case WM_XBUTTONDOWN:
 				{
-					auto button = xbutton_to_mouse_button(wParam);
-					if (button != mouse_button::unknown)
-						mouse.change_button_state(button, true, kvp.second->id);
+					auto button = xbutton_to_mouse_button( wParam );
+					if ( button != mouse_button::unknown )
+						mouse.change_button_state( button, true, kvp.second->id );
 				}
 				return 0;
 
 				case WM_XBUTTONUP:
 				{
-					auto button = xbutton_to_mouse_button(wParam);
-					if (button != mouse_button::unknown)
-						mouse.change_button_state(button, false, kvp.second->id);
+					auto button = xbutton_to_mouse_button( wParam );
+					if ( button != mouse_button::unknown )
+						mouse.change_button_state( button, false, kvp.second->id );
 				}
 				return 0;
 
 				case WM_MOUSEWHEEL:
 				{
-					event e(event_type::mouse_wheel, kvp.second->id);
+					event e( event_type::mouse_wheel, kvp.second->id );
 					e.wheel.dx = 0;
-					e.wheel.dy = GET_WHEEL_DELTA_WPARAM(wParam);
-					on_event.call(e);
+					e.wheel.dy = GET_WHEEL_DELTA_WPARAM( wParam );
+					on_event.call( e );
 				}
 				return 0;
 
 				case WM_MOUSEHWHEEL:
 				{
-					event e(event_type::mouse_wheel, kvp.second->id);
-					e.wheel.dx = GET_WHEEL_DELTA_WPARAM(wParam);
+					event e( event_type::mouse_wheel, kvp.second->id );
+					e.wheel.dx = GET_WHEEL_DELTA_WPARAM( wParam );
 					e.wheel.dy = 0;
-					on_event.call(e);
+					on_event.call( e );
 				}
 				return 0;
 
 				case WM_KEYDOWN:
 				{
-					bool isKeyPress = (lParam & (1 << 30)) != 0;
-					if (!isKeyPress)
-						keyboard.change_key_state(vk_to_key(wParam), true, kvp.second->id);
+					bool isKeyPress = ( lParam & ( 1 << 30 ) ) != 0;
+					if ( !isKeyPress )
+						keyboard.change_key_state( vk_to_key( wParam ), true, kvp.second->id );
 				}
 				return 0;
 
 				case WM_KEYUP:
-					keyboard.change_key_state(vk_to_key(wParam), false, kvp.second->id);
+					keyboard.change_key_state( vk_to_key( wParam ), false, kvp.second->id );
 					return 0;
 
 				case WM_CHAR:
 				{
-					event e(event_type::key_press, kvp.second->id);
+					event e( event_type::key_press, kvp.second->id );
 					e.keyboard.key = key::unknown;
-					e.keyboard.key_char = static_cast<int>(wParam);
-					on_event.call(e);
+					e.keyboard.key_char = static_cast<int>( wParam );
+					on_event.call( e );
 				}
 				return 0;
 
 				case WM_SIZE:
 				{
-					event e(event_type::resize, kvp.second->id);
-					e.resize.width = LOWORD(lParam);
-					e.resize.height = HIWORD(lParam);
-					on_event.call(e);
-					kvp.second->width = LOWORD(lParam);
-					kvp.second->height = HIWORD(lParam);
+					event e( event_type::resize, kvp.second->id );
+					e.resize.width = LOWORD( lParam );
+					e.resize.height = HIWORD( lParam );
+					on_event.call( e );
+					kvp.second->width = LOWORD( lParam );
+					kvp.second->height = HIWORD( lParam );
 				}
 				break;
 
@@ -600,44 +601,57 @@ LRESULT CALLBACK wnd_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					break;
 
 				case WM_CLOSE:
-					window_close(kvp.first);
+					window_close( kvp.first );
 					return 0;
 
 				case WM_CAPTURECHANGED:
 					kvp.second->mouse_capture_ref = 0;
 					return 0;
 
+				case WM_MOVE:
+				{
+					auto hMonitor = MonitorFromWindow( hWnd, MONITOR_DEFAULTTOPRIMARY );
+
+					MONITORINFO mi;
+					mi.cbSize = sizeof( MONITORINFO );
+					if ( GetMonitorInfo( hMonitor, &mi ) )
+					{
+						printf( "monitor: %d %d\n", mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top );
+					}
+				}
+				return 0;
+
 				default:
 					break;
 			}
-			
+
 			break;
 		}
 	}
 
-	return DefWindowProc(hWnd, message, wParam, lParam);
+	return DefWindowProc( hWnd, message, wParam, lParam );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void run()
 {
 	LARGE_INTEGER li;
-	QueryPerformanceCounter(&li);
+	QueryPerformanceCounter( &li );
 	g_timer_offset = li.QuadPart;
 
-	QueryPerformanceFrequency(&li);
+	QueryPerformanceFrequency( &li );
 	g_timer_frequency = li.QuadPart;
 
-	while (true)
+	while ( true )
 	{
 		MSG msg;
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		while ( PeekMessage( &msg, nullptr, 0, 0, PM_REMOVE ) )
 		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			TranslateMessage( &msg );
+			DispatchMessage( &msg );
 		}
-		
-		if (!g_should_quit)
+
+		if ( !g_should_quit )
 		{
 			update();
 			std::this_thread::yield();
