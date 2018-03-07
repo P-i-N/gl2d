@@ -818,7 +818,7 @@ protected:
 	struct permutation_desc
 	{
 		std::string macros;
-		detail::gl_resource_program _program;
+		detail::gl_resource_program program;
 	};
 };
 
