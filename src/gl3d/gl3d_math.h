@@ -421,6 +421,7 @@ using ivec3 = detail::xvec3<int>;
 using vec4 = detail::xvec4<float>;
 using dvec4 = detail::xvec4<double>;
 using ivec4 = detail::xvec4<int>;
+using byte_vec4 = detail::xvec4<uint8_t>;
 using mat3 = detail::xmat3<float>;
 using dmat3 = detail::xmat3<double>;
 using mat4 = detail::xmat4<float>;

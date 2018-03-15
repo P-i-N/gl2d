@@ -616,7 +616,7 @@ LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 					mi.cbSize = sizeof( MONITORINFO );
 					if ( GetMonitorInfo( hMonitor, &mi ) )
 					{
-						printf( "monitor: %d %d\n", mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top );
+						//printf( "monitor: %d %d\n", mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top );
 					}
 				}
 				return 0;

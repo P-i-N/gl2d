@@ -1,44 +1,8 @@
 #define GL3D_IMPLEMENTATION
 #include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_cmd_list.h>
 
 #include <chrono>
-
-namespace gl3d {
-
-class cmd_list
-{
-public:
-	using ptr = std::shared_ptr<cmd_list>;
-
-	cmd_list();
-
-	virtual ~cmd_list() = default;
-
-protected:
-	struct draw_call
-	{
-		size_t pipeline_state_index;
-	};
-
-	struct pipeline_state
-	{
-		rasterizer_state rs;
-		blend_state bs;
-		depth_stencil_state ds;
-	};
-
-	std::vector<pipeline_state> _pipeline_states;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//---------------------------------------------------------------------------------------------------------------------
-cmd_list::cmd_list()
-{
-
-}
-
-}
 
 int main()
 {
@@ -47,6 +11,8 @@ int main()
 	auto desc = vertex3d::layout_desc();
 
 	window_open( "Example", 400, 300 );
+
+	cmd_list cl;
 
 	on_event( [&]( event & e )
 	{
@@ -58,7 +24,19 @@ int main()
 			auto size = get_window_size( e.window_id );
 			float aspectRatio = static_cast<float>( size.x ) / size.y;
 
+			cl.render();
 		}
+	} );
+
+	on_tick( [&]()
+	{
+		cl.reset();
+
+		cl.begin( cmd_list_primitive::lines );
+		cl.vertex( { 0, 0 } );
+		cl.vertex( { 1, 1 } );
+		cl.end();
+
 	} );
 
 	run();

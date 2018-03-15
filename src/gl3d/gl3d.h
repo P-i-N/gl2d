@@ -187,6 +187,7 @@ GL3D_INIT_VAO_ARG( vec3, 3, GL_FLOAT )
 GL3D_INIT_VAO_ARG( ivec3, 3, GL_INT )
 GL3D_INIT_VAO_ARG( vec4, 4, GL_FLOAT )
 GL3D_INIT_VAO_ARG( ivec4, 4, GL_INT )
+GL3D_INIT_VAO_ARG( byte_vec4, 4, GL_UNSIGNED_BYTE )
 
 #undef GL3D_INIT_VAO_ARG
 
@@ -932,48 +933,6 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct rasterizer_state
-{
-	GLenum face_cull_mode = GL_NONE;
-	bool front_ccw = false;
-	bool wireframe = false;
-	bool depth_clamp = false;
-	bool scissor_test = false;
-
-	void bind();
-};
-
-struct blend_state
-{
-	struct slot_desc
-	{
-		GLenum src = GL_ONE;
-		GLenum dst = GL_ZERO;
-		GLenum op = detail::gl_api::FUNC_ADD;
-		GLenum src_alpha = GL_ONE;
-		GLenum dst_alpha = GL_ZERO;
-		GLenum op_alpha = GL_NONE;
-	} slot[8];
-
-	std::bitset<8> enabled_slots = { 0 };
-
-	void bind();
-};
-
-struct depth_stencil_state
-{
-	GLenum depth_func = GL_LESS;
-	uint8_t stencil_read_mask = 0;
-	uint8_t stencil_write_mask = 0;
-	bool stencil_test = false;
-	bool depth_test = true;
-	bool depth_write = true;
-
-	void bind();
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class context3d
 {
 public:
@@ -1271,36 +1230,6 @@ void texture::set_filter(GLenum minFilter, GLenum magFilter)
     _minFilter = minFilter; _magFilter = magFilter;
     set_dirty();
   }
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void rasterizer_state::bind()
-{
-	glFrontFace(front_ccw ? GL_CCW : GL_CW);
-	face_cull_mode != GL_NONE ? (glEnable(GL_CULL_FACE), glCullFace(face_cull_mode)) : glDisable(GL_CULL_FACE);
-	glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
-	depth_clamp ? glEnable(gl.DEPTH_CLAMP) : glDisable(gl.DEPTH_CLAMP);
-	scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void blend_state::bind()
-{
-	for (GLuint i = 0; i < 8; ++i)
-	{
-		enabled_slots[i] ? gl.Enablei(GL_BLEND, i) : gl.Disablei(GL_BLEND, i);
-		gl.BlendFunci(i, slot[i].src, slot[i].dst);
-		gl.BlendEquationi(i, slot[i].op);
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void depth_stencil_state::bind()
-{
-	depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
-	stencil_test ? glEnable(GL_STENCIL_TEST) : glDisable(GL_STENCIL_TEST);
-	glDepthMask(depth_write ? GL_TRUE : GL_FALSE);
-	glDepthFunc(depth_func);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
