@@ -159,8 +159,8 @@ void cmd_list::reset()
 {
 	_pipeline_states.clear();
 
-	_vertices.clear();
-	_indices.clear();
+	_vertices->clear();
+	_indices->clear();
 }
 
 //---------------------------------------------------------------------------------------------------------------------

@@ -19,10 +19,10 @@ struct window_flag
 {
 	enum
 	{
-		none = 0,
-		resizable = 1,
-		fullscreen = 2,
-		title = 4,
+		none       = 0,
+		resizable  = 0b00000001,
+		fullscreen = 0b00000010,
+		title      = 0b00000100,
 	};
 };
 

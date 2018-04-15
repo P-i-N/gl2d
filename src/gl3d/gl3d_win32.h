@@ -92,7 +92,7 @@ struct window
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-typedef std::map<window_id_t, std::unique_ptr<window>> windows_t;
+using windows_t = std::map<window_id_t, std::unique_ptr<window>>;
 windows_t g_windows;
 
 /* Forward declaration */
