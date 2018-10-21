@@ -3,10 +3,63 @@
 
 #include <chrono>
 
+namespace gl3d {
+
+struct vertex_layout
+{
+	struct attr { unsigned location, offset, element_count, element_type; };
+
+	std::vector<attr> attribs;
+	unsigned mask = 0;
+
+	template <typename... Args>
+	vertex_layout( Args &&... args ): attribs( sizeof...( Args ) / 2 ) { init( 0, args... ); }
+
+private:
+	template <typename T> struct type { };
+
+	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, GL_INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, GL_FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, GL_FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, GL_INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, GL_FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, GL_INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, GL_FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, GL_INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, GL_UNSIGNED_BYTE }; }
+
+	template <typename T1, typename T2, typename... Args>
+	void init( unsigned index, unsigned location, T1 T2::*member, Args &&... args )
+	{
+		fill( attribs[index], location, unsigned( size_t( &( ( ( T2 * )0 )->*member ) ) ), type<T1>() );
+		mask |= ( 1u << location );
+
+		if constexpr ( sizeof...( Args ) >= 2 )
+			init( index + 1, args... );
+	}
+};
+
+}
+
+struct Vertex
+{
+	gl3d::vec3 pos;
+	gl3d::vec4 color;
+
+	static const gl3d::vertex_layout &get_layout()
+	{
+		static gl3d::vertex_layout layout { 0, &Vertex::pos, 3, &Vertex::color };
+		return layout;
+	}
+};
+
 int main()
 {
+	const auto &l = Vertex::get_layout();
+
 	using namespace gl3d;
 
+	/*
 	// Triangle geometry
 	auto geom = std::make_shared<geometry<vertex3d>>();
 	auto vertices = geom->alloc_vertices( 3 );
@@ -77,6 +130,7 @@ int main()
 
 		ctx->texti( 8, 8, "Hello, world!" );
 	} );
+	*/
 
 	run();
 	return 0;

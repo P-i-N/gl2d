@@ -633,13 +633,13 @@ public:
 	void set_indices(index_buffer::ptr ib) { _indexBuffer = ib; set_dirty(); }
 	index_buffer::ptr indices() const { return _indexBuffer; }
 
-  void clear_vertices() { if (_vertexBuffer) { _vertexBuffer->clear(); set_dirty(); } }
+	void clear_vertices() { if (_vertexBuffer) { _vertexBuffer->clear(); set_dirty(); } }
 	void clear_indices() { if (_indexBuffer) { _indexBuffer->clear(); set_dirty(); } }
 	void clear() { clear_vertices(); clear_indices(); }
 
-  T *alloc_vertices(size_t count)
-  {
-    if (!_vertexBuffer)
+	T *alloc_vertices(size_t count)
+	{
+		if (!_vertexBuffer)
 			set_vertices(std::make_shared<vertex_buffer<T>>());
 
 		return _vertexBuffer->alloc_elements(count);
@@ -841,9 +841,9 @@ public:
 		_texture.destroy();
 	}
 
-  GLenum type() const { return _type; }
+	GLenum type() const { return _type; }
 
-  GLuint id() const { return _texture.id; }
+	GLuint id() const { return _texture.id; }
 
 	struct part
 	{
@@ -855,65 +855,65 @@ public:
 		size_t length = 0;      // total part size in bytes
 	};
 
-  const part *find_part(size_t layerIndex, size_t mipLevel) const
-  {
-    for (auto &&p : _parts) if (p.layer_index == layerIndex && p.mip_level == mipLevel) return &p;
-    return nullptr;
-  }
-
-  void set_params(int width, int height, GLenum format, size_t sizeLayers, size_t sizeMipLevels);
-
-  void set_format(GLenum format) { set_params(_size.x, _size.y, format, _sizeLayers, _sizeMipLevels); }
-  GLenum format() const { return _format; }
-
-  void set_size(int width, int height) { set_params(width, height, _format, _sizeLayers, _sizeMipLevels); }
-  ivec2 size(size_t mipLevel) const { return detail::calculate_mip_size(_size.x, _size.y, mipLevel); }
-  
-  void set_size_layers(size_t count) { set_params(_size.x, _size.y, _format, count, _sizeMipLevels); }
-  size_t size_layers() const { return _sizeLayers; }
-
-  void set_size_mip_levels(size_t count) { set_params(_size.x, _size.y, _format, _sizeLayers, count); }
-  size_t size_mip_levels(bool calculate = false) const;
-  
-  size_t size_bytes() const { return _sizeBytes; }
-
-  void set_filter(GLenum minFilter, GLenum magFilter);
-  GLenum min_filter() const { return _minFilter; }
-  GLenum mag_filter() const { return _magFilter; }
-
-  void set_wrap(GLenum wrap) { if (wrap != _wrap) { _wrap = wrap; set_dirty(); } }
-  GLenum wrap() const { return _wrap; }
-
-  void *alloc_pixels(const void *data, bool keep = false)
-  {
-    if (!_pbo || !_sizeBytes) return nullptr;
-    set_dirty();
-    return _pbo->alloc_data(data, _sizeBytes, keep);
-  }
-
-  void set_pixels(const void *data)
+	const part *find_part(size_t layerIndex, size_t mipLevel) const
 	{
-    if (!_pbo || !_sizeBytes) return;
-    set_dirty();
-    _pbo->set_data(data, _sizeBytes);
-  }
-  
-  bool bind(int slot = 0);
+		for (auto &&p : _parts) if (p.layer_index == layerIndex && p.mip_level == mipLevel) return &p;
+		return nullptr;
+	}
+
+	void set_params(int width, int height, GLenum format, size_t sizeLayers, size_t sizeMipLevels);
+
+	void set_format(GLenum format) { set_params(_size.x, _size.y, format, _sizeLayers, _sizeMipLevels); }
+	GLenum format() const { return _format; }
+
+	void set_size(int width, int height) { set_params(width, height, _format, _sizeLayers, _sizeMipLevels); }
+	ivec2 size(size_t mipLevel) const { return detail::calculate_mip_size(_size.x, _size.y, mipLevel); }
+
+	void set_size_layers(size_t count) { set_params(_size.x, _size.y, _format, count, _sizeMipLevels); }
+	size_t size_layers() const { return _sizeLayers; }
+
+	void set_size_mip_levels(size_t count) { set_params(_size.x, _size.y, _format, _sizeLayers, count); }
+	size_t size_mip_levels(bool calculate = false) const;
+
+	size_t size_bytes() const { return _sizeBytes; }
+
+	void set_filter(GLenum minFilter, GLenum magFilter);
+	GLenum min_filter() const { return _minFilter; }
+	GLenum mag_filter() const { return _magFilter; }
+
+	void set_wrap(GLenum wrap) { if (wrap != _wrap) { _wrap = wrap; set_dirty(); } }
+	GLenum wrap() const { return _wrap; }
+
+	void *alloc_pixels(const void *data, bool keep = false)
+	{
+		if (!_pbo || !_sizeBytes) return nullptr;
+		set_dirty();
+		return _pbo->alloc_data(data, _sizeBytes, keep);
+	}
+
+	void set_pixels(const void *data)
+	{
+		if (!_pbo || !_sizeBytes) return;
+		set_dirty();
+		_pbo->set_data(data, _sizeBytes);
+	}
+
+	bool bind(int slot = 0);
 
 protected:
-  void update_parts();
+	void update_parts();
 
-  GLenum _type;
-  detail::gl_resource_texture _texture;
+	GLenum _type;
+	detail::gl_resource_texture _texture;
 	detail::buffer::ptr _pbo = std::make_shared<detail::buffer>(detail::gl_api::PIXEL_UNPACK_BUFFER);
-  std::vector<part> _parts;
-  GLenum _format = GL_RGBA;
-  ivec2 _size;
-  size_t _sizeLayers = 1;
-  size_t _sizeMipLevels = 1;
-  size_t _sizeBytes = 0;
-  GLenum _minFilter = GL_NEAREST, _magFilter = GL_NEAREST;
-  GLenum _wrap = GL_REPEAT;
+	std::vector<part> _parts;
+	GLenum _format = GL_RGBA;
+	ivec2 _size;
+	size_t _sizeLayers = 1;
+	size_t _sizeMipLevels = 1;
+	size_t _sizeBytes = 0;
+	GLenum _minFilter = GL_NEAREST, _magFilter = GL_NEAREST;
+	GLenum _wrap = GL_REPEAT;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -983,6 +983,23 @@ private:
 	index_buffer::ptr _indexBuffer;
 	program::ptr _program;
   texture::ptr _textures[16];
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+using context_id_t = unsigned;
+
+class context
+{
+public:
+	static context_id_t create();
+	static bool destroy(context_id_t id);
+	static context &current();
+
+	void make_current();
+
+private:
+	unsigned _id;
 };
 
 }
