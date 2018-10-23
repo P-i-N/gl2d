@@ -41,26 +41,22 @@ void mouse_state::change_button_state( mouse_button b, bool down, unsigned id )
 		button_down[static_cast<size_t>( b )] = down;
 		event e( down ? event_type::mouse_down : event_type::mouse_up, id );
 		e.mouse.b = b;
-		e.mouse.x = this->x;
-		e.mouse.y = this->y;
-		e.mouse.dx = e.mouse.dy = 0;
+		e.mouse.pos = pos;
+		e.mouse.delta = { 0, 0 };
 		on_event.call( e );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void mouse_state::change_position( int mx, int my, unsigned id )
+void mouse_state::change_position( ivec2 pos, unsigned id )
 {
-	if ( x != mx || y != my )
+	if ( this->pos != pos )
 	{
 		event e( event_type::mouse_move, id );
 		e.mouse.b = mouse_button::unknown;
-		e.mouse.x = mx;
-		e.mouse.y = my;
-		e.mouse.dx = mx - this->x;
-		e.mouse.dy = my - this->y;
-		this->x = mx;
-		this->y = my;
+		e.mouse.pos = pos;
+		e.mouse.delta = pos - this->pos;
+		this->pos = pos;
 		on_event.call( e );
 	}
 }
@@ -80,21 +76,17 @@ void gamepad_state::change_button_state( gamepad_button b, bool down )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void gamepad_state::change_axis_state( gamepad_axis ax, float x, float y )
+void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 {
-	float oldX = axis_x[static_cast<size_t>( ax )];
-	float oldY = axis_y[static_cast<size_t>( ax )];
-	if ( oldX != x || oldY != y )
+	auto oldPos = this->pos[static_cast<size_t>( axis )];
+	if ( oldPos != pos )
 	{
-		axis_x[static_cast<size_t>( ax )] = x;
-		axis_y[static_cast<size_t>( ax )] = y;
+		this->pos[static_cast<size_t>( axis )] = pos;
 		event e( event_type::gamepad_move, UINT_MAX );
 		e.gamepad.port = port;
-		e.gamepad.axis = ax;
-		e.gamepad.x = x;
-		e.gamepad.y = y;
-		e.gamepad.dx = x - oldX;
-		e.gamepad.dy = y - oldY;
+		e.gamepad.axis = axis;
+		e.gamepad.pos = pos;
+		e.gamepad.delta = pos - oldPos;
 		on_event.call( e );
 	}
 }

@@ -1,6 +1,8 @@
 #ifndef __GL3D_INPUT_H__
 #define __GL3D_INPUT_H__
 
+#include "gl3d_math.h"
+
 #include <limits.h>
 #include <type_traits>
 
@@ -18,13 +20,6 @@ enum class window_flag
 inline auto operator +( window_flag t ) { return static_cast<std::underlying_type_t <window_flag>>( t ); }
 
 static const unsigned default_window_flags = ( +window_flag::resizable ) | ( +window_flag::title );
-
-//---------------------------------------------------------------------------------------------------------------------
-struct framestamp
-{
-	unsigned frame_id;
-	float time, delta;
-};
 
 //---------------------------------------------------------------------------------------------------------------------
 enum class key
@@ -95,7 +90,7 @@ enum class event_type
 	unknown = 0,
 	run, quit,
 	paint,
-	open, close, resize,
+	open, close, resize, move,
 	key_down, key_up, key_press,
 	mouse_down, mouse_up, mouse_move, mouse_wheel,
 	gamepad_down, gamepad_up, gamepad_move, gamepad_connect, gamepad_disconnect
@@ -110,11 +105,10 @@ struct event
 
 	union
 	{
+		ivec2 resize, move, wheel;
 		struct { key k; int ch; } keyboard;
-		struct { int x, y; } resize;
-		struct { int x, y, dx, dy; mouse_button b; } mouse;
-		struct { int dx, dy; } wheel;
-		struct { int port; float x, y, dx, dy; gamepad_button b; gamepad_axis axis; } gamepad;
+		struct { ivec2 pos, delta; mouse_button b; } mouse;
+		struct { int port; vec2 pos, delta; gamepad_button b; gamepad_axis axis; } gamepad;
 	};
 
 	event( event_type et, unsigned id )
@@ -144,10 +138,10 @@ struct mouse_state
 {
 	bool button_down[static_cast<size_t>( mouse_button::last )];
 	bool operator[]( mouse_button b ) const { return button_down[static_cast<size_t>( b )]; }
-	int x, y;
+	ivec2 pos;
 
 	void change_button_state( mouse_button b, bool down, unsigned id = UINT_MAX );
-	void change_position( int mx, int my, unsigned id = UINT_MAX );
+	void change_position( ivec2 pos, unsigned id = UINT_MAX );
 };
 }
 
@@ -161,13 +155,12 @@ struct gamepad_state
 {
 	int port = -1;
 	bool button_down[static_cast<size_t>( gamepad_button::last )];
-	float axis_x[static_cast<size_t>( gamepad_axis::last )];
-	float axis_y[static_cast<size_t>( gamepad_axis::last )];
+	vec2 pos[static_cast<size_t>( gamepad_axis::last )];
 	bool operator[]( gamepad_button b ) const { return button_down[static_cast<size_t>( b )]; }
 	bool connected() const { return port >= 0 && port < max_gamepads; }
 
 	void change_button_state( gamepad_button b, bool down );
-	void change_axis_state( gamepad_axis ax, float x, float y );
+	void change_axis_state( gamepad_axis axis, vec2 pos );
 
 	static int allocate_port();
 	static void release_port( int port );
@@ -180,8 +173,7 @@ extern detail::gamepad_state gamepad[detail::max_gamepads];
 namespace detail {
 struct space_navigator_state
 {
-	float pos_x, pos_y, pos_z;
-	float rot_x, rot_y, rot_z;
+	vec3 pos, rot;
 	bool button_down[static_cast<size_t>( space_navigator_button::last )];
 };
 }

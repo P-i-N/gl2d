@@ -26,6 +26,9 @@ unsigned g_next_window_id = 0;
 uint64_t g_timer_offset = 0;
 uint64_t g_timer_frequency = 0;
 uint64_t g_last_timer_counter = 0;
+unsigned g_frame_id = 0;
+float g_time = 0.0f;
+float g_delta = 0.0f;
 
 std::vector<window::ptr> g_windows;
 
@@ -244,10 +247,10 @@ void update_xinput()
 			g.change_button_state( gamepad_button::shoulder_left, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER ) != 0 );
 			g.change_button_state( gamepad_button::shoulder_right, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER ) != 0 );
 
-			g.change_axis_state( gamepad_axis::thumb_left, state.Gamepad.sThumbLX / 32767.0f, state.Gamepad.sThumbLY / 32767.0f );
-			g.change_axis_state( gamepad_axis::thumb_right, state.Gamepad.sThumbRX / 32767.0f, state.Gamepad.sThumbRY / 32767.0f );
-			g.change_axis_state( gamepad_axis::trigger_left, state.Gamepad.bLeftTrigger / 255.0f, 0.0f );
-			g.change_axis_state( gamepad_axis::trigger_right, state.Gamepad.bRightTrigger / 255.0f, 0.0f );
+			g.change_axis_state( gamepad_axis::thumb_left, { state.Gamepad.sThumbLX / 32767.0f, state.Gamepad.sThumbLY / 32767.0f } );
+			g.change_axis_state( gamepad_axis::thumb_right, { state.Gamepad.sThumbRX / 32767.0f, state.Gamepad.sThumbRY / 32767.0f } );
+			g.change_axis_state( gamepad_axis::trigger_left, { state.Gamepad.bLeftTrigger / 255.0f, 0.0f } );
+			g.change_axis_state( gamepad_axis::trigger_right, { state.Gamepad.bRightTrigger / 255.0f, 0.0f } );
 		}
 		else
 		{
@@ -266,32 +269,18 @@ void update_xinput()
 //---------------------------------------------------------------------------------------------------------------------
 void update()
 {
-	{
-		LARGE_INTEGER li;
-		QueryPerformanceCounter( &li );
-		li.QuadPart -= g_timer_offset;
+	LARGE_INTEGER li;
+	QueryPerformanceCounter( &li );
+	li.QuadPart -= g_timer_offset;
 
-		//state.time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
-		//state.delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
-		g_last_timer_counter = li.QuadPart;
-	}
+	++g_frame_id;
+	g_time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
+	g_delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
+	g_last_timer_counter = li.QuadPart;
 
 	update_xinput();
 
-	// Call global tick
-	{
-		/*
-		auto iter = g_windows.find( main_window_id );
-		if ( iter != g_windows.end() )
-			state.ctx2d = &( iter->second->ctx2d );
-		else
-			state.ctx2d = nullptr;
-
-		state.ctx3d = nullptr;
-		state.current_window_id = main_window_id;
-		*/
-		on_tick.call();
-	}
+	on_tick.call();
 
 	for ( const auto &w : g_windows )
 	{
@@ -416,7 +405,7 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				return 0;
 
 				case WM_MOUSEMOVE:
-					mouse.change_position( GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ), w->id() );
+					mouse.change_position( { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) }, w->id() );
 					return 0;
 
 				case WM_LBUTTONDOWN:
@@ -457,8 +446,8 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MOUSEWHEEL:
 				{
 					event e( event_type::mouse_wheel, w->id() );
-					e.wheel.dx = 0;
-					e.wheel.dy = GET_WHEEL_DELTA_WPARAM( wParam );
+					e.wheel.x = 0;
+					e.wheel.y = GET_WHEEL_DELTA_WPARAM( wParam );
 					on_event.call( e );
 				}
 				return 0;
@@ -466,8 +455,8 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MOUSEHWHEEL:
 				{
 					event e( event_type::mouse_wheel, w->id() );
-					e.wheel.dx = GET_WHEEL_DELTA_WPARAM( wParam );
-					e.wheel.dy = 0;
+					e.wheel.x = GET_WHEEL_DELTA_WPARAM( wParam );
+					e.wheel.y = 0;
 					on_event.call( e );
 				}
 				return 0;
@@ -517,6 +506,11 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 
 				case WM_MOVE:
 				{
+					event e( event_type::move, w->id() );
+					e.resize.x = LOWORD( lParam );
+					e.resize.y = HIWORD( lParam );
+					printf( "WM_MOVE: %d %d\n", e.resize.x, e.resize.y );
+
 					auto hMonitor = MonitorFromWindow( hWnd, MONITOR_DEFAULTTOPRIMARY );
 
 					MONITORINFO mi;
@@ -541,6 +535,11 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
+unsigned frame_id() { return detail::g_frame_id; }
+float time() { return detail::g_time; }
+float delta() { return detail::g_delta; }
 
 //---------------------------------------------------------------------------------------------------------------------
 void run()
