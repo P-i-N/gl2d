@@ -2,7 +2,7 @@
 	#define __GL3D_WIN32_H_IMPL__
 #endif
 
-#include "gl3d_win32.h"
+#include "gl3d_window.h"
 
 #if defined(WIN32)
 	#include <windowsx.h>
@@ -25,7 +25,7 @@ uint64_t g_timer_offset = 0;
 uint64_t g_timer_frequency = 0;
 uint64_t g_last_timer_counter = 0;
 
-std::vector<window::ptr> g_windows_;
+std::vector<window::ptr> g_windows;
 
 /* Forward declaration */
 LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -61,17 +61,35 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 	DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
 	RECT adjustedRect;
-	adjustedRect.top = adjustedRect.left = 0;
-	adjustedRect.right = size.x;
-	adjustedRect.bottom = size.y;
+
+	if ( size.x <= 0 )
+		size.x = GetSystemMetrics( SM_CXSCREEN );
+
+	if ( size.y <= 0 )
+		size.y = GetSystemMetrics( SM_CYSCREEN );
+
+	if ( pos.x == INT_MAX )
+		adjustedRect.left = ( GetSystemMetrics( SM_CXSCREEN ) - size.x ) / 2;
+	else
+		adjustedRect.left = pos.x;
+
+	if ( pos.y == INT_MAX )
+		adjustedRect.top = ( GetSystemMetrics( SM_CYSCREEN ) - size.y ) / 2;
+	else
+		adjustedRect.top = pos.y;
+
+	adjustedRect.right = adjustedRect.left + size.x;
+	adjustedRect.bottom = adjustedRect.top + size.y;
 	AdjustWindowRectEx( &adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0 );
 
-	result->_native_handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title.c_str(), style, 0, 0, adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top,
+	result->_native_handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title.c_str(), style,
+	                                       adjustedRect.left, adjustedRect.top,
+	                                       adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top,
 	                                       nullptr,
 	                                       nullptr,
 	                                       GetModuleHandle( nullptr ), nullptr );
 
-	if ( g_windows_.empty() )
+	if ( g_windows.empty() )
 	{
 		RAWINPUTDEVICE rid;
 		rid.usUsagePage = 1;
@@ -83,11 +101,10 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 
 	PIXELFORMATDESCRIPTOR pfd =
 	{
-		sizeof( PIXELFORMATDESCRIPTOR ),
-		1,
+		sizeof( PIXELFORMATDESCRIPTOR ), 1,
 		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
-		PFD_TYPE_RGBA,
-		32, 0, 0, 0, 0, 0, 0,
+		PFD_TYPE_RGBA, 32,
+		0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0,
 		24, 8,
 		0, PFD_MAIN_PLANE, 0, 0, 0, 0
@@ -97,11 +114,13 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 	auto pf = ChoosePixelFormat( hdc, &pfd );
 	SetPixelFormat( hdc, pf, &pfd );
 
+	result->_context = context::create( result->_native_handle );
+
 	result->_id = g_next_window_id++;
 	result->_pos = pos;
 	result->_size = size;
 
-	g_windows_.push_back( result );
+	g_windows.push_back( result );
 
 	on_event.call( event( event_type::open, result->_id ) );
 	return result;
@@ -292,7 +311,7 @@ void update()
 		on_tick.call();
 	}
 
-	for ( const auto &w : g_windows_ )
+	for ( const auto &w : g_windows )
 	{
 		auto ctx = w->context();
 		ctx->make_current();
@@ -398,7 +417,7 @@ void parse_raw_input( RAWINPUT *raw )
 //---------------------------------------------------------------------------------------------------------------------
 LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
-	for ( const auto &w : g_windows_ )
+	for ( const auto &w : g_windows )
 	{
 		if ( HWND( w->native_handle() ) == hWnd )
 		{

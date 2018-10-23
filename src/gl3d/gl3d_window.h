@@ -32,6 +32,8 @@ public:
 	void *native_handle() const { return _native_handle; }
 	auto context() const { return _context; }
 
+	bool closed() const { return _native_handle == nullptr; }
+
 	void title( const std::string &text );
 	const std::string &title() const { return _title; }
 
@@ -49,7 +51,7 @@ public:
 protected:
 	unsigned _id = UINT_MAX;
 	void *_native_handle = nullptr;
-	detail::context::ptr _context;
+	context::ptr _context;
 	std::string _title;
 	ivec2 _pos;
 	ivec2 _size;
@@ -62,6 +64,8 @@ protected:
 #ifdef GL3D_IMPLEMENTATION
 	#ifndef __GL3D_WIN32_H_IMPL__
 		#define __GL3D_WIN32_H_IMPL__
-		#include "gl3d_win32.inl"
+		#if defined(WIN32)
+			#include "gl3d_window_win32.inl"
+		#endif
 	#endif // __GL3D_WIN32_H_IMPL__
 #endif // GL2D_IMPLEMENTATION

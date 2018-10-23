@@ -1,7 +1,8 @@
 #ifndef __GL3D_INPUT_H__
 #define __GL3D_INPUT_H__
 
-#define GL3D_MAX_GAMEPADS 8
+#include <limits.h>
+#include <type_traits>
 
 namespace gl3d {
 
@@ -154,6 +155,8 @@ extern detail::mouse_state mouse;
 
 //---------------------------------------------------------------------------------------------------------------------
 namespace detail {
+static constexpr unsigned max_gamepads = 8;
+
 struct gamepad_state
 {
 	int port = -1;
@@ -161,7 +164,7 @@ struct gamepad_state
 	float axis_x[static_cast<size_t>( gamepad_axis::last )];
 	float axis_y[static_cast<size_t>( gamepad_axis::last )];
 	bool operator[]( gamepad_button b ) const { return button_down[static_cast<size_t>( b )]; }
-	bool connected() const { return port >= 0 && port < GL3D_MAX_GAMEPADS; }
+	bool connected() const { return port >= 0 && port < max_gamepads; }
 
 	void change_button_state( gamepad_button b, bool down );
 	void change_axis_state( gamepad_axis ax, float x, float y );
@@ -171,7 +174,7 @@ struct gamepad_state
 };
 }
 
-extern detail::gamepad_state gamepad[GL3D_MAX_GAMEPADS];
+extern detail::gamepad_state gamepad[detail::max_gamepads];
 
 //---------------------------------------------------------------------------------------------------------------------
 namespace detail {

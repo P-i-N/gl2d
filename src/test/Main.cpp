@@ -1,5 +1,5 @@
 #define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_window.h>
 
 #include <chrono>
 

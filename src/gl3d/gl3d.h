@@ -23,15 +23,26 @@ namespace gl3d {
 
 struct gl
 {
-	static constexpr unsigned NONE = 0;
-	static constexpr unsigned BYTE = 0x1400;
-	static constexpr unsigned UNSIGNED_BYTE = 0x1401;
-	static constexpr unsigned SHORT = 0x1402;
-	static constexpr unsigned UNSIGNED_SHORT = 0x1403;
-	static constexpr unsigned INT = 0x1404;
-	static constexpr unsigned UNSIGNED_INT = 0x1405;
-	static constexpr unsigned FLOAT = 0x1406;
-	static constexpr unsigned DOUBLE = 0x140A;
+	using enum_t = unsigned;
+
+	static constexpr enum_t NONE = 0;
+	static constexpr enum_t BYTE = 0x1400;
+	static constexpr enum_t UNSIGNED_BYTE = 0x1401;
+	static constexpr enum_t SHORT = 0x1402;
+	static constexpr enum_t UNSIGNED_SHORT = 0x1403;
+	static constexpr enum_t INT = 0x1404;
+	static constexpr enum_t UNSIGNED_INT = 0x1405;
+	static constexpr enum_t FLOAT = 0x1406;
+	static constexpr enum_t DOUBLE = 0x140A;
+
+#if defined(WIN32)
+	static constexpr enum_t CONTEXT_MAJOR_VERSION_ARB = 0x2091;
+	static constexpr enum_t CONTEXT_MINOR_VERSION_ARB = 0x2092;
+	static constexpr enum_t CONTEXT_PROFILE_MASK_ARB = 0x9126;
+	static constexpr enum_t CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001;
+
+	static void *( __stdcall *CreateContextAttribsARB )( void *, void *, const int * );
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,25 +93,28 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+} // namespace gl3d::detail
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class context
 {
 public:
 	using ptr = std::shared_ptr<context>;
 
-	static ptr from_native_handle( void *nativeHandle );
-	static ptr from_shared_context( const context &parent );
+	static ptr create( void *windowNativeHandle );
 
+	virtual ~context();
+
+	void *window_native_handle() const { return _window_native_handle; }
 	void *native_handle() const { return _native_handle; }
 
 	void make_current();
 
 protected:
+	void *_window_native_handle = nullptr;
 	void *_native_handle = nullptr;
 };
-
-} // namespace gl3d::detail
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
 

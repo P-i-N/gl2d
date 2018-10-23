@@ -8,7 +8,7 @@ namespace gl3d {
 
 static detail::keyboard_state keyboard;
 static detail::mouse_state mouse;
-static detail::gamepad_state gamepad[GL3D_MAX_GAMEPADS];
+static detail::gamepad_state gamepad[detail::max_gamepads];
 static detail::space_navigator_state space_navigator;
 
 static decltype( on_tick ) on_tick;
@@ -102,7 +102,7 @@ void gamepad_state::change_axis_state( gamepad_axis ax, float x, float y )
 //---------------------------------------------------------------------------------------------------------------------
 int gamepad_state::allocate_port()
 {
-	for ( int i = 0; i < GL3D_MAX_GAMEPADS; ++i )
+	for ( int i = 0; i < max_gamepads; ++i )
 		if ( gamepad[i].port < 0 )
 			return gamepad[i].port = i;
 
@@ -112,7 +112,7 @@ int gamepad_state::allocate_port()
 //---------------------------------------------------------------------------------------------------------------------
 void gamepad_state::release_port( int port )
 {
-	if ( port >= 0 && port < GL3D_MAX_GAMEPADS && gamepad[port].port == port )
+	if ( port >= 0 && port < max_gamepads && gamepad[port].port == port )
 		gamepad[port].port = -1;
 }
 
