@@ -37,6 +37,9 @@ template <class T> struct xvec2 : xvec_impl<T, 2>
 	template <class T2> auto operator+(const xvec2<T2> &rhs) const { return xvec2<decltype(x + rhs.x)>(x + rhs.x, y + rhs.y); }
 	template <class T2> auto operator-(const xvec2<T2> &rhs) const { return xvec2<decltype(x - rhs.x)>(x - rhs.x, y - rhs.y); }
 
+	template <class T2> bool operator==(const xvec2<T2> &rhs) const { return x == rhs.x && y == rhs.y; }
+	template <class T2> bool operator!=(const xvec2<T2> &rhs) const { return x != rhs.x || y != rhs.y; }
+
 	T length_sq() const { return x*x + y*y; }
 	T length() const { return sqrt(length_sq()); }
 
@@ -57,6 +60,9 @@ template <class T> struct xvec3 : xvec_impl<T, 3>
 	template <class T2> auto operator/(T2 scale) const { return xvec3<decltype(x / scale)>(x / scale, y / scale, z / scale); }
 	template <class T2> auto operator+(const xvec3<T2> &rhs) const { return xvec3<decltype(x + rhs.x)>(x + rhs.x, y + rhs.y, z + rhs.z); }
 	template <class T2> auto operator-(const xvec3<T2> &rhs) const { return xvec3<decltype(x - rhs.x)>(x - rhs.x, y - rhs.y, z - rhs.z); }
+
+	template <class T2> bool operator==(const xvec3<T2> &rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z; }
+	template <class T2> bool operator!=(const xvec3<T2> &rhs) const { return x != rhs.x || y != rhs.y || z != rhs.z; }
 
 	T length_sq() const { return x*x + y*y + z*z; }
 	T length() const { return sqrt(length_sq()); }
@@ -85,6 +91,9 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 	template <class T2> auto operator/(T2 scale) const { return xvec4<decltype(x / scale)>(x / scale, y / scale, z / scale, w / scale); }
 	template <class T2> auto operator+(const xvec4<T2> &rhs) const { return xvec4<decltype(x + rhs.x)>(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
 	template <class T2> auto operator-(const xvec4<T2> &rhs) const { return xvec4<decltype(x - rhs.x)>(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
+
+	template <class T2> bool operator==(const xvec4<T2> &rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
+	template <class T2> bool operator!=(const xvec4<T2> &rhs) const { return x != rhs.x || y != rhs.y || z != rhs.z || w != rhs.w; }
 
 	T length_sq() const { return x*x + y*y + z*z + w*w; }
 	T length() const { return sqrt(length_sq()); }
