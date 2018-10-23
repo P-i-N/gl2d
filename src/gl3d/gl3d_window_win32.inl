@@ -18,6 +18,12 @@
 
 namespace gl3d {
 
+unsigned frame_id = 0;
+float time = 0.0f;
+float delta = 0.0f;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace detail {
 
 bool g_should_quit = false;
@@ -26,9 +32,6 @@ unsigned g_next_window_id = 0;
 uint64_t g_timer_offset = 0;
 uint64_t g_timer_frequency = 0;
 uint64_t g_last_timer_counter = 0;
-unsigned g_frame_id = 0;
-float g_time = 0.0f;
-float g_delta = 0.0f;
 
 std::vector<window::ptr> g_windows;
 
@@ -273,9 +276,9 @@ void update()
 	QueryPerformanceCounter( &li );
 	li.QuadPart -= g_timer_offset;
 
-	++g_frame_id;
-	g_time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
-	g_delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
+	++frame_id;
+	time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
+	delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
 	g_last_timer_counter = li.QuadPart;
 
 	update_xinput();
@@ -446,8 +449,7 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MOUSEWHEEL:
 				{
 					event e( event_type::mouse_wheel, w->id() );
-					e.wheel.x = 0;
-					e.wheel.y = GET_WHEEL_DELTA_WPARAM( wParam );
+					e.wheel = { 0, GET_WHEEL_DELTA_WPARAM( wParam ) };
 					on_event.call( e );
 				}
 				return 0;
@@ -455,8 +457,7 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MOUSEHWHEEL:
 				{
 					event e( event_type::mouse_wheel, w->id() );
-					e.wheel.x = GET_WHEEL_DELTA_WPARAM( wParam );
-					e.wheel.y = 0;
+					e.wheel = { GET_WHEEL_DELTA_WPARAM( wParam ), 0 };
 					on_event.call( e );
 				}
 				return 0;
@@ -485,10 +486,9 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_SIZE:
 				{
 					event e( event_type::resize, w->id() );
-					e.resize.x = LOWORD( lParam );
-					e.resize.y = HIWORD( lParam );
+					e.resize = { LOWORD( lParam ), HIWORD( lParam ) };
 					on_event.call( e );
-					w->_size = { LOWORD( lParam ), HIWORD( lParam ) };
+					w->_size = e.resize;
 				}
 				break;
 
@@ -507,10 +507,9 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MOVE:
 				{
 					event e( event_type::move, w->id() );
-					e.move.x = LOWORD( lParam );
-					e.move.y = HIWORD( lParam );
+					e.move = { LOWORD( lParam ), HIWORD( lParam ) };
 					on_event.call( e );
-					w->_pos = { LOWORD( lParam ), HIWORD( lParam ) };
+					w->_pos = e.move;
 				}
 				return 0;
 
@@ -527,11 +526,6 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//---------------------------------------------------------------------------------------------------------------------
-unsigned frame_id() { return detail::g_frame_id; }
-float time() { return detail::g_time; }
-float delta() { return detail::g_delta; }
 
 //---------------------------------------------------------------------------------------------------------------------
 void run()

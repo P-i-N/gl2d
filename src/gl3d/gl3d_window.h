@@ -11,9 +11,9 @@
 
 namespace gl3d {
 
-unsigned frame_id();
-float time();
-float delta();
+extern unsigned frame_id;
+extern float time;
+extern float delta;
 
 void run();
 
