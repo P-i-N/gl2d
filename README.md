@@ -20,12 +20,6 @@ Collection of small header-only libraries for writing simple OpenGL applications
   - render targets (FBO)
 - Depends on gl3d_math.h
 
-### gl3d_2d.h
-- 2D drawing library
-- Text rendering with embedded fonts (no need for external loading)
-- Supports colored strings with '^' marks
-- Depends on gl3d.h
-
 ### gl3d_input.h
 - Enums for key, mouse and gamepad devices
 - Callback registration for tick & window events
@@ -33,9 +27,9 @@ Collection of small header-only libraries for writing simple OpenGL applications
   - Keyboard
   - Mouse
   - Gamepads
-- No dependencies to other gl3d headers
+- Depends on gl3d_math.h
 
-### gl3d_win32.h
+### gl3d_window.h
 - Windowing library
 - Creating windows with initialized OpenGL contexts quickly
 - Capturing input events:
@@ -46,12 +40,15 @@ Collection of small header-only libraries for writing simple OpenGL applications
   - joystick/gamepad events
 - Frame timing functions
 - Multiple windows support
-- Depends on gl3d_2d.h, gl3d_input.h
+- Depends on gl3d.h, gl3d_input.h
+
+### gl3d_cmd_list.h
+- **TODO**
+- Records draw calls into a deferred command list
 
 ### gl3d_imgui.h
 - **TODO**
 - [dear imgui](https://github.com/ocornut/imgui) integration
-- Depends on gl3d_2d.h, gl3d_input.h
 
 ### gl3d_scene.h
 - **TODO**
@@ -61,107 +58,3 @@ Collection of small header-only libraries for writing simple OpenGL applications
 - [ ] RAW model loading
 - [ ] OBJ model loading
 - [ ] Texture loading (using [stb_image](https://github.com/nothings/stb))
-
--------------------------------------------------------------------------------
-
-### Example 1 - open window
-```cpp
-#define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
-
-using namespace gl3d;
-
-int main()
-{
-  // Open main window
-  window_open("Example", 400, 300);
-
-  // Start main application loop
-  run();
-
-  return 0;
-}
-```
-
-### Example 2 - Hello, world!
-```cpp
-#define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
-
-using namespace gl3d;
-
-int main()
-{
-  window_open("Example", 400, 300);
-
-  // Tick handler called once every frame
-  tick_handler = [&]()
-  {
-    auto ctx = current_context2d;
-    ctx->text(10, 10, "Hello, world!");
-  };
-
-  run();
-  return 0;
-}
-```
-
-### Example 3 - rotating triangle
-```cpp
-#define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
-
-using namespace gl3d;
-
-int main()
-{
-  // Triangle geometry
-  geometry::ptr geom = new geometry();
-
-  // Allocate 3 vertices
-  auto vertices = geom->alloc_vertices(3);
-
-  // Top vertex
-  vertices->pos = vec3(0, 1, 0);
-  vertices->color = vec4::red();
-  ++vertices;
-
-  // Left vertex
-  vertices->pos = vec3(-1, -1, 0);
-  vertices->color = vec4::green();
-  ++vertices;
-
-  // Right vertex
-  vertices->pos = vec3(1, -1, 0);
-  vertices->color = vec4::blue();
-  ++vertices;
-
-  window_open("Example", 400, 300);
-
-  // Event handler for capturing all application events
-  event_handler = [&](const event &e)
-  {
-    // Paint event called for every window before end of the frame
-    if (e.type == event_type::paint)
-    {
-      auto size = get_window_size(e.window_id);
-      float aspectRatio = static_cast<float>(size.x) / size.y;
-
-      auto ctx = current_context3d;
-      ctx->bind(geom);
-      ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(120.0f, aspectRatio, 0.01f, 1000.0f));
-      ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(15.0f * sin(time()), 0.0f, 15.0f * cos(time()), 0.0f, 0.0f, 0.0f).invert());
-      ctx->draw();
-    }
-  };
-
-  tick_handler = [&]()
-  {
-    auto ctx = current_context2d;
-    ctx->text(10, 10, "FPS: ^9%.3f ms", 1.0f / delta());
-  };
-
-  run();
-  return 0;
-}
-```
