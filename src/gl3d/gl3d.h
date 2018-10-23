@@ -129,8 +129,6 @@ protected:
 #if defined(GL3D_IMPLEMENTATION)
 	#ifndef __GL3D_H_IMPL__
 		#define __GL3D_H_IMPL__
-
 		#include "gl3d.inl"
-
 	#endif // __GL3D_H_IMPL__
 #endif // GL3D_IMPLEMENTATION

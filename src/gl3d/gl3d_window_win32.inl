@@ -507,9 +507,10 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MOVE:
 				{
 					event e( event_type::move, w->id() );
-					e.resize.x = LOWORD( lParam );
-					e.resize.y = HIWORD( lParam );
-					printf( "WM_MOVE: %d %d\n", e.resize.x, e.resize.y );
+					e.move.x = LOWORD( lParam );
+					e.move.y = HIWORD( lParam );
+					on_event.call( e );
+					w->_pos = { LOWORD( lParam ), HIWORD( lParam ) };
 
 					auto hMonitor = MonitorFromWindow( hWnd, MONITOR_DEFAULTTOPRIMARY );
 
