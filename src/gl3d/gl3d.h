@@ -23,24 +23,27 @@ namespace gl3d {
 
 struct gl
 {
-	using enum_t = unsigned;
-
-	static constexpr enum_t NONE = 0;
-	static constexpr enum_t BYTE = 0x1400;
-	static constexpr enum_t UNSIGNED_BYTE = 0x1401;
-	static constexpr enum_t SHORT = 0x1402;
-	static constexpr enum_t UNSIGNED_SHORT = 0x1403;
-	static constexpr enum_t INT = 0x1404;
-	static constexpr enum_t UNSIGNED_INT = 0x1405;
-	static constexpr enum_t FLOAT = 0x1406;
-	static constexpr enum_t DOUBLE = 0x140A;
+	enum enum_t : unsigned
+	{
+		NONE = 0,
+		BYTE = 0x1400,
+		UNSIGNED_BYTE = 0x1401,
+		SHORT = 0x1402,
+		UNSIGNED_SHORT = 0x1403,
+		INT = 0x1404,
+		UNSIGNED_INT = 0x1405,
+		FLOAT = 0x1406,
+		DOUBLE = 0x140A,
 
 #if defined(WIN32)
-	static constexpr enum_t CONTEXT_MAJOR_VERSION_ARB = 0x2091;
-	static constexpr enum_t CONTEXT_MINOR_VERSION_ARB = 0x2092;
-	static constexpr enum_t CONTEXT_PROFILE_MASK_ARB = 0x9126;
-	static constexpr enum_t CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001;
+		CONTEXT_MAJOR_VERSION_ARB = 0x2091,
+		CONTEXT_MINOR_VERSION_ARB = 0x2092,
+		CONTEXT_PROFILE_MASK_ARB = 0x9126,
+		CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001,
+#endif
+	};
 
+#if defined(WIN32)
 	static void *( __stdcall *CreateContextAttribsARB )( void *, void *, const int * );
 #endif
 };
