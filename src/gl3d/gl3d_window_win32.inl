@@ -18,6 +18,8 @@
 
 namespace gl3d {
 
+namespace detail {
+
 bool g_should_quit = false;
 unsigned g_next_window_id = 0;
 
@@ -27,8 +29,11 @@ uint64_t g_last_timer_counter = 0;
 
 std::vector<window::ptr> g_windows;
 
-/* Forward declaration */
-LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
+//---------------------------------------------------------------------------------------------------------------------
+struct window_impl
+{
+	static LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam );
+};
 
 //---------------------------------------------------------------------------------------------------------------------
 struct window_class
@@ -38,7 +43,7 @@ struct window_class
 	window_class()
 	{
 		wndclass = { 0 };
-		wndclass.lpfnWndProc = wnd_proc;
+		wndclass.lpfnWndProc = window_impl::wnd_proc;
 		wndclass.hInstance = GetModuleHandle( nullptr );
 		wndclass.hbrBackground = GetStockBrush( BLACK_BRUSH );
 		wndclass.lpszClassName = TEXT( GL3D_WINDOW_CLASS );
@@ -50,6 +55,8 @@ struct window_class
 	~window_class() { UnregisterClass( TEXT( GL3D_WINDOW_CLASS ), wndclass.hInstance ); }
 
 } g_window_class;
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,7 +96,7 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 	                                       nullptr,
 	                                       GetModuleHandle( nullptr ), nullptr );
 
-	if ( g_windows.empty() )
+	if ( detail::g_windows.empty() )
 	{
 		RAWINPUTDEVICE rid;
 		rid.usUsagePage = 1;
@@ -116,11 +123,11 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 
 	result->_context = context::create( result->_native_handle );
 
-	result->_id = g_next_window_id++;
+	result->_id = detail::g_next_window_id++;
 	result->_pos = pos;
 	result->_size = size;
 
-	g_windows.push_back( result );
+	detail::g_windows.push_back( result );
 
 	on_event.call( event( event_type::open, result->_id ) );
 	return result;
@@ -142,38 +149,50 @@ void window::title( const std::string &text )
 //---------------------------------------------------------------------------------------------------------------------
 void window::adjust( ivec2 pos, ivec2 size )
 {
-	/*
-		if ( width != w || height != h )
-		{
-			width = w;
-			height = h;
-			RECT rect;
-			GetClientRect( handle, &rect );
-			int x = rect.left;
-			int y = rect.top;
-			rect.right = rect.left + w;
-			rect.bottom = rect.top + h;
-			AdjustWindowRectEx( &rect, style & ~WS_OVERLAPPED, FALSE, 0 );
-			SetWindowPos( handle, handle, x, y, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOREPOSITION );
-		}
-	*/
+	if ( pos != _pos || size != _size )
+	{
+		_pos = pos;
+		_size = size;
+
+		RECT rect;
+		rect.left = _pos.x;
+		rect.top = _pos.y;
+		rect.right = rect.left + _size.x;
+		rect.bottom = rect.top + _size.y;
+
+		DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+		AdjustWindowRectEx( &rect, style & ~WS_OVERLAPPED, FALSE, 0 );
+
+		SetWindowPos(
+		    HWND( _native_handle ), HWND( _native_handle ),
+		    rect.left, rect.top,
+		    rect.right - rect.left, rect.bottom - rect.top,
+		    SWP_NOZORDER | SWP_NOREPOSITION );
+		/* */
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void window::close()
 {
-	/*
-		auto iter = g_windows.find( id );
-		if ( iter != g_windows.end() )
-		{
-			on_event.call( event( event_type::close, iter->second->id ) );
-			g_windows.erase( iter );
-			g_should_quit |= id == main_window_id || g_windows.empty();
-			return true;
-		}
+	if ( !_native_handle )
+		return;
 
-		return false;
-	*/
+	for ( size_t i = 0; i < detail::g_windows.size(); ++i )
+	{
+		if ( detail::g_windows[i].get() == this )
+		{
+			on_event.call( event( event_type::close, _id ) );
+
+			_context.reset();
+			DestroyWindow( HWND( _native_handle ) );
+			_native_handle = nullptr;
+
+			detail::g_windows.erase( detail::g_windows.begin() + i );
+			detail::g_should_quit |= ( _id == 0 ) || detail::g_windows.empty();
+			return;
+		}
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -184,53 +203,7 @@ void window::present()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
-struct window_desc
-{
-	window_id_t id;
-	std::string title;
-	HWND handle;
-	HDC hdc;
-	HGLRC hglrc;
-	DWORD style;
-	int width, height;
-	int mouse_x = 0, mouse_y = 0;
-	int mouse_dx = 0, mouse_dy = 0;
-	int mouse_capture_ref = 0;
-
-	window_desc( window_id_t win_id, const std::string &win_title, int win_width, int win_height, unsigned flags = default_window_flags );
-
-	virtual ~window_desc();
-
-	void make_current();
-	void flip();
-	void set_title( const std::string &text );
-	void set_size( int w, int h );
-
-	void fill_mouse_event( event &e )
-	{
-		e.mouse.x = mouse_x;
-		e.mouse.y = mouse_y;
-		e.mouse.dx = mouse_dx;
-		e.mouse.dy = mouse_dy;
-	}
-};
-
-using windows_t = std::map<window_id_t, std::unique_ptr<window_desc>>;
-windows_t g_windows;
-*/
-
-//---------------------------------------------------------------------------------------------------------------------
-void update_timer()
-{
-	LARGE_INTEGER li;
-	QueryPerformanceCounter( &li );
-	li.QuadPart -= g_timer_offset;
-
-	//state.time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
-	//state.delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
-	g_last_timer_counter = li.QuadPart;
-}
+namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
 void update_xinput()
@@ -293,7 +266,16 @@ void update_xinput()
 //---------------------------------------------------------------------------------------------------------------------
 void update()
 {
-	update_timer();
+	{
+		LARGE_INTEGER li;
+		QueryPerformanceCounter( &li );
+		li.QuadPart -= g_timer_offset;
+
+		//state.time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
+		//state.delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
+		g_last_timer_counter = li.QuadPart;
+	}
+
 	update_xinput();
 
 	// Call global tick
@@ -415,7 +397,7 @@ void parse_raw_input( RAWINPUT *raw )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
 	for ( const auto &w : g_windows )
 	{
@@ -517,8 +499,7 @@ LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 					e.resize.x = LOWORD( lParam );
 					e.resize.y = HIWORD( lParam );
 					on_event.call( e );
-					//kvp.second->width = LOWORD( lParam );
-					//kvp.second->height = HIWORD( lParam );
+					w->_size = { LOWORD( lParam ), HIWORD( lParam ) };
 				}
 				break;
 
@@ -557,15 +538,19 @@ LRESULT CALLBACK wnd_proc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	return DefWindowProc( hWnd, message, wParam, lParam );
 }
 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //---------------------------------------------------------------------------------------------------------------------
 void run()
 {
 	LARGE_INTEGER li;
 	QueryPerformanceCounter( &li );
-	g_timer_offset = li.QuadPart;
+	detail::g_timer_offset = li.QuadPart;
 
 	QueryPerformanceFrequency( &li );
-	g_timer_frequency = li.QuadPart;
+	detail::g_timer_frequency = li.QuadPart;
 
 	while ( true )
 	{
@@ -576,9 +561,9 @@ void run()
 			DispatchMessage( &msg );
 		}
 
-		if ( !g_should_quit )
+		if ( !detail::g_should_quit )
 		{
-			update();
+			detail::update();
 			std::this_thread::yield();
 		}
 		else

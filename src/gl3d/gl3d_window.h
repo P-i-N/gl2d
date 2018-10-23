@@ -15,6 +15,8 @@ void run();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+namespace detail { struct window_impl; }
+
 class window
 {
 public:
@@ -49,6 +51,8 @@ public:
 	void present();
 
 protected:
+	friend struct detail::window_impl;
+
 	unsigned _id = UINT_MAX;
 	void *_native_handle = nullptr;
 	context::ptr _context;
