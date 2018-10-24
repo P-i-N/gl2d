@@ -24,7 +24,7 @@ void keyboard_state::change_key_state( key k, bool down, unsigned id )
 	bool old = ( *this )[k];
 	if ( old != down )
 	{
-		key_down[static_cast<size_t>( k )] = down;
+		key_down[+k] = down;
 		event e( down ? event_type::key_down : event_type::key_up, id );
 		e.keyboard.k = k;
 		e.keyboard.ch = 0;
@@ -38,7 +38,7 @@ void mouse_state::change_button_state( mouse_button b, bool down, unsigned id )
 	bool old = ( *this )[b];
 	if ( old != down )
 	{
-		button_down[static_cast<size_t>( b )] = down;
+		button_down[+b] = down;
 		event e( down ? event_type::mouse_down : event_type::mouse_up, id );
 		e.mouse.b = b;
 		e.mouse.pos = pos;
@@ -67,7 +67,7 @@ void gamepad_state::change_button_state( gamepad_button b, bool down )
 	bool old = ( *this )[b];
 	if ( old != down )
 	{
-		button_down[static_cast<size_t>( b )] = down;
+		button_down[+b] = down;
 		event e( down ? event_type::gamepad_down : event_type::gamepad_up, UINT_MAX );
 		e.gamepad.port = port;
 		e.gamepad.b = b;
@@ -78,10 +78,10 @@ void gamepad_state::change_button_state( gamepad_button b, bool down )
 //---------------------------------------------------------------------------------------------------------------------
 void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 {
-	auto oldPos = this->pos[static_cast<size_t>( axis )];
+	auto oldPos = this->pos[+axis];
 	if ( oldPos != pos )
 	{
-		this->pos[static_cast<size_t>( axis )] = pos;
+		this->pos[+axis] = pos;
 		event e( event_type::gamepad_move, UINT_MAX );
 		e.gamepad.port = port;
 		e.gamepad.axis = axis;
@@ -92,9 +92,9 @@ void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-int gamepad_state::allocate_port()
+unsigned gamepad_state::allocate_port()
 {
-	for ( int i = 0; i < max_gamepads; ++i )
+	for ( unsigned i = 0; i < max_gamepads; ++i )
 		if ( gamepad[i].port < 0 )
 			return gamepad[i].port = i;
 
@@ -102,7 +102,7 @@ int gamepad_state::allocate_port()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void gamepad_state::release_port( int port )
+void gamepad_state::release_port( unsigned port )
 {
 	if ( port >= 0 && port < max_gamepads && gamepad[port].port == port )
 		gamepad[port].port = -1;

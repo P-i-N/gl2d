@@ -6,20 +6,10 @@
 #include <limits.h>
 #include <type_traits>
 
+#define GL3D_ENUM_PLUS(_Type) \
+	constexpr auto operator+( _Type t ) { return static_cast<std::underlying_type_t<_Type>>( t ); }
+
 namespace gl3d {
-
-//---------------------------------------------------------------------------------------------------------------------
-enum class window_flag
-{
-	none = 0,
-	resizable = 0b00000001,
-	fullscreen = 0b00000010,
-	title = 0b00000100,
-};
-
-inline auto operator +( window_flag t ) { return static_cast<std::underlying_type_t <window_flag>>( t ); }
-
-static const unsigned default_window_flags = ( +window_flag::resizable ) | ( +window_flag::title );
 
 //---------------------------------------------------------------------------------------------------------------------
 enum class key
@@ -42,6 +32,8 @@ enum class key
 	last
 };
 
+GL3D_ENUM_PLUS( key )
+
 //---------------------------------------------------------------------------------------------------------------------
 enum class mouse_button
 {
@@ -52,6 +44,8 @@ enum class mouse_button
 
 	last
 };
+
+GL3D_ENUM_PLUS( mouse_button )
 
 //---------------------------------------------------------------------------------------------------------------------
 enum class gamepad_button
@@ -65,6 +59,8 @@ enum class gamepad_button
 	last
 };
 
+GL3D_ENUM_PLUS( gamepad_button )
+
 //---------------------------------------------------------------------------------------------------------------------
 enum class gamepad_axis
 {
@@ -75,6 +71,8 @@ enum class gamepad_axis
 	last
 };
 
+GL3D_ENUM_PLUS( gamepad_axis )
+
 //---------------------------------------------------------------------------------------------------------------------
 enum class space_navigator_button
 {
@@ -83,6 +81,8 @@ enum class space_navigator_button
 
 	last
 };
+
+GL3D_ENUM_PLUS( space_navigator_button )
 
 //---------------------------------------------------------------------------------------------------------------------
 enum class event_type
@@ -108,7 +108,7 @@ struct event
 		ivec2 resize, move, wheel;
 		struct { key k; int ch; } keyboard;
 		struct { ivec2 pos, delta; mouse_button b; } mouse;
-		struct { int port; vec2 pos, delta; gamepad_button b; gamepad_axis axis; } gamepad;
+		struct { unsigned port; vec2 pos, delta; gamepad_button b; gamepad_axis axis; } gamepad;
 	};
 
 	event( event_type et, unsigned id )
@@ -123,8 +123,8 @@ struct event
 namespace detail {
 struct keyboard_state
 {
-	bool key_down[static_cast<size_t>( key::last )];
-	bool operator[]( key k ) const { return key_down[static_cast<size_t>( k )]; }
+	bool key_down[+key::last];
+	bool operator[]( key k ) const { return key_down[+k]; }
 
 	void change_key_state( key k, bool down, unsigned id = UINT_MAX );
 };
@@ -136,8 +136,8 @@ extern detail::keyboard_state keyboard;
 namespace detail {
 struct mouse_state
 {
-	bool button_down[static_cast<size_t>( mouse_button::last )];
-	bool operator[]( mouse_button b ) const { return button_down[static_cast<size_t>( b )]; }
+	bool button_down[+mouse_button::last];
+	bool operator[]( mouse_button b ) const { return button_down[+b]; }
 	ivec2 pos;
 
 	void change_button_state( mouse_button b, bool down, unsigned id = UINT_MAX );
@@ -153,17 +153,17 @@ static constexpr unsigned max_gamepads = 8;
 
 struct gamepad_state
 {
-	int port = -1;
-	bool button_down[static_cast<size_t>( gamepad_button::last )];
-	vec2 pos[static_cast<size_t>( gamepad_axis::last )];
-	bool operator[]( gamepad_button b ) const { return button_down[static_cast<size_t>( b )]; }
-	bool connected() const { return port >= 0 && port < max_gamepads; }
+	unsigned port = UINT_MAX;
+	bool button_down[+gamepad_button::last];
+	vec2 pos[+gamepad_axis::last];
+	bool operator[]( gamepad_button b ) const { return button_down[+b]; }
+	bool connected() const { return port < max_gamepads; }
 
 	void change_button_state( gamepad_button b, bool down );
 	void change_axis_state( gamepad_axis axis, vec2 pos );
 
-	static int allocate_port();
-	static void release_port( int port );
+	static unsigned allocate_port();
+	static void release_port( unsigned port );
 };
 }
 
@@ -174,7 +174,7 @@ namespace detail {
 struct space_navigator_state
 {
 	vec3 pos, rot;
-	bool button_down[static_cast<size_t>( space_navigator_button::last )];
+	bool button_down[+space_navigator_button::last];
 };
 }
 
