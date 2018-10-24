@@ -20,11 +20,30 @@ int main()
 {
 	using namespace gl3d;
 
-	window::open( "Example", { 400, 300 } );
+	on_event( [&]( event & e )
+	{
+		switch ( e.type )
+		{
+			case event_type::open:
+				printf( "open(%d)\n", e.window_id );
+				break;
 
-	//window_open( "Example", 400, 300 );
+			case event_type::close:
+				printf( "close(%d)\n", e.window_id );
+				break;
 
+			case event_type::resize:
+				printf( "resize(%d): %d %d\n", e.window_id, e.resize.x, e.resize.y );
+				break;
 
+			case event_type::move:
+				printf( "move(%d): %d %d\n", e.window_id, e.move.x, e.move.y );
+				break;
+		}
+
+	} );
+
+	window::open( "Main Window", { 800, 600 } );
 
 	/*
 	// Triangle geometry

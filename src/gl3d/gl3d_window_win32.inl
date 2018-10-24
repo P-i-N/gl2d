@@ -18,8 +18,6 @@
 
 namespace gl3d {
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 namespace detail {
 
 bool g_should_quit = false;
@@ -67,7 +65,7 @@ struct window_class
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsigned flags )
+window::ptr window::open( std::string_view title, ivec2 size, ivec2 pos, unsigned flags )
 {
 	DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
@@ -93,7 +91,8 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 	adjustedRect.bottom = adjustedRect.top + size.y;
 	AdjustWindowRectEx( &adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0 );
 
-	auto handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title.c_str(), style,
+	std::string title_str( title );
+	auto handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title_str.c_str(), style,
 	                            adjustedRect.left, adjustedRect.top,
 	                            adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top,
 	                            nullptr,
@@ -143,6 +142,16 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+window::ptr window::from_id( unsigned id )
+{
+	for ( const auto &w : detail::g_windows )
+		if ( w->_id == id )
+			return w;
+
+	return nullptr;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 window::~window()
 {
 	_context.reset();
@@ -150,9 +159,13 @@ window::~window()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void window::title( const std::string &text )
+void window::title( std::string_view text )
 {
-	SetWindowTextA( HWND( _native_handle ), text.c_str() );
+	if ( _title != text )
+	{
+		_title = text;
+		SetWindowTextA( HWND( _native_handle ), _title.c_str() );
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------

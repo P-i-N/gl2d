@@ -9,6 +9,8 @@
 #include "gl3d.h"
 #include "gl3d_input.h"
 
+namespace gl3d::detail { struct window_impl; }
+
 namespace gl3d {
 
 extern const unsigned &frame_id;
@@ -19,18 +21,13 @@ void run();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-namespace detail { struct window_impl; }
-
 class window
 {
 public:
 	using ptr = std::shared_ptr<window>;
 
-	static ptr open( const std::string &title, ivec2 pos, ivec2 size, unsigned flags );
-	static ptr open( const std::string &title, ivec2 size )
-	{
-		return open( title, { INT_MAX, INT_MAX }, size, default_window_flags );
-	}
+	static ptr open( std::string_view title, ivec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_window_flags );
+	static ptr from_id( unsigned id );
 
 	virtual ~window();
 
@@ -41,7 +38,7 @@ public:
 
 	bool closed() const { return _native_handle == nullptr; }
 
-	void title( const std::string &text );
+	void title( std::string_view text );
 	const std::string &title() const { return _title; }
 
 	void adjust( ivec2 pos, ivec2 size );
