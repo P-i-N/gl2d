@@ -18,10 +18,6 @@
 
 namespace gl3d {
 
-unsigned frame_id = 0;
-float time = 0.0f;
-float delta = 0.0f;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace detail {
@@ -32,6 +28,10 @@ unsigned g_next_window_id = 0;
 uint64_t g_timer_offset = 0;
 uint64_t g_timer_frequency = 0;
 uint64_t g_last_timer_counter = 0;
+
+unsigned g_frame_id = 0;
+float g_time = 0.0f;
+float g_delta = 0.0f;
 
 std::vector<window::ptr> g_windows;
 
@@ -279,9 +279,9 @@ void update()
 	QueryPerformanceCounter( &li );
 	li.QuadPart -= g_timer_offset;
 
-	++frame_id;
-	time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
-	delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
+	++detail::g_frame_id;
+	detail::g_time = static_cast<float>( li.QuadPart / static_cast<double>( g_timer_frequency ) );
+	detail::g_delta = static_cast<float>( ( li.QuadPart - g_last_timer_counter ) / static_cast<double>( g_timer_frequency ) );
 	g_last_timer_counter = li.QuadPart;
 
 	update_xinput();
@@ -529,6 +529,11 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
+const unsigned &frame_id = detail::g_frame_id;
+const float &time = detail::g_time;
+const float &delta = detail::g_delta;
 
 //---------------------------------------------------------------------------------------------------------------------
 void run()
