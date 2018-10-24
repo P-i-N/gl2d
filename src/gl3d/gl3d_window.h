@@ -34,6 +34,7 @@ public:
 
 	virtual ~window();
 
+	unsigned flags() const { return _flags; }
 	unsigned id() const { return _id; }
 	void *native_handle() const { return _native_handle; }
 	auto context() const { return _context; }
@@ -57,6 +58,7 @@ public:
 protected:
 	friend struct detail::window_impl;
 
+	unsigned _flags = 0;
 	unsigned _id = UINT_MAX;
 	void *_native_handle = nullptr;
 	context::ptr _context;

@@ -69,8 +69,6 @@ struct window_class
 //---------------------------------------------------------------------------------------------------------------------
 window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsigned flags )
 {
-	window::ptr result = std::make_shared<window>();
-
 	DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
 	RECT adjustedRect;
@@ -95,12 +93,12 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 	adjustedRect.bottom = adjustedRect.top + size.y;
 	AdjustWindowRectEx( &adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0 );
 
-	result->_native_handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title.c_str(), style,
-	                                       adjustedRect.left, adjustedRect.top,
-	                                       adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top,
-	                                       nullptr,
-	                                       nullptr,
-	                                       GetModuleHandle( nullptr ), nullptr );
+	auto handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title.c_str(), style,
+	                            adjustedRect.left, adjustedRect.top,
+	                            adjustedRect.right - adjustedRect.left, adjustedRect.bottom - adjustedRect.top,
+	                            nullptr,
+	                            nullptr,
+	                            GetModuleHandle( nullptr ), nullptr );
 
 	if ( detail::g_windows.empty() )
 	{
@@ -108,7 +106,7 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 		rid.usUsagePage = 1;
 		rid.usUsage = 5;
 		rid.dwFlags = RIDEV_DEVNOTIFY | RIDEV_INPUTSINK;
-		rid.hwndTarget = HWND( result->_native_handle );
+		rid.hwndTarget = HWND( handle );
 		RegisterRawInputDevices( &rid, 1, sizeof( RAWINPUTDEVICE ) );
 	}
 
@@ -123,17 +121,22 @@ window::ptr window::open( const std::string &title, ivec2 pos, ivec2 size, unsig
 		0, PFD_MAIN_PLANE, 0, 0, 0, 0
 	};
 
-	auto hdc = GetDC( HWND( result->_native_handle ) );
+	auto hdc = GetDC( handle );
 	auto pf = ChoosePixelFormat( hdc, &pfd );
 	SetPixelFormat( hdc, pf, &pfd );
 
-	result->_context = context::create( result->_native_handle );
+	auto ctx = context::create( handle );
+	if ( !ctx )
+		return nullptr;
 
+	auto &result = detail::g_windows.emplace_back( std::make_shared<window>() );
+	result->_flags = flags;
 	result->_id = detail::g_next_window_id++;
+	result->_native_handle = handle;
+	result->_context = ctx;
+	result->_title = title;
 	result->_pos = pos;
 	result->_size = size;
-
-	detail::g_windows.push_back( result );
 
 	on_event.call( event( event_type::open, result->_id ) );
 	return result;
