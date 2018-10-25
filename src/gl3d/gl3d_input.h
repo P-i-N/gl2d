@@ -4,6 +4,7 @@
 #include "gl3d_math.h"
 
 #include <limits.h>
+#include <set>
 #include <type_traits>
 
 #define GL3D_ENUM_PLUS(_Type) \

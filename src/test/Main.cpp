@@ -45,6 +45,12 @@ int main()
 
 	window::open( "Main Window", { 800, 600 } );
 
+	on_tick( [&]()
+	{
+		auto w = window::from_id( 0 );
+		auto ctx = w->context();
+	} );
+
 	/*
 	// Triangle geometry
 	auto geom = std::make_shared<geometry<vertex3d>>();
