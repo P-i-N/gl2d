@@ -16,14 +16,6 @@
 
 #include <gl/GL.h>
 
-#if !defined(GL3D_APIENTRY)
-	#if defined(WIN32)
-		#define GL3D_APIENTRY __stdcall
-	#else
-		#define GL3D_APIENTRY
-	#endif
-#endif
-
 #include <cassert>
 
 namespace gl3d {
@@ -52,8 +44,6 @@ void init_gl_api()
 	gl::CreateContextAttribsARB = decltype( gl::CreateContextAttribsARB )( get_gl_proc_address( "wglCreateContextAttribsARB" ) );
 	s_initialized = true;
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace gl3d::detail
 
@@ -187,6 +177,8 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::uniform_block( location_variant_t location, const void *data, size_t size )
 {
+	assert( data && size );
+
 	if ( _recording )
 	{
 
@@ -226,6 +218,8 @@ void cmd_queue::draw_indexed( gl::enum_t primitive, size_t first, size_t count, 
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::execute( ptr cmdQueue )
 {
+	assert( cmdQueue && cmdQueue.get() != this );
+
 	if ( _recording )
 	{
 		write( cmd_type::execute );
@@ -316,6 +310,7 @@ void cmd_queue::execute()
 
 namespace detail {
 
+#if defined(WIN32)
 unsigned g_contextAttribs[] =
 {
 	gl::CONTEXT_MAJOR_VERSION_ARB, 4,
@@ -351,7 +346,6 @@ context::context( ptr sharedContext )
 	: cmd_queue( false )
 	, _window_native_handle( sharedContext->_window_native_handle )
 {
-
 	sharedContext->make_current();
 
 	_window_native_handle = sharedContext->_window_native_handle;
@@ -377,6 +371,9 @@ void context::make_current()
 	if ( wglGetCurrentContext() != HGLRC( _native_handle ) )
 		wglMakeCurrent( GetDC( HWND( _window_native_handle ) ), HGLRC( _native_handle ) );
 }
+#else
+#error Not implemented!
+#endif
 
 } // namespace gl3d::detail
 

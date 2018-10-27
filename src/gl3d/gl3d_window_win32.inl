@@ -4,15 +4,11 @@
 
 #include "gl3d_window.h"
 
-#if defined(WIN32)
-	#include <windowsx.h>
-	#include <hidsdi.h>
-	#include <Xinput.h>
-	#pragma comment(lib, "hid.lib")
-	#pragma comment(lib, "xinput.lib")
-#else
-	#error Not implemented!
-#endif
+#include <windowsx.h>
+#include <hidsdi.h>
+#include <Xinput.h>
+#pragma comment(lib, "hid.lib")
+#pragma comment(lib, "xinput.lib")
 
 #define GL3D_WINDOW_CLASS "gl3d_window"
 
@@ -26,6 +22,7 @@ unsigned g_next_window_id = 0;
 uint64_t g_timer_offset = 0;
 uint64_t g_timer_frequency = 0;
 uint64_t g_last_timer_counter = 0;
+size_t g_mouseCaptureCount = 0;
 
 unsigned g_frame_id = 0;
 float g_time = 0.0f;
@@ -124,11 +121,15 @@ window::ptr window::open( std::string_view title, ivec2 size, ivec2 pos, unsigne
 	auto pf = ChoosePixelFormat( hdc, &pfd );
 	SetPixelFormat( hdc, pf, &pfd );
 
+	auto context = std::make_shared<detail::context>( handle );
+	if ( !context )
+		return nullptr;
+
 	auto &result = detail::g_windows.emplace_back( std::make_shared<window>() );
 	result->_flags = flags;
 	result->_id = detail::g_next_window_id++;
 	result->_native_handle = handle;
-	result->_context = std::make_shared<detail::context>( handle );
+	result->_context = context;
 	result->_title = title;
 	result->_pos = pos;
 	result->_size = size;
@@ -432,8 +433,8 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_LBUTTONDOWN:
 				case WM_RBUTTONDOWN:
 				case WM_MBUTTONDOWN:
-					//if ( !( kvp.second->mouse_capture_ref++ ) )
-					//	SetCapture( hWnd );
+					if ( !( g_mouseCaptureCount++ ) )
+						SetCapture( hWnd );
 
 					mouse.change_button_state( mbutton_to_mouse_button( message ), true, w->id() );
 					return 0;
@@ -443,8 +444,8 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				case WM_MBUTTONUP:
 					mouse.change_button_state( mbutton_to_mouse_button( message ), false, w->id() );
 
-					//if ( !( --kvp.second->mouse_capture_ref ) )
-					//	ReleaseCapture();
+					if ( !( --g_mouseCaptureCount ) )
+						ReleaseCapture();
 
 					return 0;
 
