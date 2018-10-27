@@ -73,7 +73,7 @@ protected:
 	unsigned _flags = 0;
 	unsigned _id = UINT_MAX;
 	void *_native_handle = nullptr;
-	context::ptr _context;
+	detail::context::ptr _context;
 	std::string _title;
 	ivec2 _pos;
 	ivec2 _size;

@@ -4,6 +4,9 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <variant>
+
+#include <filesystem>
 
 // Include base 3D math library
 #include "gl3d_math.h"
@@ -14,6 +17,15 @@
 		return layout; }
 
 namespace gl3d {
+
+/* Forward declarations */
+class buffer;
+class cmd_queue;
+class compiled_shader;
+class context;
+class shader;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct gl
 {
@@ -84,36 +96,25 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class context
-{
-public:
-	using ptr = std::shared_ptr<context>;
-
-	static ptr create( void *windowNativeHandle );
-
-	virtual ~context();
-
-	void *window_native_handle() const { return _window_native_handle; }
-	void *native_handle() const { return _native_handle; }
-
-	void make_current();
-
-protected:
-	void *_window_native_handle = nullptr;
-	void *_native_handle = nullptr;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 namespace detail {
 
-class render_object
+class resource
+{
+public:
+	using ptr = std::shared_ptr<resource>;
+};
+
+class render_object : public resource
 {
 public:
 	using ptr = std::shared_ptr<render_object>;
 
+	unsigned id() const { return _id; }
+
 protected:
 	render_object() = default;
+
+	unsigned _id = 0;
 };
 
 }
@@ -139,37 +140,64 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class compiled_shader : public detail::render_object
+{
+public:
+	using ptr = std::shared_ptr<compiled_shader>;
+
+	virtual ~compiled_shader();
+
+protected:
+	compiled_shader();
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class shader : public detail::render_object
 {
 public:
 	using ptr = std::shared_ptr<shader>;
 
+	const std::filesystem::path path() const { return _path; }
+	const std::string &source() const { return _source; }
 
+protected:
+	std::filesystem::path _path;
+	std::string _source;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class cmd_list
+class cmd_queue : public detail::resource
 {
 public:
-	using ptr = std::shared_ptr<cmd_list>;
+	using ptr = std::shared_ptr<cmd_queue>;
+	using location_variant_t = std::variant<unsigned, size_t, std::string_view>;
 
-	cmd_list();
-	virtual ~cmd_list();
+	cmd_queue(): cmd_queue( true ) { }
+	virtual ~cmd_queue();
 
 	bool recording() const { return _recording; }
 
-	void begin();
-	void end();
+	void reset();
+
+	void clear_color( const vec4 &color );
+	void clear_depth( float depth );
 
 	void bind_shader( shader::ptr sh );
-	void bind_vertex_buffer( buffer::ptr vb );
-	void bind_index_buffer( buffer::ptr ib );
+	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
+	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
-	void draw( gl::enum_t primitive, unsigned first, unsigned count, unsigned instanceCount = 1, unsigned instanceBase = 0 );
-	void draw_indexed( gl::enum_t primitive, unsigned first, unsigned count, unsigned instanceCount = 1, unsigned instanceBase = 0 );
+	void uniform_block( location_variant_t location, const void *data, size_t size );
+
+	void draw( gl::enum_t primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
+	void draw_indexed( gl::enum_t primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
+
+	void execute( ptr cmdQueue );
 
 protected:
+	cmd_queue( bool record );
+
 	template <typename... Args> static constexpr size_t types_size() { return ( sizeof( Args ) + ... + 0 ); }
 
 	template <typename H, typename... T>
@@ -202,21 +230,47 @@ protected:
 
 	void execute();
 
-	bool _recording = true;
+	bool _recording;
 	std::vector<uint8_t> _recordedData;
-	std::vector<detail::render_object::ptr> _renderObjects;
+	std::vector<detail::resource::ptr> _resources;
 	size_t _position = 0;
 
 	enum class cmd_type
 	{
-		end,
+		clear_color,
+		clear_depth,
 		bind_shader,
 		bind_vertex_buffer,
 		bind_index_buffer,
 		draw,
 		draw_indexed,
+		execute
 	};
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+class context : public cmd_queue
+{
+public:
+	using ptr = std::shared_ptr<context>;
+
+	context( void *windowNativeHandle );
+	virtual ~context();
+
+	void *window_native_handle() const { return _window_native_handle; }
+	void *native_handle() const { return _native_handle; }
+
+	void make_current();
+
+protected:
+	void *_window_native_handle = nullptr;
+	void *_native_handle = nullptr;
+};
+
+} // namespace gl3d::detail
 
 } // namespace gl3d
 

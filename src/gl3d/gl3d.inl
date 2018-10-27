@@ -58,50 +58,6 @@ void init_gl_api()
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
-context::ptr context::create( void *windowNativeHandle )
-{
-	ptr result = std::make_shared<context>();
-
-	auto hdc = GetDC( HWND( windowNativeHandle ) );
-	auto tempContext = wglCreateContext( hdc );
-	wglMakeCurrent( hdc, tempContext );
-
-	detail::init_gl_api();
-
-	unsigned contextAttribs[] =
-	{
-		gl::CONTEXT_MAJOR_VERSION_ARB, 4,
-		gl::CONTEXT_MINOR_VERSION_ARB, 6,
-		gl::CONTEXT_PROFILE_MASK_ARB, gl::CONTEXT_CORE_PROFILE_BIT_ARB,
-		0
-	};
-
-	result->_window_native_handle = windowNativeHandle;
-	result->_native_handle = gl::CreateContextAttribsARB( hdc, nullptr, reinterpret_cast<const int *>( contextAttribs ) );
-	if ( !result->_native_handle )
-		return nullptr;
-
-	wglMakeCurrent( nullptr, nullptr );
-	wglDeleteContext( tempContext );
-	return result;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-context::~context()
-{
-	wglDeleteContext( HGLRC( _native_handle ) );
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void context::make_current()
-{
-	if ( wglGetCurrentContext() != HGLRC( _native_handle ) )
-		wglMakeCurrent( GetDC( HWND( _window_native_handle ) ), HGLRC( _native_handle ) );
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//---------------------------------------------------------------------------------------------------------------------
 buffer::buffer( gl::enum_t type )
 	: _type( type )
 {
@@ -129,37 +85,64 @@ void buffer::set_data( const void *data, size_t size )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-cmd_list::cmd_list()
+compiled_shader::compiled_shader()
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-cmd_list::~cmd_list()
+compiled_shader::~compiled_shader()
+{
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
+cmd_queue::cmd_queue( bool record )
+	: _recording( record )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::begin()
+cmd_queue::~cmd_queue()
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::reset()
 {
 	_position = 0;
+	_resources.clear();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::end()
+void cmd_queue::clear_color( const vec4 &color )
 {
 	if ( _recording )
-		write( cmd_type::end );
+		write( cmd_type::clear_color, color );
+	else
+		glClearColor( color.x, color.y, color.z, color.w );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::bind_shader( shader::ptr sh )
+void cmd_queue::clear_depth( float depth )
+{
+	if ( _recording )
+		write( cmd_type::clear_depth, depth );
+	else
+		glClearDepth( depth );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_shader( shader::ptr sh )
 {
 	if ( _recording )
 	{
 		write( cmd_type::bind_shader );
-		_renderObjects.push_back( sh );
+		_resources.push_back( sh );
 	}
 	else
 	{
@@ -168,12 +151,12 @@ void cmd_list::bind_shader( shader::ptr sh )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::bind_vertex_buffer( buffer::ptr vb )
+void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout, size_t offset )
 {
 	if ( _recording )
 	{
-		write( cmd_type::bind_vertex_buffer );
-		_renderObjects.push_back( vb );
+		write( cmd_type::bind_vertex_buffer, &layout, offset );
+		_resources.push_back( vb );
 	}
 	else
 	{
@@ -182,12 +165,12 @@ void cmd_list::bind_vertex_buffer( buffer::ptr vb )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::bind_index_buffer( buffer::ptr ib )
+void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset )
 {
 	if ( _recording )
 	{
-		write( cmd_type::bind_index_buffer );
-		_renderObjects.push_back( ib );
+		write( cmd_type::bind_index_buffer, use16bits, offset );
+		_resources.push_back( ib );
 	}
 	else
 	{
@@ -196,7 +179,20 @@ void cmd_list::bind_index_buffer( buffer::ptr ib )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::draw( gl::enum_t primitive, unsigned first, unsigned count, unsigned instanceCount, unsigned instanceBase )
+void cmd_queue::uniform_block( location_variant_t location, const void *data, size_t size )
+{
+	if ( _recording )
+	{
+
+	}
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::draw( gl::enum_t primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
 	if ( _recording )
 	{
@@ -209,7 +205,7 @@ void cmd_list::draw( gl::enum_t primitive, unsigned first, unsigned count, unsig
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::draw_indexed( gl::enum_t primitive, unsigned first, unsigned count, unsigned instanceCount, unsigned instanceBase )
+void cmd_queue::draw_indexed( gl::enum_t primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
 	if ( _recording )
 	{
@@ -222,7 +218,21 @@ void cmd_list::draw_indexed( gl::enum_t primitive, unsigned first, unsigned coun
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::execute()
+void cmd_queue::execute( ptr cmdQueue )
+{
+	if ( _recording )
+	{
+		write( cmd_type::execute );
+		_resources.push_back( cmdQueue );
+	}
+	else
+	{
+		cmdQueue->execute();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::execute()
 {
 	_recording = false;
 	_position = 0;
@@ -236,20 +246,35 @@ void cmd_list::execute()
 			default:
 			{ assert( 0 ); break; }
 
-			case cmd_type::end:
-				break;
+			case cmd_type::clear_color:
+			{
+				auto color = read<vec4>();
+				clear_color( color );
+			}
+			break;
+
+			case cmd_type::clear_depth:
+			{
+				auto depth = read<float>();
+				clear_depth( depth );
+			}
+			break;
 
 			case cmd_type::bind_vertex_buffer:
 			{
-				auto vb = std::static_pointer_cast<buffer>( _renderObjects[objIndex++] );
-				bind_vertex_buffer( vb );
+				auto vb = std::static_pointer_cast<buffer>( _resources[objIndex++] );
+				const auto &layout = read<detail::layout>();
+				auto offset = read<size_t>();
+				bind_vertex_buffer( vb, layout, offset );
 			}
 			break;
 
 			case cmd_type::bind_index_buffer:
 			{
-				auto ib = std::static_pointer_cast<buffer>( _renderObjects[objIndex++] );
-				bind_index_buffer( ib );
+				auto ib = std::static_pointer_cast<buffer>( _resources[objIndex++] );
+				auto use16bits = read<bool>();
+				auto offset = read<size_t>();
+				bind_index_buffer( ib, use16bits, offset );
 			}
 			break;
 
@@ -257,10 +282,10 @@ void cmd_list::execute()
 			case cmd_type::draw_indexed:
 			{
 				auto primitive = read<gl::enum_t>();
-				auto first = read<unsigned>();
-				auto count = read<unsigned>();
-				auto instanceCount = read<unsigned>();
-				auto instanceBase = read<unsigned>();
+				auto first = read<size_t>();
+				auto count = read<size_t>();
+				auto instanceCount = read<size_t>();
+				auto instanceBase = read<size_t>();
 
 				if ( cmd == cmd_type::draw )
 					draw( primitive, first, count, instanceCount, instanceBase );
@@ -268,10 +293,61 @@ void cmd_list::execute()
 					draw_indexed( primitive, first, count, instanceCount, instanceBase );
 			}
 			break;
+
+			case cmd_type::execute:
+			{
+				auto cmdList = std::static_pointer_cast<cmd_queue>( _resources[objIndex++] );
+				execute( cmdList );
+			}
+			break;
 		}
 	}
 
 	_recording = true;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+//---------------------------------------------------------------------------------------------------------------------
+context::context( void *windowNativeHandle )
+	: cmd_queue( false )
+{
+	auto hdc = GetDC( HWND( windowNativeHandle ) );
+	auto tempContext = wglCreateContext( hdc );
+	wglMakeCurrent( hdc, tempContext );
+
+	detail::init_gl_api();
+
+	unsigned contextAttribs[] =
+	{
+		gl::CONTEXT_MAJOR_VERSION_ARB, 4,
+		gl::CONTEXT_MINOR_VERSION_ARB, 5,
+		gl::CONTEXT_PROFILE_MASK_ARB, gl::CONTEXT_CORE_PROFILE_BIT_ARB,
+		0
+	};
+
+	_window_native_handle = windowNativeHandle;
+	_native_handle = gl::CreateContextAttribsARB( hdc, nullptr, reinterpret_cast<const int *>( contextAttribs ) );
+
+	wglMakeCurrent( nullptr, nullptr );
+	wglDeleteContext( tempContext );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+context::~context()
+{
+	wglDeleteContext( HGLRC( _native_handle ) );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void context::make_current()
+{
+	if ( wglGetCurrentContext() != HGLRC( _native_handle ) )
+		wglMakeCurrent( GetDC( HWND( _window_native_handle ) ), HGLRC( _native_handle ) );
+}
+
+} // namespace gl3d::detail
 
 } // namespace gl3d

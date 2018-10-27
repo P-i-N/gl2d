@@ -124,15 +124,11 @@ window::ptr window::open( std::string_view title, ivec2 size, ivec2 pos, unsigne
 	auto pf = ChoosePixelFormat( hdc, &pfd );
 	SetPixelFormat( hdc, pf, &pfd );
 
-	auto ctx = context::create( handle );
-	if ( !ctx )
-		return nullptr;
-
 	auto &result = detail::g_windows.emplace_back( std::make_shared<window>() );
 	result->_flags = flags;
 	result->_id = detail::g_next_window_id++;
 	result->_native_handle = handle;
-	result->_context = ctx;
+	result->_context = std::make_shared<detail::context>( handle );
 	result->_title = title;
 	result->_pos = pos;
 	result->_size = size;
@@ -298,6 +294,12 @@ void update()
 	g_last_timer_counter = li.QuadPart;
 
 	update_xinput();
+
+	if ( auto w = window::from_id( 0 ); w != nullptr )
+	{
+		auto ctx = w->context();
+		ctx->make_current();
+	}
 
 	on_tick.call();
 

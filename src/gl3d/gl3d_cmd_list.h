@@ -76,13 +76,13 @@ enum class cmd_list_shading
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class cmd_list
+class cmd_queue
 {
 public:
-	using ptr = std::shared_ptr<cmd_list>;
+	using ptr = std::shared_ptr<cmd_queue>;
 
-	cmd_list() = default;
-	virtual ~cmd_list() = default;
+	cmd_queue() = default;
+	virtual ~cmd_queue() = default;
 
 	void render();
 
@@ -149,13 +149,13 @@ protected:
 namespace gl3d {
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::render()
+void cmd_queue::render()
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::reset()
+void cmd_queue::reset()
 {
 	_pipeline_states.clear();
 
@@ -164,57 +164,57 @@ void cmd_list::reset()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::begin( cmd_list_primitive primitive )
+void cmd_queue::begin( cmd_list_primitive primitive )
 {
 	assert( _current_primitive == cmd_list_primitive::none );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::end()
+void cmd_queue::end()
 {
 	_current_primitive = cmd_list_primitive::none;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::set_shading( cmd_list_shading shading )
+void cmd_queue::set_shading( cmd_list_shading shading )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::vertex( const vec4 &v )
+void cmd_queue::vertex( const vec4 &v )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::color( const vec4 &c )
+void cmd_queue::color( const vec4 &c )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::uv( const vec2 &coord )
+void cmd_queue::uv( const vec2 &coord )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::set_rasterizer_state( const rasterizer_state &rs )
+void cmd_queue::set_rasterizer_state( const rasterizer_state &rs )
 {
 	_current_pipeline_state.rs = rs;
 	_dirty_pipeline_state = true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::set_blend_state( const blend_state &bs )
+void cmd_queue::set_blend_state( const blend_state &bs )
 {
 	_current_pipeline_state.bs = bs;
 	_dirty_pipeline_state = true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_list::set_depth_stencil_state( const depth_stencil_state &ds )
+void cmd_queue::set_depth_stencil_state( const depth_stencil_state &ds )
 {
 	_current_pipeline_state.ds = ds;
 	_dirty_pipeline_state = true;
