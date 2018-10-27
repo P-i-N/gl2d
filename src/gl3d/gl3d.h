@@ -230,7 +230,7 @@ protected:
 
 	void execute();
 
-	bool _recording;
+	bool _recording = true;
 	std::vector<uint8_t> _recordedData;
 	std::vector<detail::resource::ptr> _resources;
 	size_t _position = 0;
@@ -258,6 +258,7 @@ public:
 	using ptr = std::shared_ptr<context>;
 
 	context( void *windowNativeHandle );
+	context( ptr sharedContext );
 	virtual ~context();
 
 	void *window_native_handle() const { return _window_native_handle; }

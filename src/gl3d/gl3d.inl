@@ -316,31 +316,53 @@ void cmd_queue::execute()
 
 namespace detail {
 
+unsigned g_contextAttribs[] =
+{
+	gl::CONTEXT_MAJOR_VERSION_ARB, 4,
+	gl::CONTEXT_MINOR_VERSION_ARB, 5,
+	gl::CONTEXT_PROFILE_MASK_ARB, gl::CONTEXT_CORE_PROFILE_BIT_ARB,
+	0
+};
+
 //---------------------------------------------------------------------------------------------------------------------
 context::context( void *windowNativeHandle )
 	: cmd_queue( false )
+	, _window_native_handle( windowNativeHandle )
 {
 	static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
 
-	auto hdc = GetDC( HWND( windowNativeHandle ) );
+	auto hdc = GetDC( HWND( _window_native_handle ) );
 	auto tempContext = wglCreateContext( hdc );
 	wglMakeCurrent( hdc, tempContext );
 
 	detail::init_gl_api();
 
-	unsigned contextAttribs[] =
-	{
-		gl::CONTEXT_MAJOR_VERSION_ARB, 4,
-		gl::CONTEXT_MINOR_VERSION_ARB, 5,
-		gl::CONTEXT_PROFILE_MASK_ARB, gl::CONTEXT_CORE_PROFILE_BIT_ARB,
-		0
-	};
-
-	_window_native_handle = windowNativeHandle;
-	_native_handle = gl::CreateContextAttribsARB( hdc, nullptr, reinterpret_cast<const int *>( contextAttribs ) );
+	_native_handle = gl::CreateContextAttribsARB(
+	                     hdc,
+	                     nullptr,
+	                     reinterpret_cast<const int *>( g_contextAttribs ) );
 
 	wglMakeCurrent( nullptr, nullptr );
 	wglDeleteContext( tempContext );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+context::context( ptr sharedContext )
+	: cmd_queue( false )
+	, _window_native_handle( sharedContext->_window_native_handle )
+{
+
+	sharedContext->make_current();
+
+	_window_native_handle = sharedContext->_window_native_handle;
+	auto hdc = GetDC( HWND( _window_native_handle ) );
+
+	_native_handle = gl::CreateContextAttribsARB(
+	                     hdc,
+	                     HGLRC( sharedContext->_native_handle ),
+	                     reinterpret_cast<const int *>( g_contextAttribs ) );
+
+	wglMakeCurrent( nullptr, nullptr );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
