@@ -124,7 +124,10 @@ void cmd_queue::clear_color( const vec4 &color )
 	if ( _recording )
 		write( cmd_type::clear_color, color );
 	else
+	{
 		glClearColor( color.x, color.y, color.z, color.w );
+		glClear( GL_COLOR_BUFFER_BIT );
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -133,7 +136,10 @@ void cmd_queue::clear_depth( float depth )
 	if ( _recording )
 		write( cmd_type::clear_depth, depth );
 	else
+	{
 		glClearDepth( depth );
+		glClear( GL_DEPTH_BUFFER_BIT );
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -236,7 +242,7 @@ void cmd_queue::execute()
 {
 	_recording = false;
 	_position = 0;
-	size_t objIndex = 0;
+	size_t resIndex = 0;
 
 	while ( _position < _recordedData.size() )
 	{
@@ -262,7 +268,7 @@ void cmd_queue::execute()
 
 			case cmd_type::bind_vertex_buffer:
 			{
-				auto vb = std::static_pointer_cast<buffer>( _resources[objIndex++] );
+				auto vb = std::static_pointer_cast<buffer>( _resources[resIndex++] );
 				const auto &layout = read<detail::layout>();
 				auto offset = read<size_t>();
 				bind_vertex_buffer( vb, layout, offset );
@@ -271,7 +277,7 @@ void cmd_queue::execute()
 
 			case cmd_type::bind_index_buffer:
 			{
-				auto ib = std::static_pointer_cast<buffer>( _resources[objIndex++] );
+				auto ib = std::static_pointer_cast<buffer>( _resources[resIndex++] );
 				auto use16bits = read<bool>();
 				auto offset = read<size_t>();
 				bind_index_buffer( ib, use16bits, offset );
@@ -296,8 +302,8 @@ void cmd_queue::execute()
 
 			case cmd_type::execute:
 			{
-				auto cmdList = std::static_pointer_cast<cmd_queue>( _resources[objIndex++] );
-				execute( cmdList );
+				auto cmdQueue = std::static_pointer_cast<cmd_queue>( _resources[resIndex++] );
+				execute( cmdQueue );
 			}
 			break;
 		}

@@ -244,7 +244,7 @@ protected:
 		bind_index_buffer,
 		draw,
 		draw_indexed,
-		execute
+		execute,
 	};
 };
 

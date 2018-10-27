@@ -56,18 +56,22 @@ int main()
 		}
 	} );
 
+	auto q = std::make_shared<cmd_queue>();
+	q->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
+
 	on_tick( [&]()
 	{
 		auto w = window::from_id( 0 );
 		auto ctx = w->context();
 
-		glViewport( 0, 0, 1024, 1024 );
-		ctx->clear_color( vec4::red() );
+		ctx->execute( q );
 	} );
 
 	auto win = window::open( "Main Window", { 800, 600 } );
 	auto ctx = win->context();
 
-	run();
+	auto s = sizeof( cmd_queue );
+
+	gl3d::run();
 	return 0;
 }
