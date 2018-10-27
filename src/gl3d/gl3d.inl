@@ -314,6 +314,8 @@ namespace detail {
 context::context( void *windowNativeHandle )
 	: cmd_queue( false )
 {
+	static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
+
 	auto hdc = GetDC( HWND( windowNativeHandle ) );
 	auto tempContext = wglCreateContext( hdc );
 	wglMakeCurrent( hdc, tempContext );
