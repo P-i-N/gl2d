@@ -17,12 +17,36 @@
 #include <gl/GL.h>
 
 #include <cassert>
+#include <fstream>
 
 namespace gl3d {
 
 decltype( gl::CreateContextAttribsARB ) gl::CreateContextAttribsARB;
 
 namespace detail {
+
+//---------------------------------------------------------------------------------------------------------------------
+std::string_view trim( std::string_view text )
+{
+	if ( text.empty() )
+		return text;
+
+	size_t start = 0;
+	while ( start < text.length() && isspace( text[start] ) )
+		++start;
+
+	auto end = text.length() - 1;
+	while ( end > start && isspace( text[end] ) )
+		--end;
+
+	return text.substr( start, end - start + 1 );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+std::string unroll_includes( const std::filesystem::path &cwd, std::string_view sourceCode )
+{
+	return nullptr;
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 void *get_gl_proc_address( const char *name )
@@ -89,6 +113,66 @@ compiled_shader::~compiled_shader()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
+bool shader::source( std::string_view sourceCode )
+{
+	static constexpr char *s_lineSeparator = "\n";
+
+	size_t cursor = 0;
+	while ( cursor <= sourceCode.length() )
+	{
+		auto sepPos = sourceCode.find( s_lineSeparator, cursor );
+		if ( sepPos == std::string::npos )
+			sepPos = sourceCode.length();
+
+		auto line = detail::trim( sourceCode.substr( cursor, sepPos - cursor ) );
+
+
+
+		cursor = sepPos + strlen( s_lineSeparator );
+	}
+
+	_path.clear();
+	_source = sourceCode;
+	return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool shader::load( std::istream &is )
+{
+	is.seekg( 0, std::ios_base::end );
+	size_t size = is.tellg();
+	is.seekg( 0, std::ios_base::beg );
+
+	std::unique_ptr<char[]> bytes( new char[size + 1] );
+	is.read( bytes.get(), size );
+	bytes[size] = 0;
+
+	return source( std::string_view( bytes.get(), size ) );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool shader::load( const std::filesystem::path &path )
+{
+	std::ifstream ifs( path.c_str(), std::ios_base::in | std::ios_base::binary );
+	if ( !ifs.is_open() )
+		return false;
+
+	if ( !load( ifs ) )
+		return false;
+
+	_path = path;
+	return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+compiled_shader::ptr shader::compile()
+{
+	return nullptr;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
 cmd_queue::cmd_queue( bool record )
 	: _recording( record )
 {
@@ -124,7 +208,10 @@ void cmd_queue::clear_color( const vec4 &color )
 void cmd_queue::clear_depth( float depth )
 {
 	if ( _recording )
+	{
 		write( cmd_type::clear_depth, depth );
+		return;
+	}
 	else
 	{
 		glClearDepth( depth );
@@ -133,7 +220,7 @@ void cmd_queue::clear_depth( float depth )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_shader( shader::ptr sh )
+void cmd_queue::bind_shader( compiled_shader::ptr sh )
 {
 	if ( _recording )
 	{

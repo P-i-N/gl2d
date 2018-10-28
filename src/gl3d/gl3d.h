@@ -153,13 +153,19 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class shader : public detail::render_object
+class shader : public detail::resource
 {
 public:
 	using ptr = std::shared_ptr<shader>;
 
-	const std::filesystem::path path() const { return _path; }
+	const std::filesystem::path &path() const { return _path; }
 	const std::string &source() const { return _source; }
+
+	bool source( std::string_view sourceCode );
+	bool load( std::istream &is );
+	bool load( const std::filesystem::path &path );
+
+	compiled_shader::ptr compile();
 
 protected:
 	std::filesystem::path _path;
@@ -184,7 +190,7 @@ public:
 	void clear_color( const vec4 &color );
 	void clear_depth( float depth );
 
-	void bind_shader( shader::ptr sh );
+	void bind_shader( compiled_shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 

@@ -56,6 +56,9 @@ int main()
 		}
 	} );
 
+	auto sh = std::make_shared<shader>();
+	sh->load( "../../data/shaders/Test.shader" );
+
 	auto q = std::make_shared<cmd_queue>();
 	q->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 
