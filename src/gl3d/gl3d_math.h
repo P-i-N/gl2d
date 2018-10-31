@@ -81,7 +81,7 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 	template <class TV> xvec4(const xvec4<TV> &v): xvec_impl((T)v.x, (T)v.y, (T)v.z, (T)v.w) { }
 	template <class TV, class TW> xvec4(const xvec3<TV> &v, TW w) : xvec_impl((T)v.x, (T)v.y, (T)v.z, (T)w) { }
 
-	explicit xvec4(uint32_t argb): xvec_impl(
+	explicit xvec4(unsigned argb): xvec_impl(
 		((argb >> 16) & 0xFFu) / 255.0f,
 		((argb >> 8) & 0xFFu) / 255.0f,
 		(argb & 0xFFu) / 255.0f,
@@ -430,7 +430,7 @@ using ivec3 = detail::xvec3<int>;
 using vec4 = detail::xvec4<float>;
 using dvec4 = detail::xvec4<double>;
 using ivec4 = detail::xvec4<int>;
-using byte_vec4 = detail::xvec4<uint8_t>;
+using byte_vec4 = detail::xvec4<unsigned char>;
 using mat3 = detail::xmat3<float>;
 using dmat3 = detail::xmat3<double>;
 using mat4 = detail::xmat4<float>;

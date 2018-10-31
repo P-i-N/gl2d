@@ -4,6 +4,15 @@
 
 #include "gl3d_window.h"
 
+#ifndef VC_EXTRALEAN
+	#define VC_EXTRALEAN
+#endif
+
+#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif
+
+#include <windows.h>
 #include <windowsx.h>
 #include <hidsdi.h>
 #include <Xinput.h>
