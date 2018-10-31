@@ -1,7 +1,6 @@
 #ifndef __GL3D_H__
 #define __GL3D_H__
 
-#include <functional>
 #include <vector>
 #include <memory>
 #include <variant>
@@ -160,9 +159,10 @@ public:
 
 	const std::filesystem::path &path() const { return _path; }
 	const std::string &source() const { return _source; }
+	const std::string &unrolled_source() const { return _unrolledSource; }
 
-	bool source( std::string_view sourceCode );
-	bool load( std::istream &is );
+	bool source( std::string_view sourceCode, const std::filesystem::path &cwd = std::filesystem::path() );
+	bool load( std::istream &is, const std::filesystem::path &cwd = std::filesystem::path() );
 	bool load( const std::filesystem::path &path );
 
 	compiled_shader::ptr compile();
@@ -170,6 +170,7 @@ public:
 protected:
 	std::filesystem::path _path;
 	std::string _source;
+	std::string _unrolledSource;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

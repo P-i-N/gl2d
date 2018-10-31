@@ -1,8 +1,5 @@
 #vertex
-void main()
-{
-
-}
+#include "Test.vert"
 
 #fragment
 void main()
