@@ -13,10 +13,39 @@ namespace gl3d {
 
 namespace detail {
 
+//---------------------------------------------------------------------------------------------------------------------
 std::string_view trim( std::string_view text );
-bool starts_with_nocase( std::string_view text, std::string_view start );
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
 std::vector<char> load_all_chars( std::istream &is, bool addNullTerm = true, size_t size = 0 );
+
+//---------------------------------------------------------------------------------------------------------------------
+template <typename... Tail>
+bool starts_with_nocase( std::string_view text, std::string_view head, Tail &&... tail )
+{
+	if ( head.empty() )
+		return true;
+
+	bool found = ( head.length() <= text.length() );
+	if ( found )
+	{
+		for ( size_t i = 0, S = head.length(); i < S; ++i )
+		{
+			if ( tolower( head[i] ) != tolower( text[i] ) )
+			{
+				found = false;
+				break;
+			}
+		}
+	}
+
+	if ( !found )
+	{
+		if constexpr ( sizeof...( Tail ) > 0 )
+			return starts_with_nocase( text, tail... );
+	}
+
+	return found;
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename F> struct callback_chain

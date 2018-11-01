@@ -70,10 +70,10 @@ int main()
 		ctx->execute( q );
 	} );
 
-	auto win = window::open( "Main Window", { 800, 600 }, { 1920 * 2 + 60, 60 } );
+	auto win = window::open( "Main Window", { 800, 600 }, { 1920 * 0 + 60, 60 } );
 	auto ctx = win->context();
 
-	auto s = sizeof( cmd_queue );
+	auto s = sizeof( depth_stencil_state );
 
 	gl3d::run();
 	return 0;

@@ -36,19 +36,6 @@ std::string_view trim( std::string_view text )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-bool starts_with_nocase( std::string_view text, std::string_view start )
-{
-	if ( start.empty() ) return true;
-	if ( start.length() > text.length() ) return false;
-
-	for ( size_t i = 0, S = start.length(); i < S; ++i )
-		if ( tolower( start[i] ) != tolower( text[i] ) )
-			return false;
-
-	return true;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback )
 {
 	size_t cursor = 0;

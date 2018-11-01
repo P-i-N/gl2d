@@ -37,17 +37,21 @@ namespace detail {
 //---------------------------------------------------------------------------------------------------------------------
 bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd )
 {
+	bool result = true;
+
 	for_each_line( sourceCode, [&]( std::string_view line, unsigned lineNum )
 	{
+		if ( !result ) return;
+
 		bool addLine = true;
 
-		if ( auto dir = trim( line ); !dir.empty() && line[0] == '#' )
+		if ( auto dir = trim( line ); !dir.empty() && dir[0] == '#' )
 		{
 			addLine = false;
 			dir = trim( line.substr( 1 ) ); // Cut away '#' & trim
 			if ( starts_with_nocase( dir, "include" ) )
 			{
-				dir = trim( line.substr( 7 ) ); // Cut away "include" & trim
+				dir = trim( dir.substr( 7 ) ); // Cut away "include" & trim
 
 				bool isRelative = false;
 
@@ -57,7 +61,9 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 					isRelative = false;
 				else
 				{
-
+					log::error( "Invalid include directive at line %d", lineNum );
+					result = false;
+					return;
 				}
 
 				std::filesystem::path path = trim( dir.substr( 1, dir.length() - 2 ) );
@@ -66,7 +72,11 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 
 				std::ifstream ifs( path.c_str(), std::ios_base::in | std::ios_base::binary );
 				if ( !ifs.is_open() )
+				{
+					log::error( "Could not open file stream: %s", path.c_str() );
+					result = false;
 					return;
+				}
 
 				auto bytes = load_all_chars( ifs );
 				if ( !unroll_includes( ss, std::string_view( bytes.data(), bytes.size() ), path.parent_path() ) )
@@ -78,7 +88,7 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 			ss << line << std::endl;
 	} );
 
-	return true;
+	return result;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -161,11 +171,11 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 		{
 			addLine = false;
 			dir = detail::trim( dir.substr( 1 ) ); // Cut away '#' & trim
-			if ( detail::starts_with_nocase( dir, "vertex" ) || detail::starts_with_nocase( dir, "vert" ) )
+			if ( detail::starts_with_nocase( dir, "vertex", "vert", "vs" ) )
 			{
 
 			}
-			else if ( detail::starts_with_nocase( dir, "fragment" ) || detail::starts_with_nocase( dir, "frag" ) )
+			else if ( detail::starts_with_nocase( dir, "fragment", "frag", "fs", "pixel" ) )
 			{
 
 			}
@@ -245,14 +255,44 @@ void cmd_queue::clear_color( const vec4 &color )
 void cmd_queue::clear_depth( float depth )
 {
 	if ( _recording )
-	{
 		write( cmd_type::clear_depth, depth );
-		return;
-	}
 	else
 	{
 		glClearDepth( depth );
 		glClear( GL_DEPTH_BUFFER_BIT );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_state( const blend_state &bs )
+{
+	if ( _recording )
+		write( cmd_type::bind_blend_state, bs );
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_state( const depth_stencil_state &ds )
+{
+	if ( _recording )
+		write( cmd_type::bind_depth_stencil_state, ds );
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_state( const rasterizer_state &rs )
+{
+	if ( _recording )
+		write( cmd_type::bind_rasterizer_state, rs );
+	else
+	{
+
 	}
 }
 
@@ -383,6 +423,18 @@ void cmd_queue::execute()
 				clear_depth( depth );
 			}
 			break;
+
+			case cmd_type::bind_blend_state:
+				bind_state( read<blend_state>() );
+				break;
+
+			case cmd_type::bind_depth_stencil_state:
+				bind_state( read<depth_stencil_state>() );
+				break;
+
+			case cmd_type::bind_rasterizer_state:
+				bind_state( read<rasterizer_state>() );
+				break;
 
 			case cmd_type::bind_vertex_buffer:
 			{

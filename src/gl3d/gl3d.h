@@ -29,19 +29,22 @@ struct gl
 {
 	enum enum_t : unsigned
 	{
-		NONE = 0,
-		BYTE = 0x1400,
-		UNSIGNED_BYTE = 0x1401,
-		SHORT = 0x1402,
-		UNSIGNED_SHORT = 0x1403,
-		INT = 0x1404,
-		UNSIGNED_INT = 0x1405,
-		FLOAT = 0x1406,
+		NONE = 0, ZERO = 0,
+		ONE = 1,
+
+		BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
 		DOUBLE = 0x140A,
 
+		NEVER = 0x0200, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS,
+
+		SRC_COLOR = 0x0300, ONE_MINUS_SRC_COLOR, SRC_ALPHA, ONE_MINUS_SRC_ALPHA, DST_ALPHA, ONE_MINUS_DST_ALPHA,
+		DST_COLOR = 0x0306, ONE_MINUS_DST_COLOR, SRC_ALPHA_SATURATE,
+
+		CW = 0x0900, CCW,
+
 #if defined(WIN32)
-		CONTEXT_MAJOR_VERSION_ARB = 0x2091,
-		CONTEXT_MINOR_VERSION_ARB = 0x2092,
+		CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
+
 		CONTEXT_PROFILE_MASK_ARB = 0x9126,
 		CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001,
 #endif
@@ -174,6 +177,36 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct blend_state
+{
+	uint8_t mask = 0xFFu;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct depth_stencil_state
+{
+	gl::enum_t depth_func = gl::LESS;
+	uint8_t stencil_read_mask = 0;
+	uint8_t stencil_write_mask = 0;
+	unsigned stencil_test : 1;
+	unsigned depth_test : 1;
+	unsigned depth_write : 1;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct rasterizer_state
+{
+	gl::enum_t face_cull_mode = gl::NONE;
+	unsigned front_ccw : 1;
+	unsigned wireframe : 1;
+	unsigned depth_camp : 1;
+	unsigned scissor_test : 1;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class cmd_queue : public detail::resource
 {
 public:
@@ -189,6 +222,10 @@ public:
 
 	void clear_color( const vec4 &color );
 	void clear_depth( float depth );
+
+	void bind_state( const blend_state &bs );
+	void bind_state( const depth_stencil_state &ds );
+	void bind_state( const rasterizer_state &rs );
 
 	void bind_shader( compiled_shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
@@ -245,6 +282,9 @@ protected:
 	{
 		clear_color,
 		clear_depth,
+		bind_blend_state,
+		bind_depth_stencil_state,
+		bind_rasterizer_state,
 		bind_shader,
 		bind_vertex_buffer,
 		bind_index_buffer,
