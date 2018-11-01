@@ -7,7 +7,6 @@
 
 #include <filesystem>
 
-// Include base 3D math library
 #include "gl3d_math.h"
 
 #define GL3D_LAYOUT(...) \

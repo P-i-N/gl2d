@@ -68,7 +68,7 @@ int main()
 		ctx->execute( q );
 	} );
 
-	auto win = window::open( "Main Window", { 800, 600 }, { 1920 * 2 + 60, 60 } );
+	auto win = window::open( "Main Window", { 800, 600 } );
 	auto ctx = win->context();
 
 	auto s = sizeof( cmd_queue );

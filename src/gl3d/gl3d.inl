@@ -3,6 +3,7 @@
 #endif
 
 #include "gl3d.h"
+#include "gl3d_base.h"
 
 #if defined(_MSC_VER)
 	#pragma comment(lib, "opengl32.lib")
@@ -33,66 +34,34 @@ decltype( gl::CreateContextAttribsARB ) gl::CreateContextAttribsARB;
 
 namespace detail {
 
-static constexpr char *s_lineSeparator = "\n";
-
-//---------------------------------------------------------------------------------------------------------------------
-std::string_view trim( std::string_view text )
-{
-	if ( text.empty() ) return text;
-
-	size_t start = 0, end = text.length() - 1;
-	while ( start < text.length() && isspace( text[start] ) ) ++start;
-	while ( end > start && isspace( text[end] ) ) --end;
-
-	return text.substr( start, end - start + 1 );
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-bool starts_with_nocase( std::string_view text, std::string_view start )
-{
-	if ( start.empty() ) return true;
-	if ( start.length() > text.length() ) return false;
-
-	for ( size_t i = 0, S = start.length(); i < S; ++i )
-		if ( tolower( start[i] ) != tolower( text[i] ) )
-			return false;
-
-	return true;
-}
-
 //---------------------------------------------------------------------------------------------------------------------
 bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd )
 {
-	size_t cursor = 0;
-	while ( cursor <= sourceCode.length() )
+	for_each_line( sourceCode, [&]( std::string_view line, unsigned lineNum )
 	{
 		bool addLine = true;
+		auto l = trim( line );
 
-		auto sepPos = sourceCode.find( detail::s_lineSeparator, cursor );
-		if ( sepPos == std::string::npos )
-			sepPos = sourceCode.length();
-
-		auto line = trim( sourceCode.substr( cursor, sepPos - cursor ) );
-		if ( !line.empty() && line[0] == '#' )
+		if ( !l.empty() && line[0] == '#' )
 		{
 			addLine = false;
-			line = trim( line.substr( 1 ) ); // Cut away '#' & trim
-			if ( starts_with_nocase( line, "include" ) )
+			l = trim( line.substr( 1 ) ); // Cut away '#' & trim
+			if ( starts_with_nocase( l, "include" ) )
 			{
-				line = trim( line.substr( 7 ) ); // Cut away "include" & trim
+				l = trim( line.substr( 7 ) ); // Cut away "include" & trim
 
 				bool isRelative = false;
 
-				if ( line[0] == '"' && line.back() == '"' )
+				if ( l[0] == '"' && l.back() == '"' )
 					isRelative = true;
-				else if ( line[0] == '<' && line.back() == '>' )
+				else if ( l[0] == '<' && l.back() == '>' )
 					isRelative = false;
 				else
 				{
 
 				}
 
-				std::filesystem::path path = trim( line.substr( 1, line.length() - 2 ) );
+				std::filesystem::path path = trim( l.substr( 1, l.length() - 2 ) );
 				if ( isRelative )
 					path = cwd / path;
 
@@ -100,24 +69,15 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 				if ( !ifs.is_open() )
 					return false;
 
-				ifs.seekg( 0, std::ios_base::end );
-				size_t size = ifs.tellg();
-				ifs.seekg( 0, std::ios_base::beg );
-
-				std::unique_ptr<char[]> bytes( new char[size + 1] );
-				ifs.read( bytes.get(), size );
-				bytes[size] = 0;
-
-				if ( !unroll_includes( ss, std::string_view( bytes.get(), size ), path.parent_path() ) )
+				auto bytes = load_all_char_string( ifs );
+				if ( !unroll_includes( ss, std::string_view( bytes.get(), strlen( bytes.get() ) ), path.parent_path() ) )
 					return false;
 			}
 		}
 
-		cursor = sepPos + strlen( detail::s_lineSeparator );
-
 		if ( addLine )
 			ss << line << std::endl;
-	}
+	} );
 
 	return true;
 }
@@ -197,35 +157,28 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 	std::string unrolledSource = ss.str();
 	std::string_view unrolledView = unrolledSource;
 
-	size_t cursor = 0;
-	while ( cursor <= unrolledView.length() )
+	detail::for_each_line( unrolledSource, [&]( std::string_view line, unsigned lineNum )
 	{
 		bool addLine = true;
+		auto l = detail::trim( line );
 
-		auto sepPos = unrolledView.find( detail::s_lineSeparator, cursor );
-		if ( sepPos == std::string::npos )
-			sepPos = unrolledView.length();
-
-		auto line = detail::trim( unrolledView.substr( cursor, sepPos - cursor ) );
-		if ( !line.empty() && line[0] == '#' )
+		if ( !l.empty() && l[0] == '#' )
 		{
 			addLine = false;
-			line = detail::trim( line.substr( 1 ) ); // Cut away '#' & trim
-			if ( detail::starts_with_nocase( line, "vertex" ) || detail::starts_with_nocase( line, "vert" ) )
+			l = detail::trim( l.substr( 1 ) ); // Cut away '#' & trim
+			if ( detail::starts_with_nocase( l, "vertex" ) || detail::starts_with_nocase( l, "vert" ) )
 			{
 
 			}
-			else if ( detail::starts_with_nocase( line, "fragment" ) || detail::starts_with_nocase( line, "frag" ) )
+			else if ( detail::starts_with_nocase( l, "fragment" ) || detail::starts_with_nocase( l, "frag" ) )
 			{
 
 			}
 		}
 
-		cursor = sepPos + strlen( detail::s_lineSeparator );
-
 		if ( addLine )
 			printf( "%s\n", std::string( line ).c_str() );
-	}
+	} );
 
 	_path.clear();
 	_source = sourceCode;
@@ -236,15 +189,8 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 //---------------------------------------------------------------------------------------------------------------------
 bool shader::load( std::istream &is, const std::filesystem::path &cwd )
 {
-	is.seekg( 0, std::ios_base::end );
-	size_t size = is.tellg();
-	is.seekg( 0, std::ios_base::beg );
-
-	std::unique_ptr<char[]> bytes( new char[size + 1] );
-	is.read( bytes.get(), size );
-	bytes[size] = 0;
-
-	return source( std::string_view( bytes.get(), size ), cwd );
+	auto bytes = detail::load_all_char_string( is );
+	return source( std::string_view( bytes.get(), strlen( bytes.get() ) ), cwd );
 }
 
 //---------------------------------------------------------------------------------------------------------------------

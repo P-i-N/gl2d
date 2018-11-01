@@ -14,6 +14,66 @@ namespace gl3d {
 
 namespace detail {
 
+static constexpr char *s_lineSeparator = "\n";
+
+//---------------------------------------------------------------------------------------------------------------------
+std::string_view trim( std::string_view text )
+{
+	if ( text.empty() ) return text;
+
+	size_t start = 0, end = text.length() - 1;
+	while ( start < text.length() && isspace( text[start] ) ) ++start;
+	while ( end > start && isspace( text[end] ) ) --end;
+
+	return text.substr( start, end - start + 1 );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool starts_with_nocase( std::string_view text, std::string_view start )
+{
+	if ( start.empty() ) return true;
+	if ( start.length() > text.length() ) return false;
+
+	for ( size_t i = 0, S = start.length(); i < S; ++i )
+		if ( tolower( start[i] ) != tolower( text[i] ) )
+			return false;
+
+	return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback )
+{
+	size_t cursor = 0;
+	unsigned lineNum = 0;
+	while ( cursor <= text.length() )
+	{
+		auto sepPos = text.find( s_lineSeparator, cursor );
+		if ( sepPos == std::string::npos )
+			sepPos = text.length();
+
+		callback( text.substr( cursor, sepPos - cursor ), ++lineNum );
+		cursor = sepPos + strlen( s_lineSeparator );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+std::unique_ptr<char[]> load_all_char_string( std::istream &is, size_t size = -1 )
+{
+	if ( true )
+	{
+		is.seekg( 0, std::ios_base::end );
+		size = is.tellg();
+		is.seekg( 0, std::ios_base::beg );
+	}
+
+	std::unique_ptr<char[]> result( new char[size + 1] );
+	is.read( result.get(), size );
+	result[size] = 0;
+
+	return std::move( result );
+}
+
 //---------------------------------------------------------------------------------------------------------------------
 template <typename F> struct callback_list
 {
