@@ -4,7 +4,6 @@
 #include <limits.h>
 
 #include <functional>
-#include <set>
 #include <type_traits>
 
 #define GL3D_ENUM_PLUS(_Type) \
@@ -87,11 +86,12 @@ template <typename F> struct callback_chain
 		bool operator==( const function_t &f ) const { return callback == f; }
 	};
 
-	std::set<callback_info> callbacks;
+	std::vector<callback_info> callbacks;
 
 	callback_chain &operator()( function_t &&f, int priority = 0 )
 	{
 		callbacks.insert( callbacks.end(), { priority, f } );
+		std::sort( callbacks.begin(), callbacks.end() );
 		return *this;
 	}
 
