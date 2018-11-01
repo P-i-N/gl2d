@@ -94,7 +94,6 @@ enum class event_type
 //---------------------------------------------------------------------------------------------------------------------
 struct event
 {
-	bool canceled = false;
 	event_type type;
 	unsigned window_id;
 
@@ -177,8 +176,8 @@ extern detail::space_navigator_state space_navigator;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern detail::callback_list<void()> on_tick;
-extern detail::callback_list<void( event & )> on_event;
+extern detail::callback_chain<void()> on_tick;
+extern detail::callback_chain<bool( event & )> on_event;
 
 }
 

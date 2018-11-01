@@ -58,24 +58,24 @@ void for_each_line( std::string_view text, std::function<void( std::string_view,
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::unique_ptr<char[]> load_all_char_string( std::istream &is, size_t size = -1 )
+std::vector<char> load_all_chars( std::istream &is, bool addNullTerm = true, size_t size = 0 )
 {
-	if ( true )
+	if ( !size )
 	{
 		is.seekg( 0, std::ios_base::end );
 		size = is.tellg();
 		is.seekg( 0, std::ios_base::beg );
 	}
 
-	std::unique_ptr<char[]> result( new char[size + 1] );
-	is.read( result.get(), size );
-	result[size] = 0;
+	std::vector<char> result( size );
+	is.read( result.data(), size );
+	if ( addNullTerm ) result.push_back( 0 );
 
 	return std::move( result );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename F> struct callback_list
+template <typename F> struct callback_chain
 {
 	using function_t = std::function<F>;
 
@@ -89,20 +89,53 @@ template <typename F> struct callback_list
 
 	std::set<callback_info> callbacks;
 
-	callback_list &operator()( function_t &&f, int priority = 0 )
+	callback_chain &operator()( function_t &&f, int priority = 0 )
 	{
 		callbacks.insert( callbacks.end(), { priority, f } );
 		return *this;
 	}
 
-	template <typename... Args> void call( Args &&... args ) const
+	template <typename... Args> bool call( Args &&... args ) const
 	{
-		for ( auto && ci : callbacks )
-			ci.callback( args... );
+		if constexpr ( std::is_void_v<std::result_of_t<function_t( Args... )>> )
+		{
+			for ( auto && ci : callbacks )
+				ci.callback( args... );
+		}
+		else
+		{
+			for ( auto && ci : callbacks )
+				if ( !ci.callback( args... ) )
+					return false;
+		}
+
+		return true;
 	}
 };
 
 } // namespace gl3d::detail
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct log
+{
+	enum class message_type { info, success, warning, error, fatal };
+
+	static void info( const char *fmt, ... );
+	static void success( const char *fmt, ... );
+	static void warning( const char *fmt, ... );
+	static void error( const char *fmt, ... );
+	static void fatal( const char *fmt, ... );
+};
+
+extern detail::callback_chain<void( log::message_type, const char * )> on_log_message;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct filesystem
+{
+
+};
 
 } // namespace gl3d
 

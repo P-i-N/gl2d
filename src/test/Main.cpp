@@ -52,13 +52,15 @@ int main()
 				printf( "mouse_up(%d): %d\n", e.window_id, +e.mouse.b );
 				break;
 		}
+
+		return true;
 	} );
 
 	auto sh = std::make_shared<shader>();
 	sh->load( "../../data/shaders/Test.shader" );
 
 	auto q = std::make_shared<cmd_queue>();
-	q->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
+	q->clear_color( { 0.0f, 0.0f, 0.0f, 1.0f } );
 
 	on_tick( [&]()
 	{
@@ -68,7 +70,7 @@ int main()
 		ctx->execute( q );
 	} );
 
-	auto win = window::open( "Main Window", { 800, 600 } );
+	auto win = window::open( "Main Window", { 800, 600 }, { 1920 * 2 + 60, 60 } );
 	auto ctx = win->context();
 
 	auto s = sizeof( cmd_queue );

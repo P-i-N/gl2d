@@ -40,38 +40,37 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 	for_each_line( sourceCode, [&]( std::string_view line, unsigned lineNum )
 	{
 		bool addLine = true;
-		auto l = trim( line );
 
-		if ( !l.empty() && line[0] == '#' )
+		if ( auto dir = trim( line ); !dir.empty() && line[0] == '#' )
 		{
 			addLine = false;
-			l = trim( line.substr( 1 ) ); // Cut away '#' & trim
-			if ( starts_with_nocase( l, "include" ) )
+			dir = trim( line.substr( 1 ) ); // Cut away '#' & trim
+			if ( starts_with_nocase( dir, "include" ) )
 			{
-				l = trim( line.substr( 7 ) ); // Cut away "include" & trim
+				dir = trim( line.substr( 7 ) ); // Cut away "include" & trim
 
 				bool isRelative = false;
 
-				if ( l[0] == '"' && l.back() == '"' )
+				if ( dir[0] == '"' && dir.back() == '"' )
 					isRelative = true;
-				else if ( l[0] == '<' && l.back() == '>' )
+				else if ( dir[0] == '<' && dir.back() == '>' )
 					isRelative = false;
 				else
 				{
 
 				}
 
-				std::filesystem::path path = trim( l.substr( 1, l.length() - 2 ) );
+				std::filesystem::path path = trim( dir.substr( 1, dir.length() - 2 ) );
 				if ( isRelative )
 					path = cwd / path;
 
 				std::ifstream ifs( path.c_str(), std::ios_base::in | std::ios_base::binary );
 				if ( !ifs.is_open() )
-					return false;
+					return;
 
-				auto bytes = load_all_char_string( ifs );
-				if ( !unroll_includes( ss, std::string_view( bytes.get(), strlen( bytes.get() ) ), path.parent_path() ) )
-					return false;
+				auto bytes = load_all_chars( ifs );
+				if ( !unroll_includes( ss, std::string_view( bytes.data(), bytes.size() ), path.parent_path() ) )
+					return;
 			}
 		}
 
@@ -150,27 +149,23 @@ compiled_shader::~compiled_shader()
 bool shader::source( std::string_view sourceCode, const std::filesystem::path &cwd )
 {
 	std::stringstream ss;
-
 	if ( !detail::unroll_includes( ss, sourceCode, cwd ) )
 		return false;
 
-	std::string unrolledSource = ss.str();
-	std::string_view unrolledView = unrolledSource;
-
-	detail::for_each_line( unrolledSource, [&]( std::string_view line, unsigned lineNum )
+	_unrolledSource = ss.str();
+	detail::for_each_line( _unrolledSource, [&]( std::string_view line, unsigned lineNum )
 	{
 		bool addLine = true;
-		auto l = detail::trim( line );
 
-		if ( !l.empty() && l[0] == '#' )
+		if ( auto dir = detail::trim( line ); !dir.empty() && dir[0] == '#' )
 		{
 			addLine = false;
-			l = detail::trim( l.substr( 1 ) ); // Cut away '#' & trim
-			if ( detail::starts_with_nocase( l, "vertex" ) || detail::starts_with_nocase( l, "vert" ) )
+			dir = detail::trim( dir.substr( 1 ) ); // Cut away '#' & trim
+			if ( detail::starts_with_nocase( dir, "vertex" ) || detail::starts_with_nocase( dir, "vert" ) )
 			{
 
 			}
-			else if ( detail::starts_with_nocase( l, "fragment" ) || detail::starts_with_nocase( l, "frag" ) )
+			else if ( detail::starts_with_nocase( dir, "fragment" ) || detail::starts_with_nocase( dir, "frag" ) )
 			{
 
 			}
@@ -182,15 +177,14 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 
 	_path.clear();
 	_source = sourceCode;
-	_unrolledSource = unrolledSource;
 	return true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 bool shader::load( std::istream &is, const std::filesystem::path &cwd )
 {
-	auto bytes = detail::load_all_char_string( is );
-	return source( std::string_view( bytes.get(), strlen( bytes.get() ) ), cwd );
+	auto bytes = detail::load_all_chars( is );
+	return source( std::string_view( bytes.data(), bytes.size() ), cwd );
 }
 
 //---------------------------------------------------------------------------------------------------------------------

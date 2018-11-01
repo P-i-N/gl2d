@@ -6,13 +6,13 @@
 
 namespace gl3d {
 
-static detail::keyboard_state keyboard;
-static detail::mouse_state mouse;
-static detail::gamepad_state gamepad[detail::max_gamepads];
-static detail::space_navigator_state space_navigator;
+detail::keyboard_state keyboard;
+detail::mouse_state mouse;
+detail::gamepad_state gamepad[detail::max_gamepads];
+detail::space_navigator_state space_navigator;
 
-static decltype( on_tick ) on_tick;
-static decltype( on_event ) on_event;
+decltype( on_tick ) on_tick;
+decltype( on_event ) on_event;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
