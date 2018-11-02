@@ -4,6 +4,7 @@
 #include <limits.h>
 
 #include <functional>
+#include <mutex>
 #include <type_traits>
 
 #define GL3D_ENUM_PLUS(_Type) \
@@ -16,7 +17,7 @@ namespace detail {
 //---------------------------------------------------------------------------------------------------------------------
 std::string_view trim( std::string_view text );
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
-std::vector<char> load_all_chars( std::istream &is, bool addNullTerm = true, size_t size = 0 );
+std::vector<uint8_t> load_all_bytes( std::istream &is, bool addNullTerm = true, size_t size = size_t( -1 ) );
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename... Tail>
@@ -48,10 +49,69 @@ bool starts_with_nocase( std::string_view text, std::string_view head, Tail &&..
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename F> struct callback_chain
+template <typename F> class callback_chain final
 {
+public:
 	using function_t = std::function<F>;
 
+	callback_chain &operator()( function_t f, int priority = 0 )
+	{
+		std::scoped_lock lock( _mutex );
+		_callbacks.insert( _callbacks.end(), { priority, f } );
+		std::sort( _callbacks.begin(), _callbacks.end() );
+		return *this;
+	}
+
+	void operator+=( function_t f )
+	{
+		( *this )( f, 0 );
+	}
+
+	bool operator-=( function_t f )
+	{
+		std::scoped_lock lock( _mutex );
+		if ( auto iter = std::find( _callbacks.begin(), _callbacks.end(), f ); iter != _callbacks.end() )
+		{
+			_callbacks.erase( iter );
+			std::sort( _callbacks.begin(), _callbacks.end() );
+			return true;
+		}
+
+		return false;
+	}
+
+	template <typename... Args> std::result_of_t<function_t( Args... )> call( Args &&... args ) const
+	{
+		thread_local decltype( _callbacks ) callbacksCopy;
+
+		size_t firstIndex = callbacksCopy.size();
+		{
+			std::scoped_lock lock( _mutex );
+			std::copy( _callbacks.begin(), _callbacks.end(), std::back_inserter( callbacksCopy ) );
+		}
+		size_t lastIndex = callbacksCopy.size();
+
+		if constexpr ( std::is_void_v<std::result_of_t<function_t( Args... )>> )
+		{
+			for ( size_t i = firstIndex; i < lastIndex; ++i )
+				callbacksCopy[i].callback( args... );
+
+			callbacksCopy.resize( firstIndex );
+		}
+		else
+		{
+			bool result = false;
+
+			for ( size_t i = firstIndex; i < lastIndex; ++i )
+				if ( result |= callbacksCopy[i].callback( args... ) )
+					break;
+
+			callbacksCopy.resize( firstIndex );
+			return result;
+		}
+	}
+
+private:
 	struct callback_info
 	{
 		int priority = 0;
@@ -60,31 +120,8 @@ template <typename F> struct callback_chain
 		bool operator==( const function_t &f ) const { return callback == f; }
 	};
 
-	std::vector<callback_info> callbacks;
-
-	callback_chain &operator()( function_t &&f, int priority = 0 )
-	{
-		callbacks.insert( callbacks.end(), { priority, f } );
-		std::sort( callbacks.begin(), callbacks.end() );
-		return *this;
-	}
-
-	template <typename... Args> bool call( Args &&... args ) const
-	{
-		if constexpr ( std::is_void_v<std::result_of_t<function_t( Args... )>> )
-		{
-			for ( auto && ci : callbacks )
-				ci.callback( args... );
-		}
-		else
-		{
-			for ( auto && ci : callbacks )
-				if ( !ci.callback( args... ) )
-					return false;
-		}
-
-		return true;
-	}
+	mutable std::mutex _mutex;
+	std::vector<callback_info> _callbacks;
 };
 
 } // namespace gl3d::detail
@@ -106,10 +143,13 @@ extern detail::callback_chain<void( log::message_type, const char * )> on_log_me
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct filesystem
+struct vfs
 {
-
+	static void mount( const std::filesystem::path &path );
+	static bool unmount( const std::filesystem::path &path );
 };
+
+extern detail::callback_chain<bool( const std::filesystem::path &, std::vector<uint8_t> & )> on_data_request;
 
 } // namespace gl3d
 

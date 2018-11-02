@@ -78,8 +78,8 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 					return;
 				}
 
-				auto bytes = load_all_chars( ifs );
-				if ( !unroll_includes( ss, std::string_view( bytes.data(), bytes.size() ), path.parent_path() ) )
+				auto bytes = load_all_bytes( ifs );
+				if ( !unroll_includes( ss, std::string_view( reinterpret_cast<const char *>( bytes.data() ), bytes.size() ), path.parent_path() ) )
 					return;
 			}
 		}
@@ -193,8 +193,8 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 //---------------------------------------------------------------------------------------------------------------------
 bool shader::load( std::istream &is, const std::filesystem::path &cwd )
 {
-	auto bytes = detail::load_all_chars( is );
-	return source( std::string_view( bytes.data(), bytes.size() ), cwd );
+	auto bytes = detail::load_all_bytes( is );
+	return source( std::string_view( reinterpret_cast<const char *>( bytes.data() ), bytes.size() ), cwd );
 }
 
 //---------------------------------------------------------------------------------------------------------------------

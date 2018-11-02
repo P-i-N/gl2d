@@ -16,6 +16,7 @@
 namespace gl3d {
 
 decltype( on_log_message ) on_log_message;
+decltype( on_data_request ) on_data_request;
 
 namespace detail {
 
@@ -52,23 +53,23 @@ void for_each_line( std::string_view text, std::function<void( std::string_view,
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::vector<char> load_all_chars( std::istream &is, bool addNullTerm, size_t size )
+std::vector<uint8_t> load_all_bytes( std::istream &is, bool addNullTerm, size_t size )
 {
-	if ( !size )
+	if ( size == size_t( -1 ) )
 	{
 		is.seekg( 0, std::ios_base::end );
 		size = is.tellg();
 		is.seekg( 0, std::ios_base::beg );
 	}
 
-	std::vector<char> result( size );
-	is.read( result.data(), size );
+	std::vector<uint8_t> result( size );
+	is.read( reinterpret_cast<char *>( result.data() ), size );
 	if ( addNullTerm ) result.push_back( 0 );
 
 	return std::move( result );
 }
 
-}
+} // namespace gl3d::detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -105,6 +106,61 @@ void log::fatal( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
 	on_log_message.call( log::message_type::fatal, detail::tl_logBuffer );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+struct mount_info
+{
+	std::filesystem::path path;
+	std::function<bool( const std::filesystem::path &, std::vector<uint8_t> & )> callback;
+
+	bool operator==( const std::filesystem::path &p ) const { return path == p; }
+};
+
+std::mutex g_mountInfosMutex;
+std::vector<mount_info> g_mountInfos;
+
+} // namespace gl3d::detail
+
+//---------------------------------------------------------------------------------------------------------------------
+void vfs::mount( const std::filesystem::path &path )
+{
+	auto absPath = std::filesystem::absolute( path );
+
+	std::scoped_lock lock( detail::g_mountInfosMutex );
+	auto iter = std::find( detail::g_mountInfos.begin(), detail::g_mountInfos.end(), absPath );
+	if ( iter == detail::g_mountInfos.end() )
+	{
+		auto callback = [absPath]( const std::filesystem::path & relPath, std::vector<uint8_t> &bytes )->bool
+		{
+			auto finalPath = std::filesystem::absolute( absPath / relPath );
+			if ( std::filesystem::is_regular_file( finalPath ) )
+			{
+				return true;
+			}
+
+			return false;
+		};
+
+		detail::g_mountInfos.push_back( { absPath, callback } );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool vfs::unmount( const std::filesystem::path &path )
+{
+	auto absPath = std::filesystem::absolute( path );
+
+	std::scoped_lock lock( detail::g_mountInfosMutex );
+	auto iter = std::find( detail::g_mountInfos.begin(), detail::g_mountInfos.end(), absPath );
+	if ( iter == detail::g_mountInfos.end() )
+		return false;
+
+	detail::g_mountInfos.erase( iter );
+	return true;
 }
 
 } // namespace gl3d
