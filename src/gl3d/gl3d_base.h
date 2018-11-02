@@ -14,10 +14,13 @@ namespace gl3d {
 
 namespace detail {
 
+using bytes_t = std::vector<uint8_t>;
+
 //---------------------------------------------------------------------------------------------------------------------
 std::string_view trim( std::string_view text );
+std::string_view to_string_view( bytes_t &bytes );
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
-std::vector<uint8_t> load_all_bytes( std::istream &is, bool addNullTerm = true, size_t size = size_t( -1 ) );
+bool read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm = false, size_t size = size_t( -1 ) );
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename... Tail>
@@ -149,7 +152,7 @@ struct vfs
 	static bool unmount( const std::filesystem::path &path );
 };
 
-extern detail::callback_chain<bool( const std::filesystem::path &, std::vector<uint8_t> & )> on_data_request;
+extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & )> on_data_request;
 
 } // namespace gl3d
 

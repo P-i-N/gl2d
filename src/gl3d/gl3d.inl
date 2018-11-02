@@ -70,16 +70,15 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 				if ( isRelative )
 					path = cwd / path;
 
-				std::ifstream ifs( path.c_str(), std::ios_base::in | std::ios_base::binary );
-				if ( !ifs.is_open() )
+				bytes_t bytes;
+				if ( !on_data_request.call( path, bytes ) )
 				{
 					log::error( "Could not open file stream: %s", path.c_str() );
 					result = false;
 					return;
 				}
 
-				auto bytes = load_all_bytes( ifs );
-				if ( !unroll_includes( ss, std::string_view( reinterpret_cast<const char *>( bytes.data() ), bytes.size() ), path.parent_path() ) )
+				if ( !unroll_includes( ss, detail::to_string_view( bytes ), path.parent_path() ) )
 					return;
 			}
 		}
@@ -193,18 +192,21 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 //---------------------------------------------------------------------------------------------------------------------
 bool shader::load( std::istream &is, const std::filesystem::path &cwd )
 {
-	auto bytes = detail::load_all_bytes( is );
-	return source( std::string_view( reinterpret_cast<const char *>( bytes.data() ), bytes.size() ), cwd );
+	detail::bytes_t bytes;
+	if ( !detail::read_all_bytes( is, bytes, true ) )
+		return false;
+
+	return source( detail::to_string_view( bytes ), cwd );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 bool shader::load( const std::filesystem::path &path )
 {
-	std::ifstream ifs( path.c_str(), std::ios_base::in | std::ios_base::binary );
-	if ( !ifs.is_open() )
+	detail::bytes_t bytes;
+	if ( !on_data_request.call( path, bytes ) )
 		return false;
 
-	if ( !load( ifs, path.parent_path() ) )
+	if ( !source( detail::to_string_view( bytes ), path.parent_path() ) )
 		return false;
 
 	_path = path;

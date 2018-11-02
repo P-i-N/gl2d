@@ -5,6 +5,7 @@
 #include "gl3d_base.h"
 
 #include <cstdarg>
+#include <fstream>
 
 #define GL3D_FORMAT_LOG_TEXT(_Input) \
 	if (!(_Input)) return; \
@@ -37,6 +38,12 @@ std::string_view trim( std::string_view text )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+std::string_view to_string_view( bytes_t &bytes )
+{
+	return std::string_view( reinterpret_cast<const char *>( bytes.data() ), bytes.size() );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback )
 {
 	size_t cursor = 0;
@@ -53,7 +60,7 @@ void for_each_line( std::string_view text, std::function<void( std::string_view,
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::vector<uint8_t> load_all_bytes( std::istream &is, bool addNullTerm, size_t size )
+bool read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm, size_t size )
 {
 	if ( size == size_t( -1 ) )
 	{
@@ -62,11 +69,10 @@ std::vector<uint8_t> load_all_bytes( std::istream &is, bool addNullTerm, size_t 
 		is.seekg( 0, std::ios_base::beg );
 	}
 
-	std::vector<uint8_t> result( size );
-	is.read( reinterpret_cast<char *>( result.data() ), size );
-	if ( addNullTerm ) result.push_back( 0 );
-
-	return std::move( result );
+	bytes.resize( size );
+	is.read( reinterpret_cast<char *>( bytes.data() ), size );
+	if ( addNullTerm ) bytes.push_back( 0 );
+	return true;
 }
 
 } // namespace gl3d::detail
@@ -123,6 +129,8 @@ struct mount_info
 std::mutex g_mountInfosMutex;
 std::vector<mount_info> g_mountInfos;
 
+struct vfs_init { vfs_init() { vfs::mount( "." ); } } g_vfsInit;
+
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -134,17 +142,28 @@ void vfs::mount( const std::filesystem::path &path )
 	auto iter = std::find( detail::g_mountInfos.begin(), detail::g_mountInfos.end(), absPath );
 	if ( iter == detail::g_mountInfos.end() )
 	{
-		auto callback = [absPath]( const std::filesystem::path & relPath, std::vector<uint8_t> &bytes )->bool
+		auto callback = [absPath]( const std::filesystem::path & relPath, detail::bytes_t &bytes )->bool
 		{
 			auto finalPath = std::filesystem::absolute( absPath / relPath );
 			if ( std::filesystem::is_regular_file( finalPath ) )
 			{
+				std::ifstream ifs( finalPath.c_str(), std::ios_base::in | std::ios_base::binary );
+				if ( !ifs.is_open() )
+					return false;
+
+				size_t size = std::filesystem::file_size( finalPath );
+				if ( !detail::read_all_bytes( ifs, bytes, false, size ) )
+				{
+					return false;
+				}
+
 				return true;
 			}
 
 			return false;
 		};
 
+		on_data_request += callback;
 		detail::g_mountInfos.push_back( { absPath, callback } );
 	}
 }
