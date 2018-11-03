@@ -30,9 +30,102 @@
 
 namespace gl3d {
 
-decltype( gl::CreateContextAttribsARB ) gl::CreateContextAttribsARB;
+decltype( gl::GenBuffers ) gl::GenBuffers;
+decltype( gl::DeleteBuffers ) gl::DeleteBuffers;
+decltype( gl::BindBuffer ) gl::BindBuffer;
+decltype( gl::BufferData ) gl::BufferData;
+decltype( gl::GenVertexArrays ) gl::GenVertexArrays;
+decltype( gl::BindVertexArray ) gl::BindVertexArray;
+decltype( gl::EnableVertexAttribArray ) gl::EnableVertexAttribArray;
+decltype( gl::VertexAttribPointer ) gl::VertexAttribPointer;
+decltype( gl::BindAttribLocation ) gl::BindAttribLocation;
+decltype( gl::DeleteVertexArrays ) gl::DeleteVertexArrays;
+decltype( gl::CreateShader ) gl::CreateShader;
+decltype( gl::DeleteShader ) gl::DeleteShader;
+decltype( gl::ShaderSource ) gl::ShaderSource;
+decltype( gl::CompileShader ) gl::CompileShader;
+decltype( gl::GetShaderiv ) gl::GetShaderiv;
+decltype( gl::GetShaderInfoLog ) gl::GetShaderInfoLog;
+decltype( gl::CreateProgram ) gl::CreateProgram;
+decltype( gl::DeleteProgram ) gl::DeleteProgram;
+decltype( gl::AttachShader ) gl::AttachShader;
+decltype( gl::DetachShader ) gl::DetachShader;
+decltype( gl::LinkProgram ) gl::LinkProgram;
+decltype( gl::UseProgram ) gl::UseProgram;
+decltype( gl::GetProgramiv ) gl::GetProgramiv;
+decltype( gl::GetUniformLocation ) gl::GetUniformLocation;
+decltype( gl::Uniform1i ) gl::Uniform1i;
+decltype( gl::Uniform2fv ) gl::Uniform2fv;
+decltype( gl::UniformMatrix4fv ) gl::UniformMatrix4fv;
+decltype( gl::ActiveTexture ) gl::ActiveTexture;
+decltype( gl::Enablei ) gl::Enablei;
+decltype( gl::Disablei ) gl::Disablei;
+decltype( gl::BlendFunci ) gl::BlendFunci;
+decltype( gl::BlendEquationi ) gl::BlendEquationi;
+
+#if defined(WIN32)
+	decltype( gl::CreateContextAttribsARB ) gl::CreateContextAttribsARB;
+#endif
 
 namespace detail {
+
+//---------------------------------------------------------------------------------------------------------------------
+void *get_gl_proc_address( const char *name )
+{
+#if defined(WIN32)
+	return wglGetProcAddress( name );
+#else
+#error Not implemented!
+#endif
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void init_gl_api()
+{
+	static bool s_initialized = false;
+	if ( s_initialized )
+		return;
+
+	gl::GenBuffers = decltype( gl::GenBuffers )( get_gl_proc_address( "glGenBuffers" ) );
+	gl::DeleteBuffers = decltype( gl::DeleteBuffers )( get_gl_proc_address( "glDeleteBuffers" ) );
+	gl::BindBuffer = decltype( gl::BindBuffer )( get_gl_proc_address( "glBindBuffer" ) );
+	gl::BufferData = decltype( gl::BufferData )( get_gl_proc_address( "glBufferData" ) );
+	gl::GenVertexArrays = decltype( gl::GenVertexArrays )( get_gl_proc_address( "glGenVertexArrays" ) );
+	gl::BindVertexArray = decltype( gl::BindVertexArray )( get_gl_proc_address( "glBindVertexArray" ) );
+	gl::EnableVertexAttribArray = decltype( gl::EnableVertexAttribArray )( get_gl_proc_address( "glEnableVertexAttribArray" ) );
+	gl::VertexAttribPointer = decltype( gl::VertexAttribPointer )( get_gl_proc_address( "glVertexAttribPointer" ) );
+	gl::BindAttribLocation = decltype( gl::BindAttribLocation )( get_gl_proc_address( "glBindAttribLocation" ) );
+	gl::DeleteVertexArrays = decltype( gl::DeleteVertexArrays )( get_gl_proc_address( "glDeleteVertexArrays" ) );
+	gl::CreateShader = decltype( gl::CreateShader )( get_gl_proc_address( "glCreateShader" ) );
+	gl::DeleteShader = decltype( gl::DeleteShader )( get_gl_proc_address( "glDeleteShader" ) );
+	gl::ShaderSource = decltype( gl::ShaderSource )( get_gl_proc_address( "glShaderSource" ) );
+	gl::CompileShader = decltype( gl::CompileShader )( get_gl_proc_address( "glCompileShader" ) );
+	gl::GetShaderiv = decltype( gl::GetShaderiv )( get_gl_proc_address( "glGetShaderiv" ) );
+	gl::GetShaderInfoLog = decltype( gl::GetShaderInfoLog )( get_gl_proc_address( "glGetShaderInfoLog" ) );
+	gl::CreateProgram = decltype( gl::CreateProgram )( get_gl_proc_address( "glCreateProgram" ) );
+	gl::DeleteProgram = decltype( gl::DeleteProgram )( get_gl_proc_address( "glDeleteProgram" ) );
+	gl::AttachShader = decltype( gl::AttachShader )( get_gl_proc_address( "glAttachShader" ) );
+	gl::DetachShader = decltype( gl::DetachShader )( get_gl_proc_address( "glDetachShader" ) );
+	gl::LinkProgram = decltype( gl::LinkProgram )( get_gl_proc_address( "glLinkProgram" ) );
+	gl::UseProgram = decltype( gl::UseProgram )( get_gl_proc_address( "glUseProgram" ) );
+	gl::GetProgramiv = decltype( gl::GetProgramiv )( get_gl_proc_address( "glGetProgramiv" ) );
+	gl::GetUniformLocation = decltype( gl::GetUniformLocation )( get_gl_proc_address( "glGetUniformLocation" ) );
+	gl::Uniform1i = decltype( gl::Uniform1i )( get_gl_proc_address( "glUniform1i" ) );
+	gl::Uniform2fv = decltype( gl::Uniform2fv )( get_gl_proc_address( "glUniform2fv" ) );
+	gl::UniformMatrix4fv = decltype( gl::UniformMatrix4fv )( get_gl_proc_address( "glUniformMatrix4fv" ) );
+	gl::ActiveTexture = decltype( gl::ActiveTexture )( get_gl_proc_address( "glActiveTexture" ) );
+	gl::Enablei = decltype( gl::Enablei )( get_gl_proc_address( "glEnablei" ) );
+	gl::Disablei = decltype( gl::Disablei )( get_gl_proc_address( "glDisablei" ) );
+	gl::BlendFunci = decltype( gl::BlendFunci )( get_gl_proc_address( "glBlendFunci" ) );
+	gl::BlendEquationi = decltype( gl::BlendEquationi )( get_gl_proc_address( "glBlendEquationi" ) );
+
+
+#if defined(WIN32)
+	gl::CreateContextAttribsARB = decltype( gl::CreateContextAttribsARB )( get_gl_proc_address( "wglCreateContextAttribsARB" ) );
+#endif
+
+	s_initialized = true;
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd )
@@ -47,10 +140,10 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 
 		if ( auto dir = trim( line ); !dir.empty() && dir[0] == '#' )
 		{
-			addLine = false;
 			dir = trim( line.substr( 1 ) ); // Cut away '#' & trim
 			if ( starts_with_nocase( dir, "include" ) )
 			{
+				addLine = false;
 				dir = trim( dir.substr( 7 ) ); // Cut away "include" & trim
 
 				bool isRelative = false;
@@ -90,27 +183,6 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 	return result;
 }
 
-//---------------------------------------------------------------------------------------------------------------------
-void *get_gl_proc_address( const char *name )
-{
-#if defined(WIN32)
-	return wglGetProcAddress( name );
-#else
-#error Not implemented!
-#endif
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void init_gl_api()
-{
-	static bool s_initialized = false;
-	if ( s_initialized )
-		return;
-
-	gl::CreateContextAttribsARB = decltype( gl::CreateContextAttribsARB )( get_gl_proc_address( "wglCreateContextAttribsARB" ) );
-	s_initialized = true;
-}
-
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -141,25 +213,109 @@ void buffer::set_data( const void *data, size_t size )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-compiled_shader::compiled_shader()
+shader::shader( std::shared_ptr<shader_code> code, std::string_view defines )
+	: _shaderCode( code )
+	, _defines( defines )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-compiled_shader::~compiled_shader()
+shader::~shader()
 {
+	clear();
+}
 
+//---------------------------------------------------------------------------------------------------------------------
+void shader::clear()
+{
+	for ( auto &stageID : _stageIDs )
+	{
+		gl::DeleteShader( stageID );
+		stageID = 0;
+	}
+
+	gl::DeleteProgram( _id );
+	_id = 0;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool shader::compile()
+{
+	for ( size_t i = 0; i < +shader_stage::__count; ++i )
+	{
+		auto &src = _shaderCode->stage_source( static_cast<shader_stage>( i ) );
+		if ( src.empty() )
+		{
+			if ( _stageIDs[i] )
+			{
+				gl::DeleteShader( _stageIDs[i] );
+				_stageIDs[i] = 0;
+			}
+
+			continue;
+		}
+
+		if ( !_stageIDs[i] )
+		{
+			static constexpr gl::enum_t glTypes[] =
+			{ gl::VERTEX_SHADER, gl::GEOMETRY_SHADER, gl::FRAGMENT_SHADER, gl::COMPUTE_SHADER };
+
+			_stageIDs[i] = gl::CreateShader( glTypes[i] );
+		}
+
+		auto srcData = src.c_str();
+		gl::ShaderSource( _stageIDs[i], 1, &srcData, nullptr );
+		gl::CompileShader( _stageIDs[i] );
+
+		int status;
+		gl::GetShaderiv( _stageIDs[i], gl::COMPILE_STATUS, &status );
+		if ( !status )
+		{
+			int logLength;
+			gl::GetShaderiv( _stageIDs[i], gl::INFO_LOG_LENGTH, &logLength );
+
+			std::unique_ptr<char[]> text = std::make_unique<char[]>( logLength + 1 );
+			gl::GetShaderInfoLog( _stageIDs[i], logLength, nullptr, text.get() );
+			text[logLength] = 0;
+
+			log::error( "%s", text.get() );
+			return false;
+		}
+	}
+
+	if ( !_id )
+		_id = gl::CreateProgram();
+
+	for ( auto stageID : _stageIDs ) if ( stageID ) gl::AttachShader( _id, stageID );
+	gl::LinkProgram( _id );
+	for ( auto stageID : _stageIDs ) if ( stageID ) gl::DetachShader( _id, stageID );
+
+	int status;
+	gl::GetProgramiv( _id, gl::LINK_STATUS, &status );
+	if ( !status )
+	{
+		clear();
+		return false;
+	}
+
+	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-bool shader::source( std::string_view sourceCode, const std::filesystem::path &cwd )
+bool shader_code::source( std::string_view sourceCode, const std::filesystem::path &cwd )
 {
 	std::stringstream ss;
 	if ( !detail::unroll_includes( ss, sourceCode, cwd ) )
 		return false;
+
+	for ( auto &stageSource : _stageSources )
+		stageSource.clear();
+
+	std::string sharedSource = "#version 420\n";
+	std::string *currentStage = &sharedSource;
 
 	_unrolledSource = ss.str();
 	detail::for_each_line( _unrolledSource, [&]( std::string_view line, unsigned lineNum )
@@ -168,21 +324,26 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 
 		if ( auto dir = detail::trim( line ); !dir.empty() && dir[0] == '#' )
 		{
-			addLine = false;
 			dir = detail::trim( dir.substr( 1 ) ); // Cut away '#' & trim
 			if ( detail::starts_with_nocase( dir, "vertex", "vert", "vs" ) )
 			{
-
+				addLine = false;
+				currentStage = &_stageSources[+shader_stage::vertex];
 			}
 			else if ( detail::starts_with_nocase( dir, "fragment", "frag", "fs", "pixel" ) )
 			{
-
+				addLine = false;
+				currentStage = &_stageSources[+shader_stage::fragment];
 			}
 		}
 
 		if ( addLine )
-			printf( "%s\n", std::string( line ).c_str() );
+			*currentStage += line;
 	} );
+
+	for ( auto &stageSource : _stageSources )
+		if ( !stageSource.empty() )
+			stageSource = ( sharedSource + stageSource );
 
 	_path.clear();
 	_source = sourceCode;
@@ -190,7 +351,7 @@ bool shader::source( std::string_view sourceCode, const std::filesystem::path &c
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-bool shader::load( std::istream &is, const std::filesystem::path &cwd )
+bool shader_code::load( std::istream &is, const std::filesystem::path &cwd )
 {
 	detail::bytes_t bytes;
 	if ( !detail::read_all_bytes( is, bytes, true ) )
@@ -200,7 +361,7 @@ bool shader::load( std::istream &is, const std::filesystem::path &cwd )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-bool shader::load( const std::filesystem::path &path )
+bool shader_code::load( const std::filesystem::path &path )
 {
 	detail::bytes_t bytes;
 	if ( !on_data_request.call( path, bytes ) )
@@ -211,12 +372,6 @@ bool shader::load( const std::filesystem::path &path )
 
 	_path = path;
 	return true;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-compiled_shader::ptr shader::compile()
-{
-	return nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +454,7 @@ void cmd_queue::bind_state( const rasterizer_state &rs )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_shader( compiled_shader::ptr sh )
+void cmd_queue::bind_shader( shader::ptr sh )
 {
 	if ( _recording )
 	{
@@ -308,7 +463,15 @@ void cmd_queue::bind_shader( compiled_shader::ptr sh )
 	}
 	else
 	{
+		if ( sh )
+		{
+			if ( !sh->id() )
+				sh->compile();
+		}
+		else
+		{
 
+		}
 	}
 }
 
@@ -438,6 +601,13 @@ void cmd_queue::execute()
 				bind_state( read<rasterizer_state>() );
 				break;
 
+			case cmd_type::bind_shader:
+			{
+				auto sh = std::static_pointer_cast<shader>( _resources[resIndex++] );
+				bind_shader( sh );
+			}
+			break;
+
 			case cmd_type::bind_vertex_buffer:
 			{
 				auto vb = std::static_pointer_cast<buffer>( _resources[resIndex++] );
@@ -492,7 +662,7 @@ namespace detail {
 unsigned g_contextAttribs[] =
 {
 	gl::CONTEXT_MAJOR_VERSION_ARB, 4,
-	gl::CONTEXT_MINOR_VERSION_ARB, 5,
+	gl::CONTEXT_MINOR_VERSION_ARB, 6,
 	gl::CONTEXT_PROFILE_MASK_ARB, gl::CONTEXT_CORE_PROFILE_BIT_ARB,
 	0
 };
@@ -502,7 +672,7 @@ context::context( void *windowNativeHandle )
 	: cmd_queue( false )
 	, _window_native_handle( windowNativeHandle )
 {
-	static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
+	//static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
 
 	auto hdc = GetDC( HWND( _window_native_handle ) );
 	auto tempContext = wglCreateContext( hdc );

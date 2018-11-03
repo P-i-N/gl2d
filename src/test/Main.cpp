@@ -15,6 +15,7 @@ int main()
 {
 	using namespace gl3d;
 
+	/*
 	on_event( [&]( event & e )
 	{
 		switch ( e.type )
@@ -35,32 +36,34 @@ int main()
 				printf( "move(%d): %d %d\n", e.window_id, e.move.x, e.move.y );
 				break;
 
-
 			case event_type::mouse_move:
 				printf( "mouse_move(%d): %d %d %d %d\n",
 				        e.window_id,
 				        e.mouse.pos.x, e.mouse.pos.y,
 				        e.mouse.delta.x, e.mouse.delta.y );
 				break;
-			/* */
 
-			case event_type::mouse_down:
-				printf( "mouse_down(%d): %d\n", e.window_id, +e.mouse.b );
-				break;
+	case event_type::mouse_down:
+	printf( "mouse_down(%d): %d\n", e.window_id, +e.mouse.b );
+	break;
 
-			case event_type::mouse_up:
-				printf( "mouse_up(%d): %d\n", e.window_id, +e.mouse.b );
-				break;
-		}
+	case event_type::mouse_up:
+	printf( "mouse_up(%d): %d\n", e.window_id, +e.mouse.b );
+	break;
+	}
 
-		return false;
+	return false;
 	} );
+	*/
 
-	auto sh = std::make_shared<shader>();
-	sh->load( "../../data/shaders/Test.shader" );
+	auto sc = std::make_shared<shader_code>();
+	sc->load( "../../data/shaders/Test.shader" );
+
+	auto sh = std::make_shared<shader>( sc );
 
 	auto q = std::make_shared<cmd_queue>();
 	q->clear_color( { 0.0f, 0.0f, 0.0f, 1.0f } );
+	q->bind_shader( sh );
 
 	on_tick( [&]()
 	{
@@ -70,7 +73,7 @@ int main()
 		ctx->execute( q );
 	} );
 
-	auto win = window::open( "Main Window", { 800, 600 }, { 1920 * 2 + 60, 60 } );
+	auto win = window::open( "Main Window", { 800, 600 } /*, { 1920 * 0 + 60, 60 }*/ );
 	auto ctx = win->context();
 
 	auto s = sizeof( depth_stencil_state );

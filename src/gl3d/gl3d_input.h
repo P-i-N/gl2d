@@ -24,7 +24,7 @@ enum class key
 	f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
 	ctrl, alt, shift,
 
-	last
+	__count
 };
 
 GL3D_ENUM_PLUS( key )
@@ -37,7 +37,7 @@ enum class mouse_button
 	special_0, special_1,
 	back, forward,
 
-	last
+	__count
 };
 
 GL3D_ENUM_PLUS( mouse_button )
@@ -51,7 +51,7 @@ enum class gamepad_button
 	shoulder_left, shoulder_right,
 	thumb_left, thumb_right,
 
-	last
+	__count
 };
 
 GL3D_ENUM_PLUS( gamepad_button )
@@ -63,7 +63,7 @@ enum class gamepad_axis
 	thumb_left, thumb_right,
 	trigger_left, trigger_right,
 
-	last
+	__count
 };
 
 GL3D_ENUM_PLUS( gamepad_axis )
@@ -74,7 +74,7 @@ enum class space_navigator_button
 	unknown = 0,
 	left, right,
 
-	last
+	__count
 };
 
 GL3D_ENUM_PLUS( space_navigator_button )
@@ -117,7 +117,7 @@ struct event
 namespace detail {
 struct keyboard_state
 {
-	bool key_down[+key::last];
+	bool key_down[+key::__count];
 	bool operator[]( key k ) const { return key_down[+k]; }
 
 	void change_key_state( key k, bool down, unsigned id = UINT_MAX );
@@ -130,7 +130,7 @@ extern detail::keyboard_state keyboard;
 namespace detail {
 struct mouse_state
 {
-	bool button_down[+mouse_button::last];
+	bool button_down[+mouse_button::__count];
 	bool operator[]( mouse_button b ) const { return button_down[+b]; }
 	ivec2 pos;
 
@@ -148,8 +148,8 @@ static constexpr unsigned max_gamepads = 8;
 struct gamepad_state
 {
 	unsigned port = UINT_MAX;
-	bool button_down[+gamepad_button::last];
-	vec2 pos[+gamepad_axis::last];
+	bool button_down[+gamepad_button::__count];
+	vec2 pos[+gamepad_axis::__count];
 	bool operator[]( gamepad_button b ) const { return button_down[+b]; }
 	bool connected() const { return port < max_gamepads; }
 
@@ -168,7 +168,7 @@ namespace detail {
 struct space_navigator_state
 {
 	vec3 pos, rot;
-	bool button_down[+space_navigator_button::last];
+	bool button_down[+space_navigator_button::__count];
 };
 }
 

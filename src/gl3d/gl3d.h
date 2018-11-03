@@ -7,6 +7,7 @@
 
 #include <filesystem>
 
+#include "gl3d_base.h"
 #include "gl3d_math.h"
 
 #define GL3D_LAYOUT(...) \
@@ -19,9 +20,9 @@ namespace gl3d {
 /* Forward declarations */
 class buffer;
 class cmd_queue;
-class compiled_shader;
 class context;
 class shader;
+class shader_code;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -42,6 +43,12 @@ struct gl
 
 		CW = 0x0900, CCW,
 
+		FRAGMENT_SHADER = 0x8B30, VERTEX_SHADER,
+		GEOMETRY_SHADER = 0x8DD9,
+		COMPUTE_SHADER = 0x91B9,
+
+		COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
+
 #if defined(WIN32)
 		CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
 
@@ -50,8 +57,41 @@ struct gl
 #endif
 	};
 
+	static void     ( __stdcall *GenBuffers )( int, unsigned * );
+	static void     ( __stdcall *DeleteBuffers )( int, const unsigned * );
+	static void     ( __stdcall *BindBuffer )( enum_t, unsigned );
+	static void     ( __stdcall *BufferData )( enum_t, ptrdiff_t, const void *, enum_t );
+	static void     ( __stdcall *GenVertexArrays )( int, unsigned * );
+	static void     ( __stdcall *BindVertexArray )( unsigned );
+	static void     ( __stdcall *EnableVertexAttribArray )( unsigned );
+	static void     ( __stdcall *VertexAttribPointer )( unsigned, int, enum_t, unsigned char, int, const void * );
+	static void     ( __stdcall *BindAttribLocation )( unsigned, unsigned, const char * );
+	static void     ( __stdcall *DeleteVertexArrays )( int, const unsigned * );
+	static unsigned ( __stdcall *CreateShader )( enum_t );
+	static void     ( __stdcall *DeleteShader )( unsigned );
+	static void     ( __stdcall *ShaderSource )( unsigned, int, const char **, const int * );
+	static void     ( __stdcall *CompileShader )( unsigned );
+	static void     ( __stdcall *GetShaderiv )( unsigned, enum_t, int * );
+	static void     ( __stdcall *GetShaderInfoLog )( unsigned, int, int *, char * );
+	static unsigned ( __stdcall *CreateProgram )();
+	static void     ( __stdcall *DeleteProgram )( unsigned );
+	static void     ( __stdcall *AttachShader )( unsigned, unsigned );
+	static void     ( __stdcall *DetachShader )( unsigned, unsigned );
+	static void     ( __stdcall *LinkProgram )( unsigned );
+	static void     ( __stdcall *UseProgram )( unsigned );
+	static void     ( __stdcall *GetProgramiv )( unsigned, enum_t, int * );
+	static unsigned ( __stdcall *GetUniformLocation )( unsigned, const char * );
+	static void     ( __stdcall *Uniform1i )( int, int );
+	static void     ( __stdcall *Uniform2fv )( int, int, const float * );
+	static void     ( __stdcall *UniformMatrix4fv )( int, int, unsigned char, const float * );
+	static void     ( __stdcall *ActiveTexture )( enum_t );
+	static void     ( __stdcall *Enablei )( enum_t, unsigned );
+	static void     ( __stdcall *Disablei )( enum_t, unsigned );
+	static void     ( __stdcall *BlendFunci )( unsigned, enum_t, enum_t );
+	static void     ( __stdcall *BlendEquationi )( unsigned, enum_t );
+
 #if defined(WIN32)
-	static void *( __stdcall *CreateContextAttribsARB )( void *, void *, const int * );
+	static void    *( __stdcall *CreateContextAttribsARB )( void *, void *, const int * );
 #endif
 };
 
@@ -141,38 +181,50 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class compiled_shader : public detail::render_object
+enum class shader_stage { vertex, geometry, fragment, compute, __count };
+GL3D_ENUM_PLUS( shader_stage )
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class shader : public detail::render_object
 {
 public:
-	using ptr = std::shared_ptr<compiled_shader>;
+	using ptr = std::shared_ptr<shader>;
 
-	virtual ~compiled_shader();
+	shader( std::shared_ptr<shader_code> code, std::string_view defines = std::string_view() );
+	virtual ~shader();
+
+	void clear();
+	bool compile();
 
 protected:
-	compiled_shader();
+	std::shared_ptr<shader_code> _shaderCode;
+	std::string _defines;
+	unsigned _stageIDs[+shader_stage::__count] = { 0, 0, 0, 0 };
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class shader : public detail::resource
+class shader_code : public detail::resource
 {
 public:
-	using ptr = std::shared_ptr<shader>;
+	using ptr = std::shared_ptr<shader_code>;
 
 	const std::filesystem::path &path() const { return _path; }
 	const std::string &source() const { return _source; }
 	const std::string &unrolled_source() const { return _unrolledSource; }
 
+	const std::string &stage_source( shader_stage stage ) const { return _stageSources[+stage]; }
+
 	bool source( std::string_view sourceCode, const std::filesystem::path &cwd = std::filesystem::path() );
 	bool load( std::istream &is, const std::filesystem::path &cwd = std::filesystem::path() );
 	bool load( const std::filesystem::path &path );
-
-	compiled_shader::ptr compile();
 
 protected:
 	std::filesystem::path _path;
 	std::string _source;
 	std::string _unrolledSource;
+	std::string _stageSources[+shader_stage::__count];
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -227,7 +279,7 @@ public:
 	void bind_state( const depth_stencil_state &ds );
 	void bind_state( const rasterizer_state &rs );
 
-	void bind_shader( compiled_shader::ptr sh );
+	void bind_shader( shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
