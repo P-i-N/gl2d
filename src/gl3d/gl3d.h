@@ -24,76 +24,119 @@ class context;
 class shader;
 class shader_code;
 
+enum class gl_enum : unsigned;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct gl
+namespace detail {
+
+struct gl_api
 {
-	enum enum_t : unsigned
+	static void *get_proc_address( const char *name );
+
+	template <typename F>
+	struct proc_wrapper
 	{
-		NONE = 0, ZERO = 0,
-		ONE = 1,
+		void *ptr = nullptr;
+		proc_wrapper( const char *name ) : ptr( get_proc_address( name ) ) { }
 
-		BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
-		DOUBLE = 0x140A,
-
-		NEVER = 0x0200, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS,
-
-		SRC_COLOR = 0x0300, ONE_MINUS_SRC_COLOR, SRC_ALPHA, ONE_MINUS_SRC_ALPHA, DST_ALPHA, ONE_MINUS_DST_ALPHA,
-		DST_COLOR = 0x0306, ONE_MINUS_DST_COLOR, SRC_ALPHA_SATURATE,
-
-		CW = 0x0900, CCW,
-
-		FRAGMENT_SHADER = 0x8B30, VERTEX_SHADER,
-		GEOMETRY_SHADER = 0x8DD9,
-		COMPUTE_SHADER = 0x91B9,
-
-		COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
-
-#if defined(WIN32)
-		CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
-
-		CONTEXT_PROFILE_MASK_ARB = 0x9126,
-		CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001,
-#endif
+		template <typename... Args>
+		std::result_of_t<std::function<F>( Args... )> operator()( Args &&... args ) const
+		{
+			auto f = static_cast<F *>( ptr );
+			if constexpr ( std::is_void_v<std::result_of_t<std::function<F>( Args... )>> )
+				f( args... );
+			else
+				return f( args... );
+		}
 	};
 
-	static void     ( __stdcall *GenBuffers )( int, unsigned * );
-	static void     ( __stdcall *DeleteBuffers )( int, const unsigned * );
-	static void     ( __stdcall *BindBuffer )( enum_t, unsigned );
-	static void     ( __stdcall *BufferData )( enum_t, ptrdiff_t, const void *, enum_t );
-	static void     ( __stdcall *GenVertexArrays )( int, unsigned * );
-	static void     ( __stdcall *BindVertexArray )( unsigned );
-	static void     ( __stdcall *EnableVertexAttribArray )( unsigned );
-	static void     ( __stdcall *VertexAttribPointer )( unsigned, int, enum_t, unsigned char, int, const void * );
-	static void     ( __stdcall *BindAttribLocation )( unsigned, unsigned, const char * );
-	static void     ( __stdcall *DeleteVertexArrays )( int, const unsigned * );
-	static unsigned ( __stdcall *CreateShader )( enum_t );
-	static void     ( __stdcall *DeleteShader )( unsigned );
-	static void     ( __stdcall *ShaderSource )( unsigned, int, const char **, const int * );
-	static void     ( __stdcall *CompileShader )( unsigned );
-	static void     ( __stdcall *GetShaderiv )( unsigned, enum_t, int * );
-	static void     ( __stdcall *GetShaderInfoLog )( unsigned, int, int *, char * );
-	static unsigned ( __stdcall *CreateProgram )();
-	static void     ( __stdcall *DeleteProgram )( unsigned );
-	static void     ( __stdcall *AttachShader )( unsigned, unsigned );
-	static void     ( __stdcall *DetachShader )( unsigned, unsigned );
-	static void     ( __stdcall *LinkProgram )( unsigned );
-	static void     ( __stdcall *UseProgram )( unsigned );
-	static void     ( __stdcall *GetProgramiv )( unsigned, enum_t, int * );
-	static unsigned ( __stdcall *GetUniformLocation )( unsigned, const char * );
-	static void     ( __stdcall *Uniform1i )( int, int );
-	static void     ( __stdcall *Uniform2fv )( int, int, const float * );
-	static void     ( __stdcall *UniformMatrix4fv )( int, int, unsigned char, const float * );
-	static void     ( __stdcall *ActiveTexture )( enum_t );
-	static void     ( __stdcall *Enablei )( enum_t, unsigned );
-	static void     ( __stdcall *Disablei )( enum_t, unsigned );
-	static void     ( __stdcall *BlendFunci )( unsigned, enum_t, enum_t );
-	static void     ( __stdcall *BlendEquationi )( unsigned, enum_t );
+	// *INDENT-OFF*
+	proc_wrapper<void     __stdcall ( int, unsigned * )> GenBuffers{ "glGenBuffers" };
+	proc_wrapper<void     __stdcall ( int, const unsigned * )> DeleteBuffers{ "glDeleteBuffers" };
+	proc_wrapper<void     __stdcall ( gl_enum, unsigned )> BindBuffer{ "glBindBuffer" };
+	proc_wrapper<void     __stdcall ( gl_enum, ptrdiff_t, const void *, gl_enum )> BufferData{ "glBufferData" };
+	proc_wrapper<void     __stdcall ( unsigned, int, const void *, gl_enum )> NamedBufferData{ "glNamedBufferData" };
+	proc_wrapper<void     __stdcall ( int, unsigned * )> GenVertexArrays{ "glGenVertexArrays" };
+	proc_wrapper<void     __stdcall ( unsigned )> BindVertexArray{ "glBindVertexArray" };
+	proc_wrapper<void     __stdcall ( unsigned )> EnableVertexAttribArray{ "glEnableVertexAttribArray" };
+	proc_wrapper<void     __stdcall ( unsigned, int, gl_enum, unsigned char, int, const void * )> VertexAttribPointer{ "glVertexAttribPointer" };
+	proc_wrapper<void     __stdcall ( unsigned, unsigned, const char * )> BindAttribLocation{ "glBindAttribLocation" };
+	proc_wrapper<void     __stdcall ( int, const unsigned * )> DeleteVertexArrays{ "glDeleteVertexArrays" };
+	proc_wrapper<unsigned __stdcall ( gl_enum )> CreateShader{ "glCreateShader" };
+	proc_wrapper<void     __stdcall ( unsigned )> DeleteShader{ "glDeleteShader" };
+	proc_wrapper<void     __stdcall ( unsigned, int, const char **, const int * )> ShaderSource{ "glShaderSource" };
+	proc_wrapper<void     __stdcall ( unsigned )> CompileShader{ "glCompileShader" };
+	proc_wrapper<void     __stdcall ( unsigned, gl_enum, int * )> GetShaderiv{ "glGetShaderiv" };
+	proc_wrapper<void     __stdcall ( unsigned, int, int *, char * )> GetShaderInfoLog{ "glGetShaderInfoLog" };
+	proc_wrapper<unsigned __stdcall ()> CreateProgram{ "glCreateProgram" };
+	proc_wrapper<void     __stdcall ( unsigned )> DeleteProgram{ "glDeleteProgram" };
+	proc_wrapper<void     __stdcall ( unsigned, unsigned )> AttachShader{ "glAttachShader" };
+	proc_wrapper<void     __stdcall ( unsigned, unsigned )> DetachShader{ "glDetachShader" };
+	proc_wrapper<void     __stdcall ( unsigned )> LinkProgram{ "glLinkProgram" };
+	proc_wrapper<void     __stdcall ( unsigned )> UseProgram{ "glUseProgram" };
+	proc_wrapper<void     __stdcall ( unsigned, gl_enum, int * )> GetProgramiv{ "glGetProgramiv" };
+	proc_wrapper<unsigned __stdcall ( unsigned, const char * )> GetUniformLocation{ "glGetUniformLocation" };
+	proc_wrapper<void     __stdcall ( int, int )> Uniform1i{ "glUniform1i" };
+	proc_wrapper<void     __stdcall ( int, int, const float * )> Uniform2fv{ "glUniform2fv" };
+	proc_wrapper<void     __stdcall ( int, int, unsigned char, const float * )> UniformMatrix4fv{ "glUniformMatrix4fv" };
+	proc_wrapper<void     __stdcall ( gl_enum )> ActiveTexture{ "glActiveTexture" };
+	proc_wrapper<void     __stdcall ( gl_enum, unsigned )> Enablei{ "glEnablei" };
+	proc_wrapper<void     __stdcall ( gl_enum, unsigned )> Disablei{ "glDisablei" };
+	proc_wrapper<void     __stdcall ( unsigned, gl_enum, gl_enum )> BlendFunci{ "glBlendFunci" };
+	proc_wrapper<void     __stdcall ( unsigned, gl_enum )> BlendEquationi{ "glBlendEquationi" };
 
 #if defined(WIN32)
-	static void    *( __stdcall *CreateContextAttribsARB )( void *, void *, const int * );
+	proc_wrapper<void    *__stdcall ( void *, void *, const int * )> CreateContextAttribsARB { "wglCreateContextAttribsARB" };
+#endif
+	// *INDENT-ON*
+};
+
+} // namespace gl3d::detail
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class gl_enum : unsigned
+{
+	NONE = 0, ZERO = 0,
+	ONE = 1,
+
+	POINTS = 0x0000, LINES,
+	LINE_STRIP = 0x0003, TRIANGLES, TRIANGLE_STRIP,
+
+	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
+	DOUBLE = 0x140A,
+
+	NEVER = 0x0200, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS,
+
+	SRC_COLOR = 0x0300, ONE_MINUS_SRC_COLOR, SRC_ALPHA, ONE_MINUS_SRC_ALPHA, DST_ALPHA, ONE_MINUS_DST_ALPHA,
+	DST_COLOR = 0x0306, ONE_MINUS_DST_COLOR, SRC_ALPHA_SATURATE,
+
+	CW = 0x0900, CCW,
+
+	ARRAY_BUFFER = 0x8892, ELEMENT_ARRAY_BUFFER,
+
+	STREAM_DRAW = 0x88E0, STREAM_READ, STREAM_COPY,
+	STATIC_DRAW = 0x88E4, STATIC_READ, STATIC_COPY,
+	DYNAMIC_DRAW = 0x88E8, DYNAMIC_READ, DYNAMIC_COPY,
+
+	FRAGMENT_SHADER = 0x8B30, VERTEX_SHADER,
+	GEOMETRY_SHADER = 0x8DD9,
+	COMPUTE_SHADER = 0x91B9,
+
+	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
+
+#if defined(WIN32)
+	CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
+
+	CONTEXT_PROFILE_MASK_ARB = 0x9126,
+	CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001,
 #endif
 };
+
+GL3D_ENUM_PLUS( gl_enum )
+
+extern detail::gl_api gl;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -101,7 +144,11 @@ namespace detail {
 
 struct layout
 {
-	struct attr { unsigned location, offset, element_count, element_type; };
+	struct attr
+	{
+		unsigned location, offset, element_count;
+		gl_enum element_type;
+	};
 
 	std::vector<attr> attribs;
 	unsigned mask = 0;
@@ -112,15 +159,15 @@ struct layout
 private:
 	template <typename T> struct type { };
 
-	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, gl::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, gl::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, gl::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, gl::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, gl::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, gl::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, gl::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, gl::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, gl::UNSIGNED_BYTE }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, gl_enum::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, gl_enum::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, gl_enum::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, gl_enum::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, gl_enum::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, gl_enum::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, gl_enum::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, gl_enum::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, gl_enum::UNSIGNED_BYTE }; }
 
 	template <typename T1, typename T2, typename... Args>
 	void init( unsigned index, unsigned location, T1 T2::*member, Args &&... args )
@@ -167,16 +214,23 @@ class buffer : public detail::render_object
 public:
 	using ptr = std::shared_ptr<buffer>;
 
-	buffer( gl::enum_t type );
+	buffer( const void *initialData = nullptr, size_t initialSize = 0, bool makeCopy = true );
+
+	template <typename T, typename A>
+	buffer( const std::vector<T, A> &initialData, bool makeCopy = true )
+		: buffer( initialData.data(), initialData.size() * sizeof( T ), makeCopy )
+	{
+
+	}
+
 	virtual ~buffer();
 
-	gl::enum_t type() const { return _type; }
-
-	void allocate_data( const void *data, size_t size, bool releaseAfterUpload = true );
-	void set_data( const void *data, size_t size );
+	void bind( gl_enum target );
 
 protected:
-	gl::enum_t _type;
+	uint8_t *_data = nullptr;
+	size_t _size = 0;
+	bool _owner = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +292,7 @@ struct blend_state
 
 struct depth_stencil_state
 {
-	gl::enum_t depth_func = gl::LESS;
+	gl_enum depth_func = gl_enum::LESS;
 	uint8_t stencil_read_mask = 0;
 	uint8_t stencil_write_mask = 0;
 	unsigned stencil_test : 1;
@@ -250,7 +304,7 @@ struct depth_stencil_state
 
 struct rasterizer_state
 {
-	gl::enum_t face_cull_mode = gl::NONE;
+	gl_enum face_cull_mode = gl_enum::NONE;
 	unsigned front_ccw : 1;
 	unsigned wireframe : 1;
 	unsigned depth_camp : 1;
@@ -281,12 +335,13 @@ public:
 
 	void bind_shader( shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
+	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
 	void uniform_block( location_variant_t location, const void *data, size_t size );
 
-	void draw( gl::enum_t primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
-	void draw_indexed( gl::enum_t primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
+	void draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
+	void draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
 
 	void execute( ptr cmdQueue );
 
@@ -339,6 +394,7 @@ protected:
 		bind_rasterizer_state,
 		bind_shader,
 		bind_vertex_buffer,
+		bind_vertex_atrribute,
 		bind_index_buffer,
 		draw,
 		draw_indexed,
@@ -364,9 +420,13 @@ public:
 
 	void make_current();
 
+	unsigned get_or_create_vao( const detail::layout &layout );
+
 protected:
 	void *_window_native_handle = nullptr;
 	void *_native_handle = nullptr;
+
+	std::unordered_map<std::uintptr_t, unsigned> _layoutVAOs;
 };
 
 } // namespace gl3d::detail

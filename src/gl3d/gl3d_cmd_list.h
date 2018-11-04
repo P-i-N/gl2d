@@ -228,7 +228,7 @@ void rasterizer_state::bind()
 	glFrontFace( front_ccw ? GL_CCW : GL_CW );
 	face_cull_mode != GL_NONE ? ( glEnable( GL_CULL_FACE ), glCullFace( face_cull_mode ) ) : glDisable( GL_CULL_FACE );
 	glPolygonMode( GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL );
-	depth_clamp ? glEnable( gl.DEPTH_CLAMP ) : glDisable( gl.DEPTH_CLAMP );
+	depth_clamp ? glEnable( gl_api.DEPTH_CLAMP ) : glDisable( gl_api.DEPTH_CLAMP );
 	scissor_test ? glEnable( GL_SCISSOR_TEST ) : glDisable( GL_SCISSOR_TEST );
 }
 
@@ -237,9 +237,9 @@ void blend_state::bind()
 {
 	for ( GLuint i = 0; i < 8; ++i )
 	{
-		enabled_slots[i] ? gl.Enablei( GL_BLEND, i ) : gl.Disablei( GL_BLEND, i );
-		gl.BlendFunci( i, slot[i].src, slot[i].dst );
-		gl.BlendEquationi( i, slot[i].op );
+		enabled_slots[i] ? gl_api.Enablei( GL_BLEND, i ) : gl_api.Disablei( GL_BLEND, i );
+		gl_api.BlendFunci( i, slot[i].src, slot[i].dst );
+		gl_api.BlendEquationi( i, slot[i].op );
 	}
 }
 

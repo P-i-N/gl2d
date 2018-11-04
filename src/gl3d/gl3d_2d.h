@@ -171,7 +171,7 @@ struct font
 
 		font_texture->set_params(texWidth, texHeight, GL_RGBA, 1, 1);
 		font_texture->alloc_pixels(image);
-		font_texture->set_wrap(gl.CLAMP_TO_EDGE);
+		font_texture->set_wrap(gl_api.CLAMP_TO_EDGE);
 
 		delete [] image;
 		data = cursorInput;
@@ -608,7 +608,7 @@ bool context2d::init()
 	if (_initialized)
 		return true;
 
-	gl.init();
+	gl_api.init();
 
 	_program->set_vert_source(vertex_shader_code2d);
 	_program->set_frag_source(fragment_shader_code2d);
