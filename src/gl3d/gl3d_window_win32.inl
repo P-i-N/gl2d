@@ -309,6 +309,7 @@ void update()
 	{
 		auto ctx = w->context();
 		ctx->make_current();
+		glViewport( 0, 0, w->size().x, w->size().y );
 	}
 
 	on_tick.call();
@@ -317,6 +318,7 @@ void update()
 	{
 		auto ctx = w->context();
 		ctx->make_current();
+		glViewport( 0, 0, w->size().x, w->size().y );
 		on_event.call( event( event_type::paint, w->id() ) );
 		w->present();
 	}

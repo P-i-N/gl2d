@@ -152,7 +152,7 @@ void buffer::bind( gl_enum target )
 {
 	if ( !_id )
 	{
-		gl.GenBuffers( 1, &_id );
+		gl.CreateBuffers( 1, &_id );
 
 		if ( _size )
 		{
@@ -167,7 +167,7 @@ void buffer::bind( gl_enum target )
 		}
 	}
 
-	gl.BindBuffer( target, _id );
+	//gl.BindBuffer( target, _id );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -444,6 +444,10 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 	else
 	{
 		vb->bind( gl_enum::ARRAY_BUFFER );
+
+		auto vaoID = detail::tl_currentContext->get_or_create_vao( layout );
+		gl.VertexArrayVertexBuffer( vaoID, 0, vb->id(), reinterpret_cast<const void *>( offset ), layout.size );
+		gl.BindVertexArray( vaoID );
 	}
 }
 
@@ -499,7 +503,7 @@ void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t inst
 	}
 	else
 	{
-
+		glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
 	}
 }
 
@@ -656,7 +660,7 @@ context::context( void *windowNativeHandle )
 	: cmd_queue( false )
 	, _window_native_handle( windowNativeHandle )
 {
-	static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
+	//static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
 
 	auto hdc = GetDC( HWND( _window_native_handle ) );
 	auto tempContext = wglCreateContext( hdc );
@@ -712,7 +716,30 @@ void context::make_current()
 //---------------------------------------------------------------------------------------------------------------------
 unsigned context::get_or_create_vao( const detail::layout &layout )
 {
-	return 0;
+	auto ptrID = reinterpret_cast<std::uintptr_t>( &layout );
+
+	if ( auto iter = _layoutVAOs.find( ptrID ); iter != _layoutVAOs.end() )
+		return iter->second;
+
+	unsigned vaoID = 0;
+	gl.CreateVertexArrays( 1, &vaoID );
+
+	for ( unsigned i = 0; i < 16; ++i )
+	{
+		if ( layout.mask & ( 1u << i ) )
+			gl.EnableVertexArrayAttrib( vaoID, i );
+		else
+			gl.DisableVertexArrayAttrib( vaoID, i );
+	}
+
+	for ( auto &a : layout.attribs )
+	{
+		gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
+		gl.VertexArrayAttribBinding( vaoID, a.location, 0 );
+	}
+
+	_layoutVAOs.insert( { ptrID, vaoID } );
+	return vaoID;
 }
 
 } // namespace gl3d::detail

@@ -34,8 +34,7 @@ struct gl_api
 {
 	static void *get_proc_address( const char *name );
 
-	template <typename F>
-	struct proc_wrapper
+	template <typename F> struct proc_wrapper
 	{
 		void *ptr = nullptr;
 		proc_wrapper( const char *name ) : ptr( get_proc_address( name ) ) { }
@@ -51,46 +50,60 @@ struct gl_api
 		}
 	};
 
-	// *INDENT-OFF*
-	proc_wrapper<void     __stdcall ( int, unsigned * )> GenBuffers{ "glGenBuffers" };
-	proc_wrapper<void     __stdcall ( int, const unsigned * )> DeleteBuffers{ "glDeleteBuffers" };
-	proc_wrapper<void     __stdcall ( gl_enum, unsigned )> BindBuffer{ "glBindBuffer" };
-	proc_wrapper<void     __stdcall ( gl_enum, ptrdiff_t, const void *, gl_enum )> BufferData{ "glBufferData" };
-	proc_wrapper<void     __stdcall ( unsigned, int, const void *, gl_enum )> NamedBufferData{ "glNamedBufferData" };
-	proc_wrapper<void     __stdcall ( int, unsigned * )> GenVertexArrays{ "glGenVertexArrays" };
-	proc_wrapper<void     __stdcall ( unsigned )> BindVertexArray{ "glBindVertexArray" };
-	proc_wrapper<void     __stdcall ( unsigned )> EnableVertexAttribArray{ "glEnableVertexAttribArray" };
-	proc_wrapper<void     __stdcall ( unsigned, int, gl_enum, unsigned char, int, const void * )> VertexAttribPointer{ "glVertexAttribPointer" };
-	proc_wrapper<void     __stdcall ( unsigned, unsigned, const char * )> BindAttribLocation{ "glBindAttribLocation" };
-	proc_wrapper<void     __stdcall ( int, const unsigned * )> DeleteVertexArrays{ "glDeleteVertexArrays" };
-	proc_wrapper<unsigned __stdcall ( gl_enum )> CreateShader{ "glCreateShader" };
-	proc_wrapper<void     __stdcall ( unsigned )> DeleteShader{ "glDeleteShader" };
-	proc_wrapper<void     __stdcall ( unsigned, int, const char **, const int * )> ShaderSource{ "glShaderSource" };
-	proc_wrapper<void     __stdcall ( unsigned )> CompileShader{ "glCompileShader" };
-	proc_wrapper<void     __stdcall ( unsigned, gl_enum, int * )> GetShaderiv{ "glGetShaderiv" };
-	proc_wrapper<void     __stdcall ( unsigned, int, int *, char * )> GetShaderInfoLog{ "glGetShaderInfoLog" };
-	proc_wrapper<unsigned __stdcall ()> CreateProgram{ "glCreateProgram" };
-	proc_wrapper<void     __stdcall ( unsigned )> DeleteProgram{ "glDeleteProgram" };
-	proc_wrapper<void     __stdcall ( unsigned, unsigned )> AttachShader{ "glAttachShader" };
-	proc_wrapper<void     __stdcall ( unsigned, unsigned )> DetachShader{ "glDetachShader" };
-	proc_wrapper<void     __stdcall ( unsigned )> LinkProgram{ "glLinkProgram" };
-	proc_wrapper<void     __stdcall ( unsigned )> UseProgram{ "glUseProgram" };
-	proc_wrapper<void     __stdcall ( unsigned, gl_enum, int * )> GetProgramiv{ "glGetProgramiv" };
-	proc_wrapper<unsigned __stdcall ( unsigned, const char * )> GetUniformLocation{ "glGetUniformLocation" };
-	proc_wrapper<void     __stdcall ( int, int )> Uniform1i{ "glUniform1i" };
-	proc_wrapper<void     __stdcall ( int, int, const float * )> Uniform2fv{ "glUniform2fv" };
-	proc_wrapper<void     __stdcall ( int, int, unsigned char, const float * )> UniformMatrix4fv{ "glUniformMatrix4fv" };
-	proc_wrapper<void     __stdcall ( gl_enum )> ActiveTexture{ "glActiveTexture" };
-	proc_wrapper<void     __stdcall ( gl_enum, unsigned )> Enablei{ "glEnablei" };
-	proc_wrapper<void     __stdcall ( gl_enum, unsigned )> Disablei{ "glDisablei" };
-	proc_wrapper<void     __stdcall ( unsigned, gl_enum, gl_enum )> BlendFunci{ "glBlendFunci" };
-	proc_wrapper<void     __stdcall ( unsigned, gl_enum )> BlendEquationi{ "glBlendEquationi" };
-
 #if defined(WIN32)
-	proc_wrapper<void    *__stdcall ( void *, void *, const int * )> CreateContextAttribsARB { "wglCreateContextAttribsARB" };
+#define GL_PROC(_Returns, _Name, ...) proc_wrapper<_Returns __stdcall ( __VA_ARGS__ )> _Name { "gl" #_Name };
+	proc_wrapper<void *__stdcall ( void *, void *, const int * )> CreateContextAttribsARB { "wglCreateContextAttribsARB" };
+#else
+#define GL_PROC(_Returns, _Name, ...) proc_wrapper<_Returns ( __VA_ARGS__ )> _Name { "gl" #_Name };
 #endif
+
+	// *INDENT-OFF*
+	GL_PROC(     void, GenBuffers, int, unsigned * )
+	GL_PROC(     void, DeleteBuffers, int, const unsigned * )
+	GL_PROC(     void, BindBuffer, gl_enum, unsigned )
+	GL_PROC(     void, BufferData, gl_enum, ptrdiff_t, const void *, gl_enum )
+	GL_PROC(     void, BindVertexBuffer, unsigned, unsigned, const void *, int )
+	GL_PROC(     void, NamedBufferData, unsigned, int, const void *, gl_enum )
+	GL_PROC( unsigned, CreateShader, gl_enum )
+	GL_PROC(     void, DeleteShader, unsigned )
+	GL_PROC(     void, ShaderSource, unsigned, int, const char **, const int * )
+	GL_PROC(     void, CompileShader, unsigned )
+	GL_PROC(     void, GetShaderiv, unsigned, gl_enum, int  *)
+	GL_PROC(     void, GetShaderInfoLog, unsigned, int, int *, char * )
+	GL_PROC( unsigned, CreateProgram )
+	GL_PROC(     void, DeleteProgram, unsigned )
+	GL_PROC(     void, AttachShader, unsigned, unsigned )
+	GL_PROC(     void, DetachShader, unsigned, unsigned )
+	GL_PROC(     void, LinkProgram, unsigned )
+	GL_PROC(     void, UseProgram, unsigned )
+	GL_PROC(     void, GetProgramiv, unsigned, gl_enum, int * )
+	GL_PROC( unsigned, GetUniformLocation, unsigned, const char * )
+	GL_PROC(     void, Uniform1i, int, int )
+	GL_PROC(     void, Uniform2fv, int, int, const float * )
+	GL_PROC(     void, UniformMatrix4fv, int, int, unsigned char, const float * )
+	GL_PROC(     void, ActiveTexture, gl_enum )
+	GL_PROC(     void, Enablei, gl_enum, unsigned )
+	GL_PROC(     void, Disablei, gl_enum, unsigned )
+	GL_PROC(     void, BlendFunci, unsigned, gl_enum, gl_enum )
+	GL_PROC(     void, BlendEquationi, unsigned, gl_enum )
+
+	/// DSA Buffer Objects
+	GL_PROC(void, CreateBuffers, int, unsigned *)
+
+	/// DSA Vertex Array Objects
+	GL_PROC(void, CreateVertexArrays, int, unsigned *)
+	GL_PROC(void, DeleteVertexArrays, int, const unsigned *)
+	GL_PROC(void, BindVertexArray, unsigned)
+	GL_PROC(void, EnableVertexArrayAttrib, unsigned, unsigned)
+	GL_PROC(void, DisableVertexArrayAttrib, unsigned, unsigned)
+	GL_PROC(void, VertexArrayAttribFormat, unsigned, unsigned, int, gl_enum, unsigned char, unsigned)
+	GL_PROC(void, VertexArrayAttribBinding, unsigned, unsigned, unsigned)
+	GL_PROC(void, VertexArrayVertexBuffer, unsigned, unsigned, unsigned, const void *, int)
+
 	// *INDENT-ON*
 };
+
+#undef GL_PROC
 
 } // namespace gl3d::detail
 
@@ -152,6 +165,7 @@ struct layout
 
 	std::vector<attr> attribs;
 	unsigned mask = 0;
+	unsigned size = 0;
 
 	template <typename... Args>
 	layout( Args &&... args ) : attribs( sizeof...( Args ) / 2 ) { init( 0, args... ); }
@@ -174,6 +188,7 @@ private:
 	{
 		fill( attribs[index], location, unsigned( size_t( &( ( ( T2 * )0 )->*member ) ) ), type<T1>() );
 		mask |= ( 1u << location );
+		size = sizeof( T2 );
 
 		if constexpr ( sizeof...( Args ) >= 2 )
 			init( index + 1, args... );

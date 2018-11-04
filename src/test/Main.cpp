@@ -24,7 +24,6 @@ int main()
 	sc->load( "../../data/shaders/Test.shader" );
 
 	auto q = std::make_shared<cmd_queue>();
-	q->clear_color( { 0.0f, 0.0f, 0.0f, 1.0f } );
 	q->bind_shader( std::make_shared<shader>( sc ) );
 	q->bind_vertex_buffer( std::make_shared<buffer>( vertices ), Vertex::get_layout() );
 	q->draw( gl_enum::TRIANGLES, 0, 3 );
@@ -34,6 +33,7 @@ int main()
 		auto w = window::from_id( 0 );
 		auto ctx = w->context();
 
+		ctx->clear_color( { 0.1f, 0.2f, 0.3f, 1.0f } );
 		ctx->execute( q );
 	} );
 
