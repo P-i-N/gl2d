@@ -480,13 +480,23 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::uniform_block( location_variant_t location, const void *data, size_t size )
+void cmd_queue::update_uniform_block( location_variant_t location, const void *data, size_t size )
 {
 	assert( data && size );
 
 	if ( _recording )
 	{
+		assert( size <= 65536 );
 
+		if ( std::holds_alternative<unsigned>( location ) )
+			write( cmd_type::update_uniform_block_id, std::get<unsigned>( location ) );
+		else
+		{
+			write( cmd_type::update_uniform_block_name );
+			write_string_view( std::get<std::string_view>( location ) );
+		}
+
+		write_data( data, size );
 	}
 	else
 	{
@@ -660,7 +670,7 @@ context::context( void *windowNativeHandle )
 	: cmd_queue( false )
 	, _window_native_handle( windowNativeHandle )
 {
-	//static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
+	static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
 
 	auto hdc = GetDC( HWND( _window_native_handle ) );
 	auto tempContext = wglCreateContext( hdc );

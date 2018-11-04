@@ -62,8 +62,7 @@ struct gl_api
 	GL_PROC(     void, DeleteBuffers, int, const unsigned * )
 	GL_PROC(     void, BindBuffer, gl_enum, unsigned )
 	GL_PROC(     void, BufferData, gl_enum, ptrdiff_t, const void *, gl_enum )
-	GL_PROC(     void, BindVertexBuffer, unsigned, unsigned, const void *, int )
-	GL_PROC(     void, NamedBufferData, unsigned, int, const void *, gl_enum )
+
 	GL_PROC( unsigned, CreateShader, gl_enum )
 	GL_PROC(     void, DeleteShader, unsigned )
 	GL_PROC(     void, ShaderSource, unsigned, int, const char **, const int * )
@@ -89,6 +88,7 @@ struct gl_api
 
 	/// DSA Buffer Objects
 	GL_PROC(void, CreateBuffers, int, unsigned *)
+	GL_PROC(void, NamedBufferData, unsigned, int, const void *, gl_enum)
 
 	/// DSA Vertex Array Objects
 	GL_PROC(void, CreateVertexArrays, int, unsigned *)
@@ -332,7 +332,7 @@ class cmd_queue : public detail::resource
 {
 public:
 	using ptr = std::shared_ptr<cmd_queue>;
-	using location_variant_t = std::variant<unsigned, size_t, std::string_view>;
+	using location_variant_t = std::variant<unsigned, std::string_view>;
 
 	cmd_queue(): cmd_queue( true ) { }
 	virtual ~cmd_queue();
@@ -353,7 +353,7 @@ public:
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
-	void uniform_block( location_variant_t location, const void *data, size_t size );
+	void update_uniform_block( location_variant_t location, const void *data, size_t size );
 
 	void draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
 	void draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
@@ -376,6 +376,29 @@ protected:
 		_position += len;
 	}
 
+	void write_string_view( const std::string_view &str )
+	{
+		unsigned strLen = static_cast<unsigned>( str.length() );
+		auto len = sizeof( strLen ) + str.length();
+		if ( _position + len > _recordedData.size() )
+			_recordedData.resize( _position + len );
+
+		memcpy( _recordedData.data() + _position, &strLen, sizeof( strLen ) );
+		memcpy( _recordedData.data() + _position + sizeof( strLen ), str.data(), strLen );
+		_position += len;
+	}
+
+	void write_data( const void *data, size_t size )
+	{
+		auto len = sizeof( unsigned ) + size;
+		if ( _position + len > _recordedData.size() )
+			_recordedData.resize( _position + len );
+
+		memcpy( _recordedData.data() + _position, &size, sizeof( unsigned ) );
+		memcpy( _recordedData.data() + _position + sizeof( unsigned ), data, size );
+		_position += len;
+	}
+
 	template <typename H, typename... T>
 	void write_value( uint8_t *cursor, H &&head, T &&... tail )
 	{
@@ -392,6 +415,16 @@ protected:
 	}
 
 	template <typename T> void read( T &value ) { value = read<T>(); }
+
+	std::string_view read_string_view()
+	{
+		return std::string_view();
+	}
+
+	std::pair<const void *, unsigned> read_data()
+	{
+		return { nullptr, 0 };
+	}
 
 	void execute();
 
@@ -411,6 +444,8 @@ protected:
 		bind_vertex_buffer,
 		bind_vertex_atrribute,
 		bind_index_buffer,
+		update_uniform_block_name,
+		update_uniform_block_id,
 		draw,
 		draw_indexed,
 		execute,
