@@ -234,8 +234,7 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 bool shader_code::load( std::istream &is, const std::filesystem::path &cwd )
 {
 	detail::bytes_t bytes;
-	if ( !detail::read_all_bytes( is, bytes, true ) )
-		return false;
+	detail::read_all_bytes( is, bytes, true );
 
 	return source( detail::to_string_view( bytes ), cwd );
 }

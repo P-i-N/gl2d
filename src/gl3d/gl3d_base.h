@@ -20,7 +20,7 @@ using bytes_t = std::vector<uint8_t>;
 std::string_view trim( std::string_view text );
 std::string_view to_string_view( bytes_t &bytes );
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
-bool read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm = false, size_t size = size_t( -1 ) );
+void read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm = false, size_t size = size_t( -1 ) );
 bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd );
 
 //---------------------------------------------------------------------------------------------------------------------

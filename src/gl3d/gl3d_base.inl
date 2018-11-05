@@ -61,7 +61,7 @@ void for_each_line( std::string_view text, std::function<void( std::string_view,
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-bool read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm, size_t size )
+void read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm, size_t size )
 {
 	if ( size == size_t( -1 ) )
 	{
@@ -73,7 +73,6 @@ bool read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm, size_t 
 	bytes.resize( size );
 	is.read( reinterpret_cast<char *>( bytes.data() ), size );
 	if ( addNullTerm ) bytes.push_back( 0 );
-	return true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -206,14 +205,13 @@ void vfs::mount( const std::filesystem::path &path )
 			{
 				std::ifstream ifs( finalPath.c_str(), std::ios_base::in | std::ios_base::binary );
 				if ( !ifs.is_open() )
-					return false;
-
-				size_t size = std::filesystem::file_size( finalPath );
-				if ( !detail::read_all_bytes( ifs, bytes, false, size ) )
 				{
+					log::error( "Could not open file: %s", finalPath.c_str() );
 					return false;
 				}
 
+				size_t size = std::filesystem::file_size( finalPath );
+				detail::read_all_bytes( ifs, bytes, false, size );
 				return true;
 			}
 
