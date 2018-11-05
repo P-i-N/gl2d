@@ -527,8 +527,11 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 					break;
 
 				case WM_CLOSE:
-					w->close();
-					return 0;
+				{
+					window::ptr tempRef( w );
+					tempRef->close();
+				}
+				return 0;
 
 				case WM_CAPTURECHANGED:
 					//kvp.second->mouse_capture_ref = 0;

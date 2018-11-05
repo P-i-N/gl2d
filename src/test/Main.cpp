@@ -37,7 +37,7 @@ int main()
 		ctx->execute( q );
 	} );
 
-	window::open( "Main Window", { 800, 600 } /*, { 1920 * 0 + 60, 60 }*/ );
+	window::open( "Main Window", { 800, 600 }, { 1920 * 2 + 60, 60 } );
 	run();
 	return 0;
 }

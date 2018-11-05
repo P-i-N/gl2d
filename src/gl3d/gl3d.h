@@ -470,7 +470,7 @@ public:
 
 	void make_current();
 
-	unsigned get_or_create_vao( const detail::layout &layout );
+	unsigned bind_vao( buffer::ptr vb, const detail::layout &layout, size_t offset );
 
 protected:
 	void *_window_native_handle = nullptr;

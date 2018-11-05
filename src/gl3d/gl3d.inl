@@ -194,7 +194,7 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 	for ( auto &stageSource : _stageSources )
 		stageSource.clear();
 
-	std::string sharedSource = "#version 420\n";
+	std::string sharedSource = "#version 330\n";
 	std::string *currentStage = &sharedSource;
 
 	_unrolledSource = ss.str();
@@ -363,10 +363,7 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 	else
 	{
 		vb->bind( gl_enum::ARRAY_BUFFER );
-
-		auto vaoID = detail::tl_currentContext->get_or_create_vao( layout );
-		gl.VertexArrayVertexBuffer( vaoID, 0, vb->id(), reinterpret_cast<const void *>( offset ), layout.size );
-		gl.BindVertexArray( vaoID );
+		auto vaoID = detail::tl_currentContext->bind_vao( vb, layout, offset );
 	}
 }
 
@@ -643,31 +640,36 @@ void context::make_current()
 #endif
 
 //---------------------------------------------------------------------------------------------------------------------
-unsigned context::get_or_create_vao( const detail::layout &layout )
+unsigned context::bind_vao( buffer::ptr vb, const detail::layout &layout, size_t offset )
 {
-	auto ptrID = reinterpret_cast<std::uintptr_t>( &layout );
-
-	if ( auto iter = _layoutVAOs.find( ptrID ); iter != _layoutVAOs.end() )
-		return iter->second;
-
 	unsigned vaoID = 0;
-	gl.CreateVertexArrays( 1, &vaoID );
 
-	for ( unsigned i = 0; i < 16; ++i )
+	auto ptrID = reinterpret_cast<std::uintptr_t>( &layout );
+	if ( auto iter = _layoutVAOs.find( ptrID ); iter == _layoutVAOs.end() )
 	{
-		if ( layout.mask & ( 1u << i ) )
-			gl.EnableVertexArrayAttrib( vaoID, i );
-		else
-			gl.DisableVertexArrayAttrib( vaoID, i );
-	}
+		gl.CreateVertexArrays( 1, &vaoID );
 
-	for ( auto &a : layout.attribs )
-	{
-		gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
-		gl.VertexArrayAttribBinding( vaoID, a.location, 0 );
-	}
+		for ( unsigned i = 0; i < 16; ++i )
+		{
+			if ( layout.mask & ( 1u << i ) )
+				gl.EnableVertexArrayAttrib( vaoID, i );
+			else
+				gl.DisableVertexArrayAttrib( vaoID, i );
+		}
 
-	_layoutVAOs.insert( { ptrID, vaoID } );
+		for ( auto &a : layout.attribs )
+		{
+			gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
+			gl.VertexArrayAttribBinding( vaoID, a.location, 0 );
+		}
+
+		_layoutVAOs.insert( { ptrID, vaoID } );
+	}
+	else
+		vaoID = iter->second;
+
+	gl.VertexArrayVertexBuffer( vaoID, 0, vb->id(), reinterpret_cast<const void *>( offset ), layout.size );
+	gl.BindVertexArray( vaoID );
 	return vaoID;
 }
 
