@@ -6,6 +6,7 @@
 
 #include <cstdarg>
 #include <fstream>
+#include <sstream>
 
 #define GL3D_FORMAT_LOG_TEXT(_Input) \
 	if (!(_Input)) return; \
@@ -73,6 +74,62 @@ bool read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm, size_t 
 	is.read( reinterpret_cast<char *>( bytes.data() ), size );
 	if ( addNullTerm ) bytes.push_back( 0 );
 	return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd )
+{
+	bool result = true;
+
+	for_each_line( sourceCode, [&]( std::string_view line, unsigned lineNum )
+	{
+		if ( !result ) return;
+
+		bool addLine = true;
+
+		if ( auto dir = trim( line ); !dir.empty() && dir[0] == '#' )
+		{
+			dir = trim( line.substr( 1 ) ); // Cut away '#' & trim
+			if ( starts_with_nocase( dir, "include" ) )
+			{
+				addLine = false;
+				dir = trim( dir.substr( 7 ) ); // Cut away "include" & trim
+
+				bool isRelative = false;
+
+				if ( dir[0] == '"' && dir.back() == '"' )
+					isRelative = true;
+				else if ( dir[0] == '<' && dir.back() == '>' )
+					isRelative = false;
+				else
+				{
+					log::error( "Invalid include directive at line %d", lineNum );
+					result = false;
+					return;
+				}
+
+				std::filesystem::path path = trim( dir.substr( 1, dir.length() - 2 ) );
+				if ( isRelative )
+					path = cwd / path;
+
+				bytes_t bytes;
+				if ( !on_data_request.call( path, bytes ) )
+				{
+					log::error( "Could not open file stream: %s", path.c_str() );
+					result = false;
+					return;
+				}
+
+				if ( !unroll_includes( ss, detail::to_string_view( bytes ), path.parent_path() ) )
+					return;
+			}
+		}
+
+		if ( addLine )
+			ss << line << std::endl;
+	} );
+
+	return result;
 }
 
 } // namespace gl3d::detail
