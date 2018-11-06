@@ -47,6 +47,47 @@ void *gl_api::get_proc_address( const char *name )
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
+void check_gl_error()
+{
+#if defined(_DEBUG)
+	GLenum err = glGetError();
+	if ( err != GL_NO_ERROR )
+	{
+		const char *errName = "(unknown error)";
+
+		switch ( err )
+		{
+			case GL_NO_ERROR:
+				errName = "GL_NO_ERROR";
+				break;
+			case GL_INVALID_ENUM:
+				errName = "GL_INVALID_ENUM";
+				break;
+			case GL_INVALID_VALUE:
+				errName = "GL_INVALID_VALUE";
+				break;
+			case GL_INVALID_OPERATION:
+				errName = "GL_INVALID_OPERATION";
+				break;
+			case GL_OUT_OF_MEMORY:
+				errName = "GL_OUT_OF_MEMORY";
+				break;
+			case GL_STACK_UNDERFLOW:
+				errName = "GL_STACK_UNDERFLOW";
+				break;
+			case GL_STACK_OVERFLOW:
+				errName = "GL_STACK_OVERFLOW";
+				break;
+		}
+
+		log::error( "OpenGL error (%d): %s", err, errName );
+		assert( 0 );
+	}
+#endif
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------
 buffer::buffer( const void *initialData, size_t initialSize, bool makeCopy )
 	: _size( initialSize )
 	, _owner( ( initialData != nullptr ) && makeCopy )
@@ -87,7 +128,7 @@ void buffer::bind( gl_enum target )
 		}
 	}
 
-	//gl.BindBuffer( target, _id );
+	gl.BindBuffer( target, _id );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,9 +189,9 @@ bool shader::compile()
 		gl.ShaderSource( _stageIDs[i], 1, &srcData, nullptr );
 		gl.CompileShader( _stageIDs[i] );
 
-		int status;
-		gl.GetShaderiv( _stageIDs[i], gl_enum::COMPILE_STATUS, &status );
-		if ( !status )
+		int compileStatus;
+		gl.GetShaderiv( _stageIDs[i], gl_enum::COMPILE_STATUS, &compileStatus );
+		if ( !compileStatus )
 		{
 			int logLength;
 			gl.GetShaderiv( _stageIDs[i], gl_enum::INFO_LOG_LENGTH, &logLength );
@@ -171,9 +212,9 @@ bool shader::compile()
 	gl.LinkProgram( _id );
 	for ( auto stageID : _stageIDs ) if ( stageID ) gl.DetachShader( _id, stageID );
 
-	int status;
-	gl.GetProgramiv( _id, gl_enum::LINK_STATUS, &status );
-	if ( !status )
+	int linkStatus;
+	gl.GetProgramiv( _id, gl_enum::LINK_STATUS, &linkStatus );
+	if ( !linkStatus )
 	{
 		clear();
 		return false;
@@ -194,7 +235,7 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 	for ( auto &stageSource : _stageSources )
 		stageSource.clear();
 
-	std::string sharedSource = "#version 330\n";
+	std::string sharedSource = "#version 330 core\n";
 	std::string *currentStage = &sharedSource;
 
 	_unrolledSource = ss.str();
@@ -218,7 +259,10 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 		}
 
 		if ( addLine )
+		{
 			*currentStage += line;
+			*currentStage += detail::s_lineSeparator;
+		}
 	} );
 
 	for ( auto &stageSource : _stageSources )
@@ -563,6 +607,8 @@ void cmd_queue::execute()
 			}
 			break;
 		}
+
+		check_gl_error();
 	}
 
 	_recording = true;
@@ -649,7 +695,7 @@ unsigned context::bind_vao( buffer::ptr vb, const detail::layout &layout, size_t
 	{
 		gl.CreateVertexArrays( 1, &vaoID );
 
-		for ( unsigned i = 0; i < 16; ++i )
+		for ( unsigned i = 0; i < 8; ++i )
 		{
 			if ( layout.mask & ( 1u << i ) )
 				gl.EnableVertexArrayAttrib( vaoID, i );
@@ -668,8 +714,10 @@ unsigned context::bind_vao( buffer::ptr vb, const detail::layout &layout, size_t
 	else
 		vaoID = iter->second;
 
-	gl.VertexArrayVertexBuffer( vaoID, 0, vb->id(), reinterpret_cast<const void *>( offset ), layout.size );
+	gl.VertexArrayVertexBuffer( vaoID, 0, vb->id(), reinterpret_cast<const void *>( offset ), layout.stride );
 	gl.BindVertexArray( vaoID );
+
+	check_gl_error();
 	return vaoID;
 }
 

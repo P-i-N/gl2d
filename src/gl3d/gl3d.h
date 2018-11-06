@@ -40,7 +40,7 @@ struct gl_api
 		proc_wrapper( const char *name ) : ptr( get_proc_address( name ) ) { }
 
 		template <typename... Args>
-		std::result_of_t<std::function<F>( Args... )> operator()( Args &&... args ) const
+		std::result_of_t<std::function<F>( Args... )> operator()( Args... args ) const
 		{
 			auto f = static_cast<F *>( ptr );
 			if constexpr ( std::is_void_v<std::result_of_t<std::function<F>( Args... )>> )
@@ -65,9 +65,9 @@ struct gl_api
 
 	GL_PROC( unsigned, CreateShader, gl_enum )
 	GL_PROC(     void, DeleteShader, unsigned )
-	GL_PROC(     void, ShaderSource, unsigned, int, const char **, const int * )
+	GL_PROC(     void, ShaderSource, unsigned, int, const char *const *, const int * )
 	GL_PROC(     void, CompileShader, unsigned )
-	GL_PROC(     void, GetShaderiv, unsigned, gl_enum, int  *)
+	GL_PROC(     void, GetShaderiv, unsigned, gl_enum, int *)
 	GL_PROC(     void, GetShaderInfoLog, unsigned, int, int *, char * )
 	GL_PROC( unsigned, CreateProgram )
 	GL_PROC(     void, DeleteProgram, unsigned )
@@ -165,7 +165,7 @@ struct layout
 
 	std::vector<attr> attribs;
 	unsigned mask = 0;
-	unsigned size = 0;
+	unsigned stride = 0;
 
 	template <typename... Args>
 	layout( Args &&... args ) : attribs( sizeof...( Args ) / 2 ) { init( 0, args... ); }
@@ -188,7 +188,7 @@ private:
 	{
 		fill( attribs[index], location, unsigned( size_t( &( ( ( T2 * )0 )->*member ) ) ), type<T1>() );
 		mask |= ( 1u << location );
-		size = sizeof( T2 );
+		stride = sizeof( T2 );
 
 		if constexpr ( sizeof...( Args ) >= 2 )
 			init( index + 1, args... );
