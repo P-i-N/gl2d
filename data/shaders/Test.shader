@@ -3,9 +3,14 @@
 layout (location = 0) in vec3 vertex_Position;
 layout (location = 3) in vec4 vertex_Color;
 
+layout (std140, binding = 0) uniform
+{
+	mat4 ProjectionMatrix;
+	mat4 ViewMatrix;
+};
+
 out vec4 color;
 
-// Komentik
 void main()
 {
 	gl_Position = vec4(vertex_Position, 1);

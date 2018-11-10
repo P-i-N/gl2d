@@ -3,9 +3,11 @@
 
 #include <limits.h>
 
+#include <array>
 #include <functional>
 #include <mutex>
 #include <type_traits>
+#include <vector>
 
 #define GL3D_ENUM_PLUS(_Type) \
 	constexpr auto operator+( _Type t ) { return static_cast<std::underlying_type_t<_Type>>( t ); }
@@ -129,8 +131,7 @@ private:
 	std::vector<callback_info> _callbacks;
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//---------------------------------------------------------------------------------------------------------------------
 struct location_variant
 {
 	const char *data;
@@ -145,8 +146,7 @@ struct location_variant
 	int id() const { return static_cast<int>( size_or_id ) - 1; }
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//---------------------------------------------------------------------------------------------------------------------
 template <typename F> struct proc_wrapper
 {
 	void *ptr = nullptr;
@@ -161,6 +161,24 @@ template <typename F> struct proc_wrapper
 		else
 			return f( args... );
 	}
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+struct raw_data_range
+{
+	const void *data;
+	size_t size;
+
+	raw_data_range( const void *ptr, size_t sizeInBytes ): data( ptr ), size( sizeInBytes ) { }
+
+	template <typename T, typename A>
+	raw_data_range( const std::vector<T, A> &v ): data( v.data() ), size( v.size() * sizeof( T ) ) { }
+
+	template <typename T, size_t N>
+	raw_data_range( const std::array<T, N> &arr ): data( arr.data() ), size( arr.size() * sizeof( T ) ) { }
+
+	template <typename T, size_t N>
+	raw_data_range( const T ( &arr )[N] ): data( &arr[0] ), size( N * sizeof( T ) ) { }
 };
 
 } // namespace gl3d::detail

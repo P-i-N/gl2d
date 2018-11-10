@@ -74,6 +74,7 @@ struct gl_api
 	/// DSA Buffer objects
 	GL_PROC(void, CreateBuffers, int, unsigned *)
 	GL_PROC(void, NamedBufferData, unsigned, int, const void *, gl_enum)
+	GL_PROC(void, NamedBufferStorage, unsigned, int, const void *, unsigned)
 
 	/// DSA Vertex array objects
 	GL_PROC(void, CreateVertexArrays, int, unsigned *)
@@ -126,6 +127,7 @@ enum class gl_enum : unsigned
 	FLOAT_MAT2 = 0x8B5A, FLOAT_MAT3, FLOAT_MAT4,
 
 	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
+	CURRENT_PROGRAM = 0x8B8D,
 
 #if defined(WIN32)
 	CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
@@ -208,29 +210,38 @@ protected:
 	unsigned _id = 0;
 };
 
-}
+} // namespace gl3d::detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class buffer_usage
+{
+	immutable,
+	dynamic,
+	persistent
+};
 
 class buffer : public detail::render_object
 {
 public:
 	using ptr = std::shared_ptr<buffer>;
 
-	buffer( const void *initialData = nullptr, size_t initialSize = 0, bool makeCopy = true );
+	buffer( buffer_usage usage, const void *data, size_t size, bool makeCopy = true );
 
-	template <typename T, typename A>
-	buffer( const std::vector<T, A> &initialData, bool makeCopy = true )
-		: buffer( initialData.data(), initialData.size() * sizeof( T ), makeCopy )
+	buffer( buffer_usage usage, const detail::raw_data_range &initialData, bool makeCopy = true )
+		: buffer( usage, initialData.data, initialData.size, makeCopy )
 	{
 
 	}
 
 	virtual ~buffer();
 
+	buffer_usage usage() const { return _usage; }
+
 	void bind( gl_enum target );
 
 protected:
+	buffer_usage _usage;
 	uint8_t *_data = nullptr;
 	size_t _size = 0;
 	bool _owner = false;
@@ -340,7 +351,13 @@ public:
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
-	void update_constants( const detail::location_variant &location, const void *data, size_t size );
+	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
+
+	template <typename T>
+	void set_uniform_block( const detail::location_variant &location, const T &block )
+	{
+		set_uniform_block( location, &block, sizeof( T ) );
+	}
 
 	void set_uniform( const detail::location_variant &location, bool value );
 	void set_uniform( const detail::location_variant &location, int value );
@@ -421,7 +438,11 @@ protected:
 
 	std::pair<const void *, unsigned> read_data()
 	{
-		return { nullptr, 0 };
+		auto size = read<unsigned>();
+		auto data = _recordedData.data() + _position;
+		_position += size;
+
+		return { data, size };
 	}
 
 	detail::location_variant read_location_variant()
@@ -450,18 +471,10 @@ protected:
 		clear_color, clear_depth,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
-		update_constants_name, update_constants_id,
-		set_uniform,
+		set_uniform_block, set_uniform,
 		draw, draw_indexed,
 		execute,
 	};
-
-	int find_uniform_id( const detail::location_variant &location ) const
-	{
-		return location.holds_name()
-		       ? gl.GetUniformLocation( _state->current_program, location.data )
-		       : location.id();
-	}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

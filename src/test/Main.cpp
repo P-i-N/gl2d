@@ -9,6 +9,12 @@ struct Vertex
 	GL3D_LAYOUT( 0, &Vertex::pos, 3, &Vertex::color );
 };
 
+struct FrameData
+{
+	gl3d::mat4 ProjectionMatrix;
+	gl3d::mat4 ViewMatrix;
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main()
@@ -17,17 +23,24 @@ int main()
 
 	window::open( "Main Window", { 1920, 1200 }, { 1920 * 0 + 60, 60 } );
 
-	std::vector<Vertex> vertices;
-	vertices.push_back( { {  0, -1, 0 }, vec4::red() } );
-	vertices.push_back( { {  1,  1, 0 }, vec4::green() } );
-	vertices.push_back( { { -1,  1, 0 }, vec4::blue() } );
+	Vertex vertices[] =
+	{
+		{ {  0, -1, 0 }, vec4::red() },
+		{ {  1,  1, 0 }, vec4::green() },
+		{ { -1,  1, 0 }, vec4::blue() }
+	};
+
+	FrameData fd;
+	fd.ProjectionMatrix = gl3d::mat4();
+	fd.ViewMatrix = gl3d::mat4();
 
 	auto sc = std::make_shared<shader_code>();
 	sc->load( "../../data/shaders/Test.shader" );
 
 	auto q = std::make_shared<cmd_queue>();
 	q->bind_shader( std::make_shared<shader>( sc ) );
-	q->bind_vertex_buffer( std::make_shared<buffer>( vertices ), Vertex::get_layout() );
+	q->set_uniform_block( 0, fd );
+	q->bind_vertex_buffer( std::make_shared<buffer>( buffer_usage::immutable, vertices ), Vertex::get_layout() );
 	q->draw( gl_enum::TRIANGLES, 0, 3 );
 
 	on_tick += [&]()

@@ -34,6 +34,16 @@ namespace detail {
 
 thread_local context *tl_currentContext = nullptr;
 
+//---------------------------------------------------------------------------------------------------------------------
+int find_uniform_id( const detail::location_variant &location )
+{
+	if ( !location.holds_name() ) return location.id();
+
+	int programID;
+	glGetIntegerv( +gl_enum::CURRENT_PROGRAM, &programID );
+	return gl.GetUniformLocation( programID, location.data );
+}
+
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -77,17 +87,18 @@ void check_gl_error()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-buffer::buffer( const void *initialData, size_t initialSize, bool makeCopy )
-	: _size( initialSize )
-	, _owner( ( initialData != nullptr ) && makeCopy )
+buffer::buffer( buffer_usage usage, const void *data, size_t size, bool makeCopy )
+	: _usage( usage )
+	, _size( size )
+	, _owner( ( data != nullptr ) && makeCopy )
 {
 	if ( _owner )
 	{
 		_data = new uint8_t[_size];
-		memcpy( _data, initialData, _size );
+		memcpy( _data, data, _size );
 	}
 	else
-		_data = static_cast<uint8_t *>( const_cast<void *>( initialData ) );
+		_data = static_cast<uint8_t *>( const_cast<void *>( data ) );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -440,14 +451,15 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::update_constants( const detail::location_variant &location, const void *data, size_t size )
+void cmd_queue::set_uniform_block( const detail::location_variant &location, const void *data, size_t size )
 {
 	assert( data && size );
 
 	if ( _recording )
 	{
 		assert( size <= 65536 );
-		//! write variant here
+		write( cmd_type::set_uniform_block );
+		write_location_variant( location );
 		write_data( data, size );
 	}
 	else
@@ -619,6 +631,14 @@ void cmd_queue::execute( gl_state *state )
 				auto use16bits = read<bool>();
 				auto offset = read<size_t>();
 				bind_index_buffer( ib, use16bits, offset );
+			}
+			break;
+
+			case cmd_type::set_uniform_block:
+			{
+				auto location = read_location_variant();
+				auto data = read_data();
+				set_uniform_block( location, data.first, data.second );
 			}
 			break;
 
