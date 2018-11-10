@@ -18,7 +18,7 @@
 namespace gl3d {
 
 decltype( on_log_message ) on_log_message;
-decltype( on_data_request ) on_data_request;
+decltype( on_vfs_load ) on_vfs_load;
 
 namespace detail {
 
@@ -112,7 +112,7 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 					path = cwd / path;
 
 				bytes_t bytes;
-				if ( !on_data_request.call( path, bytes ) )
+				if ( !vfs::load( path, bytes ) )
 				{
 					log::error( "Could not open file stream: %s", path.c_str() );
 					result = false;
@@ -218,7 +218,7 @@ void vfs::mount( const std::filesystem::path &path )
 			return false;
 		};
 
-		on_data_request += callback;
+		on_vfs_load += callback;
 		detail::g_mountInfos.push_back( { absPath, callback } );
 	}
 }
@@ -235,6 +235,12 @@ bool vfs::unmount( const std::filesystem::path &path )
 
 	detail::g_mountInfos.erase( iter );
 	return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool vfs::load( const std::filesystem::path &path, detail::bytes_t &bytes )
+{
+	return on_vfs_load.call( path, bytes );
 }
 
 } // namespace gl3d

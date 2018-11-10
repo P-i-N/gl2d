@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <memory>
-#include <variant>
 
 #include <filesystem>
 
@@ -63,34 +62,38 @@ struct gl_api
 	GL_PROC(     void, BindBuffer, gl_enum, unsigned )
 	GL_PROC(     void, BufferData, gl_enum, ptrdiff_t, const void *, gl_enum )
 
-	GL_PROC( unsigned, CreateShader, gl_enum )
-	GL_PROC(     void, DeleteShader, unsigned )
-	GL_PROC(     void, ShaderSource, unsigned, int, const char *const *, const int * )
-	GL_PROC(     void, CompileShader, unsigned )
-	GL_PROC(     void, GetShaderiv, unsigned, gl_enum, int *)
-	GL_PROC(     void, GetShaderInfoLog, unsigned, int, int *, char * )
-	GL_PROC( unsigned, CreateProgram )
-	GL_PROC(     void, DeleteProgram, unsigned )
-	GL_PROC(     void, AttachShader, unsigned, unsigned )
-	GL_PROC(     void, DetachShader, unsigned, unsigned )
-	GL_PROC(     void, LinkProgram, unsigned )
-	GL_PROC(     void, UseProgram, unsigned )
-	GL_PROC(     void, GetProgramiv, unsigned, gl_enum, int * )
-	GL_PROC( unsigned, GetUniformLocation, unsigned, const char * )
-	GL_PROC(     void, Uniform1i, int, int )
-	GL_PROC(     void, Uniform2fv, int, int, const float * )
-	GL_PROC(     void, UniformMatrix4fv, int, int, unsigned char, const float * )
-	GL_PROC(     void, ActiveTexture, gl_enum )
 	GL_PROC(     void, Enablei, gl_enum, unsigned )
 	GL_PROC(     void, Disablei, gl_enum, unsigned )
 	GL_PROC(     void, BlendFunci, unsigned, gl_enum, gl_enum )
 	GL_PROC(     void, BlendEquationi, unsigned, gl_enum )
 
-	/// DSA Buffer Objects
+	/// Shaders and programs
+	GL_PROC(unsigned, CreateShader, gl_enum)
+	GL_PROC(    void, DeleteShader, unsigned)
+	GL_PROC(    void, ShaderSource, unsigned, int, const char *const *, const int *)
+	GL_PROC(    void, CompileShader, unsigned)
+	GL_PROC(    void, GetShaderiv, unsigned, gl_enum, int *)
+	GL_PROC(    void, GetShaderInfoLog, unsigned, int, int *, char *)
+	GL_PROC(    void, AttachShader, unsigned, unsigned)
+	GL_PROC(    void, DetachShader, unsigned, unsigned)
+	GL_PROC(unsigned, CreateProgram)
+	GL_PROC(    void, DeleteProgram, unsigned)
+	GL_PROC(    void, LinkProgram, unsigned)
+	GL_PROC(    void, UseProgram, unsigned)
+	GL_PROC(    void, GetProgramiv, unsigned, gl_enum, int *)
+
+	/// Uniforms
+	GL_PROC( int, GetUniformLocation, unsigned, const char *)
+	GL_PROC(void, Uniform1i, int, int)
+	GL_PROC(void, Uniform1f, int, float)
+	GL_PROC(void, Uniform2fv, int, int, const float *)
+	GL_PROC(void, UniformMatrix4fv, int, int, unsigned char, const float *)
+
+	/// DSA Buffer objects
 	GL_PROC(void, CreateBuffers, int, unsigned *)
 	GL_PROC(void, NamedBufferData, unsigned, int, const void *, gl_enum)
 
-	/// DSA Vertex Array Objects
+	/// DSA Vertex array objects
 	GL_PROC(void, CreateVertexArrays, int, unsigned *)
 	GL_PROC(void, DeleteVertexArrays, int, const unsigned *)
 	GL_PROC(void, BindVertexArray, unsigned)
@@ -136,6 +139,9 @@ enum class gl_enum : unsigned
 	FRAGMENT_SHADER = 0x8B30, VERTEX_SHADER,
 	GEOMETRY_SHADER = 0x8DD9,
 	COMPUTE_SHADER = 0x91B9,
+
+	FLOAT_VEC2 = 0x8B50, FLOAT_VEC3, FLOAT_VEC4, INT_VEC2, INT_VEC3, INT_VEC4, BOOL,
+	FLOAT_MAT2 = 0x8B5A, FLOAT_MAT3, FLOAT_MAT4,
 
 	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
 
@@ -332,9 +338,8 @@ class cmd_queue : public detail::resource
 {
 public:
 	using ptr = std::shared_ptr<cmd_queue>;
-	using location_variant_t = std::variant<unsigned, std::string_view>;
 
-	cmd_queue(): cmd_queue( true ) { }
+	cmd_queue(): cmd_queue( nullptr ) { }
 	virtual ~cmd_queue();
 
 	bool recording() const { return _recording; }
@@ -353,7 +358,11 @@ public:
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
-	void update_uniform_block( location_variant_t location, const void *data, size_t size );
+	void update_constants( const detail::location_variant &location, const void *data, size_t size );
+
+	void set_uniform( const detail::location_variant &location, bool value );
+	void set_uniform( const detail::location_variant &location, int value );
+	void set_uniform( const detail::location_variant &location, float value );
 
 	void draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
 	void draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
@@ -361,7 +370,12 @@ public:
 	void execute( ptr cmdQueue );
 
 protected:
-	cmd_queue( bool record );
+	struct gl_state
+	{
+		unsigned current_program = 0;
+	};
+
+	cmd_queue( gl_state *state );
 
 	template <typename... Args> static constexpr size_t types_size() { return ( sizeof( Args ) + ... + 0 ); }
 
@@ -373,18 +387,6 @@ protected:
 			_recordedData.resize( _position + len );
 
 		write_value( _recordedData.data() + _position, head, tail... );
-		_position += len;
-	}
-
-	void write_string_view( const std::string_view &str )
-	{
-		unsigned strLen = static_cast<unsigned>( str.length() );
-		auto len = sizeof( strLen ) + str.length();
-		if ( _position + len > _recordedData.size() )
-			_recordedData.resize( _position + len );
-
-		memcpy( _recordedData.data() + _position, &strLen, sizeof( strLen ) );
-		memcpy( _recordedData.data() + _position + sizeof( strLen ), str.data(), strLen );
 		_position += len;
 	}
 
@@ -407,6 +409,25 @@ protected:
 			write_value( cursor + sizeof( H ), tail... );
 	}
 
+	void write_location_variant( const detail::location_variant &location )
+	{
+		if ( location.holds_name() )
+		{
+			auto size = location.size();
+			auto len = sizeof( unsigned ) + size + 1;
+			if ( _position + len > _recordedData.size() )
+				_recordedData.resize( _position + len );
+
+			memcpy( _recordedData.data() + _position, &location.size_or_id, sizeof( unsigned ) );
+			_position += sizeof( unsigned );
+			memcpy( _recordedData.data() + _position, location.data, size );
+			_recordedData[_position + size++] = 0;
+			_position += size;
+		}
+		else
+			write( location.size_or_id );
+	}
+
 	template <typename T>
 	const T &read()
 	{
@@ -416,40 +437,49 @@ protected:
 
 	template <typename T> void read( T &value ) { value = read<T>(); }
 
-	std::string_view read_string_view()
-	{
-		return std::string_view();
-	}
-
 	std::pair<const void *, unsigned> read_data()
 	{
 		return { nullptr, 0 };
 	}
 
-	void execute();
+	detail::location_variant read_location_variant()
+	{
+		auto size_or_id = read<unsigned>();
+		if ( size_or_id & 0x80000000u )
+		{
+			auto data = reinterpret_cast<const char *>( _recordedData.data() + _position );
+			_position += ( size_or_id & 0x7FFFFFFFu ) + 1;
+			return { data, size_or_id };
+		}
+
+		return static_cast<int>( size_or_id ) - 1;
+	}
+
+	void execute( gl_state *state );
 
 	bool _recording = true;
 	std::vector<uint8_t> _recordedData;
 	std::vector<detail::resource::ptr> _resources;
 	size_t _position = 0;
+	gl_state *_state = nullptr;
 
 	enum class cmd_type
 	{
-		clear_color,
-		clear_depth,
-		bind_blend_state,
-		bind_depth_stencil_state,
-		bind_rasterizer_state,
-		bind_shader,
-		bind_vertex_buffer,
-		bind_vertex_atrribute,
-		bind_index_buffer,
-		update_uniform_block_name,
-		update_uniform_block_id,
-		draw,
-		draw_indexed,
+		clear_color, clear_depth,
+		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
+		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
+		update_constants_name, update_constants_id,
+		set_uniform,
+		draw, draw_indexed,
 		execute,
 	};
+
+	int find_uniform_id( const detail::location_variant &location ) const
+	{
+		return location.holds_name()
+		       ? gl.GetUniformLocation( _state->current_program, location.data )
+		       : location.id();
+	}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -476,6 +506,7 @@ protected:
 	void *_window_native_handle = nullptr;
 	void *_native_handle = nullptr;
 
+	gl_state _glState;
 	std::unordered_map<std::uintptr_t, unsigned> _layoutVAOs;
 };
 

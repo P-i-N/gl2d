@@ -128,6 +128,22 @@ private:
 	std::vector<callback_info> _callbacks;
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct location_variant
+{
+	const char *data;
+	unsigned size_or_id;
+
+	location_variant( int id ): size_or_id( static_cast<unsigned>( id + 1 ) ) { }
+	location_variant( const char *text, unsigned size ): data( text ), size_or_id( 0x80000000u | size ) { }
+	location_variant( const char *text ): location_variant( text, static_cast<unsigned>( strlen( text ) ) ) { }
+
+	bool holds_name() const { return ( size_or_id & 0x80000000u ) != 0; }
+	unsigned size() const { return size_or_id & 0x7FFFFFFFu; }
+	int id() const { return static_cast<int>( size_or_id ) - 1; }
+};
+
 } // namespace gl3d::detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,9 +167,10 @@ struct vfs
 {
 	static void mount( const std::filesystem::path &path );
 	static bool unmount( const std::filesystem::path &path );
+	static bool load( const std::filesystem::path &path, detail::bytes_t &bytes );
 };
 
-extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & )> on_data_request;
+extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & )> on_vfs_load;
 
 } // namespace gl3d
 

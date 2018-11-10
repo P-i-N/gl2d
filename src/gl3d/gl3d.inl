@@ -86,7 +86,6 @@ void check_gl_error()
 #endif
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------
 buffer::buffer( const void *initialData, size_t initialSize, bool makeCopy )
 	: _size( initialSize )
@@ -287,7 +286,7 @@ bool shader_code::load( std::istream &is, const std::filesystem::path &cwd )
 bool shader_code::load( const std::filesystem::path &path )
 {
 	detail::bytes_t bytes;
-	if ( !on_data_request.call( path, bytes ) )
+	if ( !vfs::load( path, bytes ) )
 		return false;
 
 	if ( !source( detail::to_string_view( bytes ), path.parent_path() ) )
@@ -300,10 +299,15 @@ bool shader_code::load( const std::filesystem::path &path )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-cmd_queue::cmd_queue( bool record )
-	: _recording( record )
+cmd_queue::cmd_queue( gl_state *state )
+	: _recording( state == nullptr )
+	, _state( state )
 {
-
+	if ( _recording )
+	{
+		_recordedData.reserve( 65536 );
+		_resources.reserve( 1024 );
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -388,11 +392,17 @@ void cmd_queue::bind_shader( shader::ptr sh )
 	{
 		if ( sh )
 		{
-			if ( !sh->id() ) sh->compile();
+			if ( !sh->id() )
+				sh->compile();
+
 			gl.UseProgram( sh->id() );
+			_state->current_program = sh->id();
 		}
 		else
+		{
 			gl.UseProgram( 0 );
+			_state->current_program = 0;
+		}
 	}
 }
 
@@ -440,27 +450,64 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::update_uniform_block( location_variant_t location, const void *data, size_t size )
+void cmd_queue::update_constants( const detail::location_variant &location, const void *data, size_t size )
 {
 	assert( data && size );
 
 	if ( _recording )
 	{
 		assert( size <= 65536 );
-
-		if ( std::holds_alternative<unsigned>( location ) )
-			write( cmd_type::update_uniform_block_id, std::get<unsigned>( location ) );
-		else
-		{
-			write( cmd_type::update_uniform_block_name );
-			write_string_view( std::get<std::string_view>( location ) );
-		}
-
+		//! write variant here
 		write_data( data, size );
 	}
 	else
 	{
 
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, bool value )
+{
+	if ( _recording )
+	{
+		write( cmd_type::set_uniform, gl_enum::BOOL, value );
+		write_location_variant( location );
+	}
+	else
+	{
+		auto id = find_uniform_id( location );
+		gl.Uniform1i( id, value ? 1 : 0 );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, int value )
+{
+	if ( _recording )
+	{
+		write( cmd_type::set_uniform, gl_enum::INT, value );
+		write_location_variant( location );
+	}
+	else
+	{
+		auto id = find_uniform_id( location );
+		gl.Uniform1i( id, value );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, float value )
+{
+	if ( _recording )
+	{
+		write( cmd_type::set_uniform, gl_enum::FLOAT, value );
+		write_location_variant( location );
+	}
+	else
+	{
+		auto id = find_uniform_id( location );
+		gl.Uniform1f( id, value );
 	}
 }
 
@@ -502,13 +549,14 @@ void cmd_queue::execute( ptr cmdQueue )
 	}
 	else
 	{
-		cmdQueue->execute();
+		cmdQueue->execute( _state );
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::execute()
+void cmd_queue::execute( gl_state *state )
 {
+	_state = state;
 	_recording = false;
 	_position = 0;
 	size_t resIndex = 0;
@@ -584,6 +632,34 @@ void cmd_queue::execute()
 			}
 			break;
 
+			case cmd_type::set_uniform:
+			{
+				switch ( read<gl_enum>() )
+				{
+					case gl_enum::BOOL:
+					{
+						auto value = read<bool>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+
+					case gl_enum::INT:
+					{
+						auto value = read<int>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+
+					case gl_enum::FLOAT:
+					{
+						auto value = read<float>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+				}
+			}
+			break;
+
 			case cmd_type::draw:
 			case cmd_type::draw_indexed:
 			{
@@ -611,6 +687,7 @@ void cmd_queue::execute()
 		check_gl_error();
 	}
 
+	_state = nullptr;
 	_recording = true;
 }
 
@@ -629,7 +706,7 @@ unsigned g_contextAttribs[] =
 
 //---------------------------------------------------------------------------------------------------------------------
 context::context( void *windowNativeHandle )
-	: cmd_queue( false )
+	: cmd_queue( &_glState )
 	, _window_native_handle( windowNativeHandle )
 {
 	static HMODULE s_renderDoc = LoadLibraryA( "renderdoc.dll" );
@@ -651,7 +728,7 @@ context::context( void *windowNativeHandle )
 
 //---------------------------------------------------------------------------------------------------------------------
 context::context( ptr sharedContext )
-	: cmd_queue( false )
+	: cmd_queue( &_glState )
 	, _window_native_handle( sharedContext->_window_native_handle )
 {
 	sharedContext->make_current();
@@ -665,6 +742,8 @@ context::context( ptr sharedContext )
 	                     reinterpret_cast<const int *>( g_contextAttribs ) );
 
 	wglMakeCurrent( nullptr, nullptr );
+
+	_state = &_glState;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

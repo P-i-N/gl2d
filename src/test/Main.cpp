@@ -15,7 +15,7 @@ int main()
 {
 	using namespace gl3d;
 
-	window::open( "Main Window", { 800, 600 }, { 1920 * 0 + 60, 60 } );
+	window::open( "Main Window", { 1920, 1200 }, { 1920 * 0 + 60, 60 } );
 
 	std::vector<Vertex> vertices;
 	vertices.push_back( { {  0, -1, 0 }, vec4::red() } );
