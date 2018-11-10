@@ -37,10 +37,10 @@ int main()
 	auto sc = std::make_shared<shader_code>();
 	sc->load( "../../data/shaders/Test.shader" );
 
-	auto q = std::make_shared<cmd_queue>();
-	q->bind_shader( std::make_shared<shader>( sc ) );
+	auto q = cmd_queue::create();
+	q->bind_shader( shader::create( sc ) );
 	q->set_uniform_block( 0, fd );
-	q->bind_vertex_buffer( std::make_shared<buffer>( buffer_usage::immutable, vertices ), Vertex::get_layout() );
+	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::get_layout() );
 	q->draw( gl_enum::TRIANGLES, 0, 3 );
 
 	on_tick += [&]()

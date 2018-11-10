@@ -109,26 +109,63 @@ buffer::~buffer()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void buffer::bind( gl_enum target )
+void buffer::synchronize()
 {
 	if ( !_id )
 	{
 		gl.CreateBuffers( 1, &_id );
+		if ( !_size ) return;
 
-		if ( _size )
+		switch ( _usage )
 		{
-			gl.NamedBufferData( _id, static_cast<int>( _size ), _data, gl_enum::STATIC_DRAW );
-
-			if ( _owner )
+			case buffer_usage::immutable:
+			case buffer_usage::persistent:
+			case buffer_usage::persistent_coherent:
 			{
-				delete[] _data;
-				_data = nullptr;
-				_owner = false;
-			}
-		}
-	}
+				auto flags = +gl_enum::MAP_WRITE_BIT;
 
-	gl.BindBuffer( target, _id );
+				if ( _usage == buffer_usage::persistent )
+					flags |= +gl_enum::MAP_PERSISTENT_BIT;
+				else if ( _usage == buffer_usage::persistent_coherent )
+					flags |= +gl_enum::MAP_PERSISTENT_BIT | +gl_enum::MAP_COHERENT_BIT;
+
+				gl.NamedBufferStorage( _id, static_cast<int>( _size ), _data, flags );
+			}
+			break;
+
+			case buffer_usage::dynamic:
+				gl.NamedBufferData( _id, static_cast<int>( _size ), _data, gl_enum::DYNAMIC_DRAW );
+				break;
+		}
+
+		if ( _owner )
+		{
+			delete[] _data;
+			_data = nullptr;
+			_owner = false;
+		}
+
+		if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
+			_data = reinterpret_cast<uint8_t *>( gl.MapNamedBuffer( _id, +gl_enum::WRITE_ONLY ) );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void *buffer::map() const
+{
+	if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
+		return _data;
+
+	return gl.MapNamedBuffer( _id, +gl_enum::WRITE_ONLY );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void buffer::unmap() const
+{
+	if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
+		return;
+
+	gl.UnmapNamedBuffer( _id );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +272,7 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 	for ( auto &stageSource : _stageSources )
 		stageSource.clear();
 
-	std::string sharedSource = "#version 330 core\n";
+	std::string sharedSource = "#version 420 core\n";
 	std::string *currentStage = &sharedSource;
 
 	_unrolledSource = ss.str();
@@ -417,7 +454,7 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 	}
 	else
 	{
-		vb->bind( gl_enum::ARRAY_BUFFER );
+		vb->synchronize();
 		auto vaoID = detail::tl_currentContext->bind_vao( vb, layout, offset );
 	}
 }
@@ -446,12 +483,12 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 	}
 	else
 	{
-		ib->bind( gl_enum::ELEMENT_ARRAY_BUFFER );
+		ib->synchronize();
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::set_uniform_block( const detail::location_variant &location, const void *data, size_t size )
+size_t cmd_queue::set_uniform_block( const detail::location_variant &location, const void *data, size_t size )
 {
 	assert( data && size );
 
@@ -464,8 +501,26 @@ void cmd_queue::set_uniform_block( const detail::location_variant &location, con
 	}
 	else
 	{
+		auto &ubb = _state->uniform_block_buffer;
+		if ( !ubb )
+		{
+			ubb = buffer::create( buffer_usage::persistent, nullptr, 1024 * 1024 );
+			ubb->synchronize();
+		}
 
+		auto *mappedData = static_cast<uint8_t *>( ubb->map() );
+		memcpy( mappedData + _state->uniform_block_cursor, data, size );
+		gl.FlushMappedNamedBufferRange( ubb->id(), 0, 256 );
+		gl.BindBufferRange( gl_enum::UNIFORM_BUFFER, 0, ubb->id(), 0, 256 );
 	}
+
+	return 0;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform_block( const detail::location_variant &location, size_t offset )
+{
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -752,8 +807,6 @@ context::context( ptr sharedContext )
 	                     reinterpret_cast<const int *>( g_contextAttribs ) );
 
 	wglMakeCurrent( nullptr, nullptr );
-
-	_state = &_glState;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

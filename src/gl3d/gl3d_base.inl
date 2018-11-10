@@ -8,6 +8,19 @@
 #include <fstream>
 #include <sstream>
 
+#if defined(WIN32)
+	#ifndef VC_EXTRALEAN
+		#define VC_EXTRALEAN
+	#endif
+
+	#ifndef WIN32_LEAN_AND_MEAN
+		#define WIN32_LEAN_AND_MEAN
+	#endif
+	#include <windows.h>
+#else
+	#error Not implemented!
+#endif
+
 #define GL3D_FORMAT_LOG_TEXT(_Input) \
 	if (!(_Input)) return; \
 	va_list ap; \
@@ -141,6 +154,42 @@ void *get_proc_address( const char *name )
 #endif
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+struct mount_info
+{
+	std::filesystem::path path;
+	std::function<bool( const std::filesystem::path &, std::vector<uint8_t> & )> callback;
+
+	bool operator==( const std::filesystem::path &p ) const { return path == p; }
+};
+
+std::mutex g_mountInfosMutex;
+std::vector<mount_info> g_mountInfos;
+
+struct vfs_init { vfs_init() { vfs::mount( "." ); } } g_vfsInit;
+
+struct log_init
+{
+	log_init()
+	{
+		on_log_message( []( log::message_type type, const char *text )
+		{
+			static std::recursive_mutex s_logMutex;
+			std::scoped_lock lock( s_logMutex );
+
+#if defined(WIN32)
+			static int s_typeColors[] = { 7, 10, 14, 12, 14 | ( 4 << 4 ) };
+			int color = s_typeColors[static_cast<size_t>( type )];
+			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
+#else
+#error Not implemented!
+#endif
+			printf( "%s\n", detail::tl_logBuffer );
+			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), 7 );
+		} );
+	}
+} g_logInit;
+
 } // namespace gl3d::detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,23 +230,6 @@ void log::fatal( const char *fmt, ... )
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace detail {
-
-struct mount_info
-{
-	std::filesystem::path path;
-	std::function<bool( const std::filesystem::path &, std::vector<uint8_t> & )> callback;
-
-	bool operator==( const std::filesystem::path &p ) const { return path == p; }
-};
-
-std::mutex g_mountInfosMutex;
-std::vector<mount_info> g_mountInfos;
-
-struct vfs_init { vfs_init() { vfs::mount( "." ); } } g_vfsInit;
-
-} // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
 void vfs::mount( const std::filesystem::path &path )

@@ -64,6 +64,9 @@ struct gl_api
 	GL_PROC(    void, UseProgram, unsigned)
 	GL_PROC(    void, GetProgramiv, unsigned, gl_enum, int *)
 
+	/// Buffers
+	GL_PROC(void, BindBufferRange, gl_enum, unsigned, unsigned, ptrdiff_t, size_t)
+
 	/// Uniforms
 	GL_PROC( int, GetUniformLocation, unsigned, const char *)
 	GL_PROC(void, Uniform1i, int, int)
@@ -72,9 +75,13 @@ struct gl_api
 	GL_PROC(void, UniformMatrix4fv, int, int, unsigned char, const float *)
 
 	/// DSA Buffer objects
-	GL_PROC(void, CreateBuffers, int, unsigned *)
-	GL_PROC(void, NamedBufferData, unsigned, int, const void *, gl_enum)
-	GL_PROC(void, NamedBufferStorage, unsigned, int, const void *, unsigned)
+	GL_PROC(   void, CreateBuffers, int, unsigned *)
+	GL_PROC(   void, NamedBufferData, unsigned, int, const void *, gl_enum)
+	GL_PROC(   void, NamedBufferStorage, unsigned, int, const void *, unsigned)
+	GL_PROC( void *, MapNamedBuffer, unsigned, unsigned)
+	GL_PROC( void *, MapNamedBufferRange, unsigned, const void *, int, unsigned)
+	GL_PROC(uint8_t, UnmapNamedBuffer, unsigned)
+	GL_PROC(   void, FlushMappedNamedBufferRange, unsigned, ptrdiff_t, unsigned)
 
 	/// DSA Vertex array objects
 	GL_PROC(void, CreateVertexArrays, int, unsigned *)
@@ -123,11 +130,22 @@ enum class gl_enum : unsigned
 	GEOMETRY_SHADER = 0x8DD9,
 	COMPUTE_SHADER = 0x91B9,
 
+	READ_ONLY = 0x88B8, WRITE_ONLY, READ_WRITE,
+
+	UNIFORM_BUFFER = 0x8A11,
+
 	FLOAT_VEC2 = 0x8B50, FLOAT_VEC3, FLOAT_VEC4, INT_VEC2, INT_VEC3, INT_VEC4, BOOL,
 	FLOAT_MAT2 = 0x8B5A, FLOAT_MAT3, FLOAT_MAT4,
 
 	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
 	CURRENT_PROGRAM = 0x8B8D,
+
+	MAP_READ_BIT = 0x0001,
+	MAP_WRITE_BIT = 0x0002,
+	MAP_PERSISTENT_BIT = 0x0040,
+	MAP_COHERENT_BIT = 0x0080,
+	DYNAMIC_STORAGE_BIT = 0x0100,
+	CLIENT_STORAGE_BIT = 0x0200,
 
 #if defined(WIN32)
 	CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
@@ -191,13 +209,13 @@ private:
 
 namespace detail {
 
-class resource
+class basic_object
 {
 public:
-	using ptr = std::shared_ptr<resource>;
+	using ptr = std::shared_ptr<basic_object>;
 };
 
-class render_object : public resource
+class render_object : public basic_object
 {
 public:
 	using ptr = std::shared_ptr<render_object>;
@@ -216,15 +234,16 @@ protected:
 
 enum class buffer_usage
 {
-	immutable,
-	dynamic,
-	persistent
+	immutable, dynamic, persistent, persistent_coherent
 };
 
 class buffer : public detail::render_object
 {
 public:
 	using ptr = std::shared_ptr<buffer>;
+
+	template <typename... Args>
+	static ptr create( Args &&... args ) { return std::make_shared<buffer>( args... ); }
 
 	buffer( buffer_usage usage, const void *data, size_t size, bool makeCopy = true );
 
@@ -238,7 +257,13 @@ public:
 
 	buffer_usage usage() const { return _usage; }
 
-	void bind( gl_enum target );
+	size_t size() const { return _size; }
+
+	void synchronize();
+
+	void *map() const;
+
+	void unmap() const;
 
 protected:
 	buffer_usage _usage;
@@ -259,6 +284,9 @@ class shader : public detail::render_object
 public:
 	using ptr = std::shared_ptr<shader>;
 
+	template <typename... Args>
+	static ptr create( Args &&... args ) { return std::make_shared<shader>( args... ); }
+
 	shader( std::shared_ptr<shader_code> code, std::string_view defines = std::string_view() );
 	virtual ~shader();
 
@@ -273,7 +301,7 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class shader_code : public detail::resource
+class shader_code
 {
 public:
 	using ptr = std::shared_ptr<shader_code>;
@@ -327,10 +355,13 @@ struct rasterizer_state
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class cmd_queue : public detail::resource
+class cmd_queue : public detail::basic_object
 {
 public:
 	using ptr = std::shared_ptr<cmd_queue>;
+
+	template <typename... Args>
+	static ptr create() { return std::make_shared<cmd_queue>(); }
 
 	cmd_queue(): cmd_queue( nullptr ) { }
 	virtual ~cmd_queue();
@@ -351,7 +382,8 @@ public:
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
-	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
+	size_t set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
+	void set_uniform_block( const detail::location_variant &location, size_t offset );
 
 	template <typename T>
 	void set_uniform_block( const detail::location_variant &location, const T &block )
@@ -372,6 +404,8 @@ protected:
 	struct gl_state
 	{
 		unsigned current_program = 0;
+		buffer::ptr uniform_block_buffer;
+		size_t uniform_block_cursor = 0;
 	};
 
 	cmd_queue( gl_state *state );
@@ -462,7 +496,7 @@ protected:
 
 	bool _recording = true;
 	std::vector<uint8_t> _recordedData;
-	std::vector<detail::resource::ptr> _resources;
+	std::vector<detail::basic_object::ptr> _resources;
 	size_t _position = 0;
 	gl_state *_state = nullptr;
 
