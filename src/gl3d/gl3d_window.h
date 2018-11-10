@@ -7,7 +7,6 @@
 #include <thread>
 
 #include "gl3d.h"
-#include "gl3d_input.h"
 
 namespace gl3d::detail { struct window_impl; }
 
