@@ -79,6 +79,8 @@ protected:
 	ivec2 _size;
 };
 
+extern detail::callback_chain<void( window::ptr, const detail::files_t & )> on_drop_files;
+
 } // namespace gl3d
 
 #endif // __GL3D_WIN32_H__

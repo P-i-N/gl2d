@@ -17,6 +17,7 @@ namespace gl3d {
 namespace detail {
 
 using bytes_t = std::vector<uint8_t>;
+using files_t = std::vector<std::filesystem::path>;
 
 //---------------------------------------------------------------------------------------------------------------------
 std::string_view trim( std::string_view text );

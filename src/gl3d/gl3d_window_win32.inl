@@ -16,6 +16,8 @@
 #include <windowsx.h>
 #include <hidsdi.h>
 #include <Xinput.h>
+#include <shellapi.h>
+
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "xinput.lib")
 
@@ -24,6 +26,8 @@
 namespace gl3d {
 
 namespace detail {
+
+decltype( on_drop_files ) on_drop_files;
 
 bool g_should_quit = false;
 unsigned g_next_window_id = 0;
@@ -142,6 +146,8 @@ window::ptr window::open( std::string_view title, ivec2 size, ivec2 pos, unsigne
 	result->_title = title;
 	result->_pos = pos;
 	result->_size = size;
+
+	DragAcceptFiles( handle, TRUE );
 
 	on_event.call( event( event_type::open, result->_id ) );
 	return result;
@@ -544,6 +550,33 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 					e.move = { LOWORD( lParam ), HIWORD( lParam ) };
 					on_event.call( e );
 					w->_pos = e.move;
+				}
+				return 0;
+
+				case WM_DROPFILES:
+				{
+					detail::files_t files;
+					auto hDrop = HDROP( wParam );
+
+					unsigned index = 0;
+					while ( true )
+					{
+						TCHAR buff[256];
+						if ( !DragQueryFile( hDrop, index, buff, 256 ) )
+							break;
+
+						files.push_back( buff );
+
+						/// This is case sensitive even on Windows, F#*K!
+						if ( !_wcsicmp( files.back().extension().c_str(), L".lnk" ) )
+						{
+
+						}
+
+						++index;
+					}
+
+					on_drop_files.call( w, files );
 				}
 				return 0;
 
