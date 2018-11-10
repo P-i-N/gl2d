@@ -34,16 +34,6 @@ namespace detail {
 
 thread_local context *tl_currentContext = nullptr;
 
-//---------------------------------------------------------------------------------------------------------------------
-void *gl_api::get_proc_address( const char *name )
-{
-#if defined(WIN32)
-	return wglGetProcAddress( name );
-#else
-#error Not implemented!
-#endif
-}
-
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------

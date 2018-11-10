@@ -131,6 +131,16 @@ bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const 
 	return result;
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+void *get_proc_address( const char *name )
+{
+#if defined(WIN32)
+	return wglGetProcAddress( name );
+#else
+#error Not implemented!
+#endif
+}
+
 } // namespace gl3d::detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

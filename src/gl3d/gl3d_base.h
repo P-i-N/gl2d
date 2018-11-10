@@ -22,6 +22,7 @@ std::string_view to_string_view( bytes_t &bytes );
 void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
 void read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm = false, size_t size = size_t( -1 ) );
 bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd );
+void *get_proc_address( const char *name );
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename... Tail>
@@ -142,6 +143,24 @@ struct location_variant
 	bool holds_name() const { return ( size_or_id & 0x80000000u ) != 0; }
 	unsigned size() const { return size_or_id & 0x7FFFFFFFu; }
 	int id() const { return static_cast<int>( size_or_id ) - 1; }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename F> struct proc_wrapper
+{
+	void *ptr = nullptr;
+	proc_wrapper( const char *name ) : ptr( get_proc_address( name ) ) { }
+
+	template <typename... Args>
+	std::result_of_t<std::function<F>( Args... )> operator()( Args... args ) const
+	{
+		auto f = static_cast<F *>( ptr );
+		if constexpr ( std::is_void_v<std::result_of_t<std::function<F>( Args... )>> )
+			f( args... );
+		else
+			return f( args... );
+	}
 };
 
 } // namespace gl3d::detail

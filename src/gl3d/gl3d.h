@@ -31,24 +31,6 @@ namespace detail {
 
 struct gl_api
 {
-	static void *get_proc_address( const char *name );
-
-	template <typename F> struct proc_wrapper
-	{
-		void *ptr = nullptr;
-		proc_wrapper( const char *name ) : ptr( get_proc_address( name ) ) { }
-
-		template <typename... Args>
-		std::result_of_t<std::function<F>( Args... )> operator()( Args... args ) const
-		{
-			auto f = static_cast<F *>( ptr );
-			if constexpr ( std::is_void_v<std::result_of_t<std::function<F>( Args... )>> )
-				f( args... );
-			else
-				return f( args... );
-		}
-	};
-
 #if defined(WIN32)
 #define GL_PROC(_Returns, _Name, ...) proc_wrapper<_Returns __stdcall ( __VA_ARGS__ )> _Name { "gl" #_Name };
 	proc_wrapper<void *__stdcall ( void *, void *, const int * )> CreateContextAttribsARB { "wglCreateContextAttribsARB" };
