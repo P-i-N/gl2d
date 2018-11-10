@@ -79,7 +79,7 @@ struct gl_api
 	GL_PROC(   void, NamedBufferData, unsigned, int, const void *, gl_enum)
 	GL_PROC(   void, NamedBufferStorage, unsigned, int, const void *, unsigned)
 	GL_PROC( void *, MapNamedBuffer, unsigned, unsigned)
-	GL_PROC( void *, MapNamedBufferRange, unsigned, const void *, int, unsigned)
+	GL_PROC( void *, MapNamedBufferRange, unsigned, ptrdiff_t, int, unsigned)
 	GL_PROC(uint8_t, UnmapNamedBuffer, unsigned)
 	GL_PROC(   void, FlushMappedNamedBufferRange, unsigned, ptrdiff_t, unsigned)
 
@@ -403,7 +403,6 @@ public:
 protected:
 	struct gl_state
 	{
-		unsigned current_program = 0;
 		buffer::ptr uniform_block_buffer;
 		size_t uniform_block_cursor = 0;
 	};

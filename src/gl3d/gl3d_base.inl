@@ -172,7 +172,7 @@ struct log_init
 {
 	log_init()
 	{
-		on_log_message( []( log::message_type type, const char *text )
+		on_log_message += []( log::message_type type, const char *text )
 		{
 			static std::recursive_mutex s_logMutex;
 			std::scoped_lock lock( s_logMutex );
@@ -186,7 +186,7 @@ struct log_init
 #else
 #error Not implemented!
 #endif
-		} );
+		};
 	}
 } g_logInit;
 

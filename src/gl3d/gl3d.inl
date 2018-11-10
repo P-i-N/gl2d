@@ -116,14 +116,14 @@ void buffer::synchronize()
 		gl.CreateBuffers( 1, &_id );
 		if ( !_size ) return;
 
+		auto flags = +gl_enum::MAP_WRITE_BIT;
+
 		switch ( _usage )
 		{
 			case buffer_usage::immutable:
 			case buffer_usage::persistent:
 			case buffer_usage::persistent_coherent:
 			{
-				auto flags = +gl_enum::MAP_WRITE_BIT;
-
 				if ( _usage == buffer_usage::persistent )
 					flags |= +gl_enum::MAP_PERSISTENT_BIT;
 				else if ( _usage == buffer_usage::persistent_coherent )
@@ -146,7 +146,7 @@ void buffer::synchronize()
 		}
 
 		if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
-			_data = reinterpret_cast<uint8_t *>( gl.MapNamedBuffer( _id, +gl_enum::WRITE_ONLY ) );
+			_data = reinterpret_cast<uint8_t *>( gl.MapNamedBufferRange( _id, 0, _size, flags ) );
 	}
 }
 
@@ -430,17 +430,11 @@ void cmd_queue::bind_shader( shader::ptr sh )
 	{
 		if ( sh )
 		{
-			if ( !sh->id() )
-				sh->compile();
-
+			if ( !sh->id() ) sh->compile();
 			gl.UseProgram( sh->id() );
-			_state->current_program = sh->id();
 		}
 		else
-		{
 			gl.UseProgram( 0 );
-			_state->current_program = 0;
-		}
 	}
 }
 
@@ -504,13 +498,13 @@ size_t cmd_queue::set_uniform_block( const detail::location_variant &location, c
 		auto &ubb = _state->uniform_block_buffer;
 		if ( !ubb )
 		{
-			ubb = buffer::create( buffer_usage::persistent, nullptr, 1024 * 1024 );
+			ubb = buffer::create( buffer_usage::persistent_coherent, nullptr, 1024 * 1024 );
 			ubb->synchronize();
 		}
 
 		auto *mappedData = static_cast<uint8_t *>( ubb->map() );
 		memcpy( mappedData + _state->uniform_block_cursor, data, size );
-		gl.FlushMappedNamedBufferRange( ubb->id(), 0, 256 );
+		//gl.FlushMappedNamedBufferRange( ubb->id(), 0, 256 );
 		gl.BindBufferRange( gl_enum::UNIFORM_BUFFER, 0, ubb->id(), 0, 256 );
 	}
 
