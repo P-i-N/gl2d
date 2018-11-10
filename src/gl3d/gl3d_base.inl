@@ -181,11 +181,11 @@ struct log_init
 			static int s_typeColors[] = { 7, 10, 14, 12, 14 | ( 4 << 4 ) };
 			int color = s_typeColors[static_cast<size_t>( type )];
 			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
+			printf( "%s\n", detail::tl_logBuffer );
+			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), 7 );
 #else
 #error Not implemented!
 #endif
-			printf( "%s\n", detail::tl_logBuffer );
-			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), 7 );
 		} );
 	}
 } g_logInit;
