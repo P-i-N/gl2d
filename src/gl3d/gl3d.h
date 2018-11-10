@@ -48,6 +48,7 @@ struct gl_api
 	GL_PROC(     void, Disablei, gl_enum, unsigned )
 	GL_PROC(     void, BlendFunci, unsigned, gl_enum, gl_enum )
 	GL_PROC(     void, BlendEquationi, unsigned, gl_enum )
+	GL_PROC(     void, GetIntegerv, gl_enum, int *)
 
 	/// Shaders and programs
 	GL_PROC(unsigned, CreateShader, gl_enum)
@@ -79,7 +80,7 @@ struct gl_api
 	GL_PROC(   void, NamedBufferData, unsigned, int, const void *, gl_enum)
 	GL_PROC(   void, NamedBufferStorage, unsigned, int, const void *, unsigned)
 	GL_PROC( void *, MapNamedBuffer, unsigned, unsigned)
-	GL_PROC( void *, MapNamedBufferRange, unsigned, ptrdiff_t, int, unsigned)
+	GL_PROC( void *, MapNamedBufferRange, unsigned, ptrdiff_t, unsigned, unsigned)
 	GL_PROC(uint8_t, UnmapNamedBuffer, unsigned)
 	GL_PROC(   void, FlushMappedNamedBufferRange, unsigned, ptrdiff_t, unsigned)
 
@@ -133,6 +134,7 @@ enum class gl_enum : unsigned
 	READ_ONLY = 0x88B8, WRITE_ONLY, READ_WRITE,
 
 	UNIFORM_BUFFER = 0x8A11,
+	UNIFORM_BUFFER_OFFSET_ALIGNMENT = 0x8A34,
 
 	FLOAT_VEC2 = 0x8B50, FLOAT_VEC3, FLOAT_VEC4, INT_VEC2, INT_VEC3, INT_VEC4, BOOL,
 	FLOAT_MAT2 = 0x8B5A, FLOAT_MAT3, FLOAT_MAT4,
@@ -382,8 +384,7 @@ public:
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
-	size_t set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
-	void set_uniform_block( const detail::location_variant &location, size_t offset );
+	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
 
 	template <typename T>
 	void set_uniform_block( const detail::location_variant &location, const T &block )
@@ -405,6 +406,7 @@ protected:
 	{
 		buffer::ptr uniform_block_buffer;
 		size_t uniform_block_cursor = 0;
+		int uniform_block_alignment = 0;
 	};
 
 	cmd_queue( gl_state *state );

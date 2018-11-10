@@ -421,6 +421,10 @@ template <class T> T degrees(T radians) { return radians / static_cast<T>(pi) * 
 template <class T> T radians(T degrees) { return degrees / 180 * static_cast<T>(pi); }
 
 //---------------------------------------------------------------------------------------------------------------------
+template <typename T>
+constexpr T align_up(T x, T alignment) { return ((x + alignment - 1) / alignment) * alignment; }
+
+//---------------------------------------------------------------------------------------------------------------------
 using vec2 = detail::xvec2<float>;
 using dvec2 = detail::xvec2<double>;
 using ivec2 = detail::xvec2<int>;

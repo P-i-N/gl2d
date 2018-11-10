@@ -146,7 +146,7 @@ void buffer::synchronize()
 		}
 
 		if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
-			_data = reinterpret_cast<uint8_t *>( gl.MapNamedBufferRange( _id, 0, _size, flags ) );
+			_data = reinterpret_cast<uint8_t *>( gl.MapNamedBufferRange( _id, 0, static_cast<unsigned>( _size ), flags ) );
 	}
 }
 
@@ -359,6 +359,11 @@ void cmd_queue::reset()
 {
 	_position = 0;
 	_resources.clear();
+
+	if ( _state )
+	{
+
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -482,7 +487,7 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-size_t cmd_queue::set_uniform_block( const detail::location_variant &location, const void *data, size_t size )
+void cmd_queue::set_uniform_block( const detail::location_variant &location, const void *data, size_t size )
 {
 	assert( data && size );
 
@@ -500,21 +505,17 @@ size_t cmd_queue::set_uniform_block( const detail::location_variant &location, c
 		{
 			ubb = buffer::create( buffer_usage::persistent_coherent, nullptr, 1024 * 1024 );
 			ubb->synchronize();
+			glGetIntegerv( +gl_enum::UNIFORM_BUFFER_OFFSET_ALIGNMENT, &_state->uniform_block_alignment );
 		}
 
 		auto *mappedData = static_cast<uint8_t *>( ubb->map() );
 		memcpy( mappedData + _state->uniform_block_cursor, data, size );
-		//gl.FlushMappedNamedBufferRange( ubb->id(), 0, 256 );
-		gl.BindBufferRange( gl_enum::UNIFORM_BUFFER, 0, ubb->id(), 0, 256 );
+		gl.BindBufferRange( gl_enum::UNIFORM_BUFFER, 0, ubb->id(), _state->uniform_block_cursor, size );
+
+		_state->uniform_block_cursor = align_up( _state->uniform_block_cursor + size, static_cast<size_t>( _state->uniform_block_alignment ) );
+		if ( _state->uniform_block_cursor >= ubb->size() )
+			_state->uniform_block_cursor = 0;
 	}
-
-	return 0;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::set_uniform_block( const detail::location_variant &location, size_t offset )
-{
-
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -781,6 +782,7 @@ context::context( void *windowNativeHandle )
 	                     nullptr,
 	                     reinterpret_cast<const int *>( g_contextAttribs ) );
 
+	reset();
 	wglMakeCurrent( nullptr, nullptr );
 	wglDeleteContext( tempContext );
 }
@@ -800,6 +802,7 @@ context::context( ptr sharedContext )
 	                     HGLRC( sharedContext->_native_handle ),
 	                     reinterpret_cast<const int *>( g_contextAttribs ) );
 
+	reset();
 	wglMakeCurrent( nullptr, nullptr );
 }
 
