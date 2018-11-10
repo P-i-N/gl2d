@@ -331,6 +331,36 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class texture : public detail::render_object
+{
+public:
+	using ptr = std::shared_ptr<buffer>;
+
+	template <typename... Args>
+	static ptr create( Args &&... args ) { return std::make_shared<buffer>( args... ); }
+
+	texture( gl_enum type );
+
+	virtual ~texture();
+
+	gl_enum type() const { return _type; }
+
+	struct part
+	{
+		unsigned layer = 0;
+		unsigned mip_level = 0;
+		ivec2 dimensions;
+		unsigned offset = 0;
+		unsigned row_stride = 0;
+		unsigned length = 0;
+	};
+
+protected:
+	gl_enum _type = gl_enum::NONE;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 struct blend_state
 {
 	uint8_t mask = 0xFFu;
