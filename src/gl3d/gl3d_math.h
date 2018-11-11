@@ -428,12 +428,15 @@ constexpr T align_up(T x, T alignment) { return ((x + alignment - 1) / alignment
 using vec2 = detail::xvec2<float>;
 using dvec2 = detail::xvec2<double>;
 using ivec2 = detail::xvec2<int>;
+using uvec2 = detail::xvec2<unsigned>;
 using vec3 = detail::xvec3<float>;
 using dvec3 = detail::xvec3<double>;
 using ivec3 = detail::xvec3<int>;
+using uvec3 = detail::xvec3<unsigned>;
 using vec4 = detail::xvec4<float>;
 using dvec4 = detail::xvec4<double>;
 using ivec4 = detail::xvec4<int>;
+using uvec4 = detail::xvec4<unsigned>;
 using byte_vec4 = detail::xvec4<unsigned char>;
 using mat3 = detail::xmat3<float>;
 using dmat3 = detail::xmat3<double>;

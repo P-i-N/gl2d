@@ -37,6 +37,8 @@ int main()
 	auto sc = std::make_shared<shader_code>();
 	sc->load( "../../data/shaders/Test.shader" );
 
+	//auto t = texture::create(gl_enum::TEXTURE_2D)
+
 	auto q = cmd_queue::create();
 	q->bind_shader( shader::create( sc ) );
 	q->set_uniform_block( 0, fd );

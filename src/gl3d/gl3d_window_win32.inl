@@ -566,13 +566,6 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 							break;
 
 						files.push_back( buff );
-
-						/// This is case sensitive even on Windows, F#*K!
-						if ( !_wcsicmp( files.back().extension().c_str(), L".lnk" ) )
-						{
-
-						}
-
 						++index;
 					}
 

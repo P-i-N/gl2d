@@ -39,11 +39,6 @@ struct gl_api
 #endif
 
 	// *INDENT-OFF*
-	GL_PROC(     void, GenBuffers, int, unsigned * )
-	GL_PROC(     void, DeleteBuffers, int, const unsigned * )
-	GL_PROC(     void, BindBuffer, gl_enum, unsigned )
-	GL_PROC(     void, BufferData, gl_enum, ptrdiff_t, const void *, gl_enum )
-
 	GL_PROC(     void, Enablei, gl_enum, unsigned )
 	GL_PROC(     void, Disablei, gl_enum, unsigned )
 	GL_PROC(     void, BlendFunci, unsigned, gl_enum, gl_enum )
@@ -65,9 +60,6 @@ struct gl_api
 	GL_PROC(    void, UseProgram, unsigned)
 	GL_PROC(    void, GetProgramiv, unsigned, gl_enum, int *)
 
-	/// Buffers
-	GL_PROC(void, BindBufferRange, gl_enum, unsigned, unsigned, ptrdiff_t, size_t)
-
 	/// Uniforms
 	GL_PROC( int, GetUniformLocation, unsigned, const char *)
 	GL_PROC(void, Uniform1i, int, int)
@@ -75,16 +67,18 @@ struct gl_api
 	GL_PROC(void, Uniform2fv, int, int, const float *)
 	GL_PROC(void, UniformMatrix4fv, int, int, unsigned char, const float *)
 
-	/// DSA Buffer objects
+	/// Buffers
 	GL_PROC(   void, CreateBuffers, int, unsigned *)
+	GL_PROC(   void, DeleteBuffers, int, const unsigned *)
 	GL_PROC(   void, NamedBufferData, unsigned, int, const void *, gl_enum)
 	GL_PROC(   void, NamedBufferStorage, unsigned, int, const void *, unsigned)
 	GL_PROC( void *, MapNamedBuffer, unsigned, unsigned)
 	GL_PROC( void *, MapNamedBufferRange, unsigned, ptrdiff_t, unsigned, unsigned)
 	GL_PROC(uint8_t, UnmapNamedBuffer, unsigned)
 	GL_PROC(   void, FlushMappedNamedBufferRange, unsigned, ptrdiff_t, unsigned)
+	GL_PROC(   void, BindBufferRange, gl_enum, unsigned, unsigned, ptrdiff_t, size_t)
 
-	/// DSA Vertex array objects
+	/// Vertex array objects
 	GL_PROC(void, CreateVertexArrays, int, unsigned *)
 	GL_PROC(void, DeleteVertexArrays, int, const unsigned *)
 	GL_PROC(void, BindVertexArray, unsigned)
@@ -94,12 +88,20 @@ struct gl_api
 	GL_PROC(void, VertexArrayAttribBinding, unsigned, unsigned, unsigned)
 	GL_PROC(void, VertexArrayVertexBuffer, unsigned, unsigned, unsigned, const void *, int)
 
+	/// Textures
+	GL_PROC(void, CreateTextures, gl_enum, unsigned, unsigned *)
+	GL_PROC(void, TextureParameteri, unsigned, gl_enum, int)
+	GL_PROC(void, TextureStorage2D, unsigned, unsigned, gl_enum, unsigned, unsigned)
+	GL_PROC(void, TextureSubImage2D, unsigned, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
+
 	// *INDENT-ON*
 };
 
 #undef GL_PROC
 
 } // namespace gl3d::detail
+
+extern detail::gl_api gl;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -110,6 +112,9 @@ enum class gl_enum : unsigned
 
 	POINTS = 0x0000, LINES,
 	LINE_STRIP = 0x0003, TRIANGLES, TRIANGLE_STRIP,
+
+	TEXTURE_1D = 0x0DE0, TEXTURE_2D,
+	TEXTURE_3D = 0x806F,
 
 	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
 	DOUBLE = 0x140A,
@@ -159,16 +164,20 @@ enum class gl_enum : unsigned
 
 GL3D_ENUM_PLUS( gl_enum )
 
-extern detail::gl_api gl;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+enum class gl_format
+{
+	R8_SNORM = 0x8F94, RG8_SNORM, RGB8_SNORM, RGBA8_SNORM, R16_SNORM, RG16_SNORM, RGB16_SNORM, RGBA16_SNORM,
+};
 
+GL3D_ENUM_PLUS( gl_format )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace detail {
 
+//---------------------------------------------------------------------------------------------------------------------
 struct layout
 {
 	struct attr
@@ -209,18 +218,14 @@ private:
 	}
 };
 
-} // namespace gl3d::detail
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace detail {
-
+//---------------------------------------------------------------------------------------------------------------------
 class basic_object
 {
 public:
 	using ptr = std::shared_ptr<basic_object>;
 };
 
+//---------------------------------------------------------------------------------------------------------------------
 class render_object : public basic_object
 {
 public:
@@ -339,24 +344,40 @@ public:
 	template <typename... Args>
 	static ptr create( Args &&... args ) { return std::make_shared<buffer>( args... ); }
 
-	texture( gl_enum type );
+	texture( gl_enum type, gl_enum format, const uvec3 &dimensions, bool hasMips = false );
 
-	virtual ~texture();
+	texture( gl_enum format, const uvec2 &dimensions, bool hasMips = false )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, hasMips )
+	{
 
-	gl_enum type() const { return _type; }
+	}
 
 	struct part
 	{
 		unsigned layer = 0;
 		unsigned mip_level = 0;
-		ivec2 dimensions;
-		unsigned offset = 0;
-		unsigned row_stride = 0;
-		unsigned length = 0;
+		const void *data = nullptr;
+		size_t row_stride = 0;
 	};
+
+	//texture( gl_enum type, gl_enum format, const part *parts, size_t numParts);
+
+	virtual ~texture();
+
+	gl_enum type() const { return _type; }
+	gl_enum format() const { return _format; }
+
+	unsigned width() const { return _dimensions.x; }
+	unsigned height() const { return _dimensions.y; }
+	unsigned layers() const { return _dimensions.z; }
+
+	void synchronize();
 
 protected:
 	gl_enum _type = gl_enum::NONE;
+	gl_enum _format = gl_enum::NONE;
+	uvec3 _dimensions;
+	buffer::ptr _buffer;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -409,6 +430,8 @@ public:
 	void clear_color( const vec4 &color );
 	void clear_depth( float depth );
 
+	void update_texture( texture::ptr tex, const void *data, unsigned layer = 0, unsigned mipLevel = 0, size_t rowStride = 0 );
+
 	void bind_state( const blend_state &bs );
 	void bind_state( const depth_stencil_state &ds );
 	void bind_state( const rasterizer_state &rs );
@@ -417,6 +440,8 @@ public:
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
+
+	void bind_render_target( texture::ptr tex, unsigned slot, unsigned layer = 0, unsigned mipLevel = 0 );
 
 	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
 
@@ -538,8 +563,10 @@ protected:
 	enum class cmd_type
 	{
 		clear_color, clear_depth,
+		update_texture,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
+		bind_render_target,
 		set_uniform_block, set_uniform,
 		draw, draw_indexed,
 		execute,

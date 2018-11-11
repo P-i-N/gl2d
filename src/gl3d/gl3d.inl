@@ -337,7 +337,7 @@ bool shader_code::load( const std::filesystem::path &path )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-texture::texture( gl_enum type )
+texture::texture( gl_enum type, gl_enum format, const uvec3 &dimensions, bool hasMips )
 	: _type( type )
 {
 
@@ -347,6 +347,15 @@ texture::texture( gl_enum type )
 texture::~texture()
 {
 
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void texture::synchronize()
+{
+	if ( !_id )
+	{
+
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -402,6 +411,20 @@ void cmd_queue::clear_depth( float depth )
 	{
 		glClearDepth( depth );
 		glClear( GL_DEPTH_BUFFER_BIT );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::update_texture( texture::ptr tex, const void *data, unsigned layer, unsigned mipLevel, size_t rowStride )
+{
+	if ( _recording )
+	{
+		write( cmd_type::update_texture, layer, mipLevel, rowStride );
+		_resources.push_back( tex );
+	}
+	else
+	{
+
 	}
 }
 
@@ -498,6 +521,20 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 	else
 	{
 		ib->synchronize();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_render_target( texture::ptr tex, unsigned slot, unsigned layer, unsigned mipLevel )
+{
+	if ( _recording )
+	{
+		write( cmd_type::bind_render_target, slot, layer, mipLevel );
+		_resources.push_back( tex );
+	}
+	else
+	{
+
 	}
 }
 
@@ -696,6 +733,12 @@ void cmd_queue::execute( gl_state *state )
 				auto use16bits = read<bool>();
 				auto offset = read<size_t>();
 				bind_index_buffer( ib, use16bits, offset );
+			}
+			break;
+
+			case cmd_type::bind_render_target:
+			{
+				assert( 0 );
 			}
 			break;
 
