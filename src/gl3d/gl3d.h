@@ -168,6 +168,7 @@ GL3D_ENUM_PLUS( gl_enum )
 
 enum class gl_format
 {
+	NONE = 0,
 	R8_SNORM = 0x8F94, RG8_SNORM, RGB8_SNORM, RGBA8_SNORM, R16_SNORM, RG16_SNORM, RGB16_SNORM, RGBA16_SNORM,
 };
 
@@ -349,10 +350,10 @@ public:
 	template <typename... Args>
 	static ptr create( Args &&... args ) { return std::make_shared<buffer>( args... ); }
 
-	texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips = false );
+	texture( gl_enum type, gl_format format, const uvec4 &dimensions, bool hasMips = false );
 
 	texture( gl_format format, const uvec2 &dimensions, bool hasMips = false )
-		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, hasMips )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1, 1 }, hasMips )
 	{
 
 	}
@@ -365,14 +366,14 @@ public:
 		size_t row_stride = 0;
 	};
 
-	texture( gl_enum type, gl_format format, const uvec3 &dimensions,
+	texture( gl_enum type, gl_format format, const uvec4 &dimensions,
 	         const detail::type_range<part> &parts,
 	         bool buildMips = true, bool makeCopy = true );
 
 	texture( gl_format format, const uvec2 &dimensions,
 	         const detail::type_range<part> &parts,
 	         bool buildMips = true, bool makeCopy = true )
-		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, parts, buildMips, makeCopy )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1, 1 }, parts, buildMips, makeCopy )
 	{
 
 	}
@@ -388,18 +389,24 @@ public:
 	virtual ~texture();
 
 	gl_enum type() const { return _type; }
-	gl_enum format() const { return _format; }
+	gl_format format() const { return _format; }
 
 	unsigned width() const { return _dimensions.x; }
 	unsigned height() const { return _dimensions.y; }
-	unsigned layers() const { return _dimensions.z; }
+	unsigned depth() const { return _dimensions.z; }
+	unsigned array_size() const { return _dimensions.w; }
 
 	void synchronize();
 
 protected:
 	gl_enum _type = gl_enum::NONE;
-	gl_enum _format = gl_enum::NONE;
-	uvec3 _dimensions;
+	gl_format _format = gl_format::NONE;
+	uvec4 _dimensions;
+
+	std::unique_ptr<part[]> _parts;
+	unsigned _numParts = 0;
+	bool _owner = false;
+
 	buffer::ptr _buffer;
 };
 

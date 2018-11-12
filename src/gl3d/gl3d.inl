@@ -337,17 +337,22 @@ bool shader_code::load( const std::filesystem::path &path )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips )
+texture::texture( gl_enum type, gl_format format, const uvec4 &dimensions, bool hasMips )
 	: _type( type )
+	, _format( format )
+	, _dimensions( dimensions )
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 texture::texture(
-    gl_enum type, gl_format format, const uvec3 &dimensions,
+    gl_enum type, gl_format format, const uvec4 &dimensions,
     const detail::type_range<part> &parts,
     bool buildMips, bool makeCopy )
+	: _type( type )
+	, _format( format )
+	, _dimensions( dimensions )
 {
 
 }
