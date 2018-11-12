@@ -21,7 +21,7 @@ int main()
 {
 	using namespace gl3d;
 
-	window::open( "Main Window", { 1920, 1200 }, { 1920 * 0 + 60, 60 } );
+	window::open( "Main Window", { 1280, 800 }, { 1920 * 2 + 60, 60 } );
 
 	Vertex vertices[] =
 	{
@@ -37,20 +37,20 @@ int main()
 	auto sc = std::make_shared<shader_code>();
 	sc->load( "../../data/shaders/Test.shader" );
 
-	//auto t = texture::create(gl_enum::TEXTURE_2D)
+	auto t = new texture( gl_format::R8_SNORM, { 512, 512 } );
 
 	auto q = cmd_queue::create();
 	q->bind_shader( shader::create( sc ) );
 	q->set_uniform_block( 0, fd );
 	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::get_layout() );
-	q->draw( gl_enum::TRIANGLES, 0, 3 );
+	//q->draw( gl_enum::TRIANGLES, 0, 3 );
 
 	on_tick += [&]()
 	{
 		auto w = window::from_id( 0 );
 		auto ctx = w->context();
 
-		ctx->clear_color( { 0.1f, 0.2f, 0.3f, 1.0f } );
+		ctx->clear_color( { 0.0f, 0.0f, 0.0f, 1.0f } );
 		ctx->execute( q );
 	};
 

@@ -184,6 +184,26 @@ struct raw_data_range
 	raw_data_range( const T ( &arr )[N] ): data( &arr[0] ), size( N * sizeof( T ) ) { }
 };
 
+//---------------------------------------------------------------------------------------------------------------------
+template <typename T> struct type_range
+{
+	const T *data;
+	size_t size;
+
+	type_range( const T *ptr, size_t numElements ) : data( ptr ), size( numElements ) { }
+
+	type_range( const T &item ) : data( &item ), size( 1 ) { }
+
+	template <typename U, typename A>
+	type_range( const std::vector<U, A> &v ) : data( v.data() ), size( v.size() ) { }
+
+	template <typename U, size_t N>
+	type_range( const std::array<U, N> &arr ) : data( arr.data() ), size( arr.size() ) { }
+
+	template <typename U, size_t N>
+	type_range( const U( &arr )[N] ) : data( &arr[0] ), size( N ) { }
+};
+
 } // namespace gl3d::detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -226,15 +226,15 @@ public:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class render_object : public basic_object
+class gl_object : public basic_object
 {
 public:
-	using ptr = std::shared_ptr<render_object>;
+	using ptr = std::shared_ptr<gl_object>;
 
 	unsigned id() const { return _id; }
 
 protected:
-	render_object() = default;
+	gl_object() = default;
 
 	unsigned _id = 0;
 };
@@ -248,7 +248,7 @@ enum class buffer_usage
 	immutable, dynamic, persistent, persistent_coherent
 };
 
-class buffer : public detail::render_object
+class buffer : public detail::gl_object
 {
 public:
 	using ptr = std::shared_ptr<buffer>;
@@ -290,7 +290,7 @@ GL3D_ENUM_PLUS( shader_stage )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class shader : public detail::render_object
+class shader : public detail::gl_object
 {
 public:
 	using ptr = std::shared_ptr<shader>;
@@ -336,7 +336,7 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class texture : public detail::render_object
+class texture : public detail::gl_object
 {
 public:
 	using ptr = std::shared_ptr<buffer>;
@@ -344,9 +344,9 @@ public:
 	template <typename... Args>
 	static ptr create( Args &&... args ) { return std::make_shared<buffer>( args... ); }
 
-	texture( gl_enum type, gl_enum format, const uvec3 &dimensions, bool hasMips = false );
+	texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips = false );
 
-	texture( gl_enum format, const uvec2 &dimensions, bool hasMips = false )
+	texture( gl_format format, const uvec2 &dimensions, bool hasMips = false )
 		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, hasMips )
 	{
 
@@ -360,7 +360,19 @@ public:
 		size_t row_stride = 0;
 	};
 
-	//texture( gl_enum type, gl_enum format, const part *parts, size_t numParts);
+	texture( gl_enum type, gl_format format, const uvec3 &dimensions, const detail::type_range<part> &parts, bool buildMips = true );
+
+	texture( gl_format format, const uvec2 &dimensions, const detail::type_range<part> &parts, bool buildMips = true )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, parts, buildMips )
+	{
+
+	}
+
+	texture( gl_format format, const uvec2 &dimensions, const void *data, bool buildMips = true )
+		: texture( format, dimensions, part{ 0, 0, data, 0 }, buildMips )
+	{
+
+	}
 
 	virtual ~texture();
 
