@@ -360,16 +360,22 @@ public:
 		size_t row_stride = 0;
 	};
 
-	texture( gl_enum type, gl_format format, const uvec3 &dimensions, const detail::type_range<part> &parts, bool buildMips = true );
+	texture( gl_enum type, gl_format format, const uvec3 &dimensions,
+	         const detail::type_range<part> &parts,
+	         bool buildMips = true, bool makeCopy = true );
 
-	texture( gl_format format, const uvec2 &dimensions, const detail::type_range<part> &parts, bool buildMips = true )
-		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, parts, buildMips )
+	texture( gl_format format, const uvec2 &dimensions,
+	         const detail::type_range<part> &parts,
+	         bool buildMips = true, bool makeCopy = true )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, parts, buildMips, makeCopy )
 	{
 
 	}
 
-	texture( gl_format format, const uvec2 &dimensions, const void *data, bool buildMips = true )
-		: texture( format, dimensions, part{ 0, 0, data, 0 }, buildMips )
+	texture( gl_format format, const uvec2 &dimensions,
+	         const void *data,
+	         bool buildMips = true, bool makeCopy = true )
+		: texture( format, dimensions, part{ 0, 0, data, 0 }, buildMips, makeCopy )
 	{
 
 	}

@@ -344,7 +344,10 @@ texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, const detail::type_range<part> &parts, bool buildMips )
+texture::texture(
+    gl_enum type, gl_format format, const uvec3 &dimensions,
+    const detail::type_range<part> &parts,
+    bool buildMips, bool makeCopy )
 {
 
 }
