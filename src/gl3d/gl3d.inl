@@ -44,6 +44,30 @@ int find_uniform_id( const detail::location_variant &location )
 	return gl.GetUniformLocation( programID, location.data );
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+struct internal_format
+{
+	gl_enum components = gl_enum::NONE;
+	gl_enum type = gl_enum::NONE;
+	unsigned pixel_size = 0;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+internal_format get_internal_format( gl_format format )
+{
+	static std::unordered_map<gl_format, internal_format> s_internalFormatMap =
+	{
+		{ gl_format::RGB8, { gl_enum::RGB, gl_enum::UNSIGNED_BYTE, 3 } },
+		{ gl_format::RGBA8, { gl_enum::RGBA, gl_enum::UNSIGNED_BYTE, 4 } }
+	};
+
+	if ( auto iter = s_internalFormatMap.find( format ); iter != s_internalFormatMap.end() )
+		return iter->second;
+
+	assert( 0 );
+	return internal_format();
+}
+
 } // namespace gl3d::detail
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -353,14 +377,52 @@ texture::texture(
 	: _type( type )
 	, _format( format )
 	, _dimensions( dimensions )
+	, _owner( makeCopy )
 {
+	auto internalF = detail::get_internal_format( format );
 
+	if ( _numParts = static_cast<unsigned>( parts.size ) )
+	{
+		_parts = std::make_unique<part[]>( _numParts );
+
+		for ( size_t i = 0; i < parts.size; ++i )
+		{
+			auto &p = _parts[i];
+			p = parts.data[i];
+
+			uvec2 size{ maximum( 1, _dimensions.x >> p.mip_level ), maximum( 1, _dimensions.y >> p.mip_level ) };
+
+			if ( !p.row_stride )
+				p.row_stride = size.x * internalF.pixel_size;
+
+			if ( makeCopy )
+			{
+				auto *copy = new uint8_t[p.row_stride * size.y];
+				memcpy( copy, p.data, p.row_stride * size.y );
+				p.data = copy;
+			}
+		}
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 texture::~texture()
 {
+	clear();
+}
 
+//---------------------------------------------------------------------------------------------------------------------
+void texture::clear()
+{
+	if ( _owner && _parts && _numParts )
+	{
+		for ( size_t i = 0; i < _numParts; ++i )
+			delete[] _parts[i].data;
+	}
+
+	_parts.reset();
+	_numParts = 0;
+	_owner = false;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

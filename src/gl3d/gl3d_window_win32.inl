@@ -75,7 +75,7 @@ struct window_class
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-window::ptr window::open( std::string_view title, ivec2 size, ivec2 pos, unsigned flags )
+window::ptr window::open( std::string_view title, uvec2 size, ivec2 pos, unsigned flags )
 {
 	DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 
@@ -181,7 +181,7 @@ void window::title( std::string_view text )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void window::adjust( ivec2 pos, ivec2 size )
+void window::adjust( uvec2 size, ivec2 pos )
 {
 	if ( pos != _pos || size != _size )
 	{

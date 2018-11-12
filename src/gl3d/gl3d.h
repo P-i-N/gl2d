@@ -119,6 +119,9 @@ enum class gl_enum : unsigned
 	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
 	DOUBLE = 0x140A,
 
+	RED = 0x1903,
+	RG = 0x8227, RGB = 0x1907, BGR = 0x80E0, BGRA, RGBA = 0x1908, STENCIL_INDEX = 0x1901, DEPTH_COMPONENT,
+
 	NEVER = 0x0200, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS,
 
 	SRC_COLOR = 0x0300, ONE_MINUS_SRC_COLOR, SRC_ALPHA, ONE_MINUS_SRC_ALPHA, DST_ALPHA, ONE_MINUS_DST_ALPHA,
@@ -169,7 +172,13 @@ GL3D_ENUM_PLUS( gl_enum )
 enum class gl_format
 {
 	NONE = 0,
-	R8_SNORM = 0x8F94, RG8_SNORM, RGB8_SNORM, RGBA8_SNORM, R16_SNORM, RG16_SNORM, RGB16_SNORM, RGBA16_SNORM,
+	RGB8 = 0x8051,
+	RGBA8 = 0x8058,
+
+	R8 = 0x8229, R16, RG8, RG16,
+	R16F, R32F, RG16F, RG32F,
+	R8I, R8UI, R16I, R16UI, R32I, R32UI,
+	RG8I, RG8UI, RG16I, RG16UI, RG32I, RG32UI,
 };
 
 GL3D_ENUM_PLUS( gl_format )
@@ -345,10 +354,10 @@ protected:
 class texture : public detail::gl_object
 {
 public:
-	using ptr = std::shared_ptr<buffer>;
+	using ptr = std::shared_ptr<texture>;
 
 	template <typename... Args>
-	static ptr create( Args &&... args ) { return std::make_shared<buffer>( args... ); }
+	static ptr create( Args &&... args ) { return std::make_shared<texture>( args... ); }
 
 	texture( gl_enum type, gl_format format, const uvec4 &dimensions, bool hasMips = false );
 
@@ -390,6 +399,7 @@ public:
 
 	gl_enum type() const { return _type; }
 	gl_format format() const { return _format; }
+	const uvec4 &dimensions() const { return _dimensions; }
 
 	unsigned width() const { return _dimensions.x; }
 	unsigned height() const { return _dimensions.y; }
@@ -399,6 +409,8 @@ public:
 	void synchronize();
 
 protected:
+	void clear();
+
 	gl_enum _type = gl_enum::NONE;
 	gl_format _format = gl_format::NONE;
 	uvec4 _dimensions;

@@ -40,7 +40,7 @@ class window
 public:
 	using ptr = std::shared_ptr<window>;
 
-	static ptr open( std::string_view title, ivec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_window_flags );
+	static ptr open( std::string_view title, uvec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_window_flags );
 	static ptr from_id( unsigned id );
 
 	virtual ~window();
@@ -55,10 +55,10 @@ public:
 	void title( std::string_view text );
 	const std::string &title() const { return _title; }
 
-	void adjust( ivec2 pos, ivec2 size );
+	void adjust( uvec2 size, ivec2 pos );
 
-	void size( ivec2 size ) { adjust( _pos, size ); }
-	ivec2 size() const { return _size; }
+	void size( uvec2 size ) { adjust( _pos, size ); }
+	uvec2 size() const { return _size; }
 
 	void position( ivec2 pos ) { adjust( pos, _size ); }
 	ivec2 position() const { return _pos; }
@@ -75,7 +75,7 @@ protected:
 	detail::context::ptr _context;
 	std::string _title;
 	ivec2 _pos;
-	ivec2 _size;
+	uvec2 _size;
 };
 
 extern detail::callback_chain<void( window::ptr, const detail::files_t & )> on_drop_files;
