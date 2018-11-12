@@ -19,11 +19,13 @@ void main()
 
 #fragment
 
+uniform sampler2D u_Diffuse;
+
 in vec4 color;
 
 out vec4 out_Color;
 
 void main()
 {
-	out_Color = vec4(color);
+	out_Color = vec4(color) * texture2D(u_Diffuse, color.xy * 10);
 }

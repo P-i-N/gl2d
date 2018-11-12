@@ -24,6 +24,7 @@ class shader;
 class shader_code;
 
 enum class gl_enum : unsigned;
+enum class gl_format : unsigned;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -91,8 +92,9 @@ struct gl_api
 	/// Textures
 	GL_PROC(void, CreateTextures, gl_enum, unsigned, unsigned *)
 	GL_PROC(void, TextureParameteri, unsigned, gl_enum, int)
-	GL_PROC(void, TextureStorage2D, unsigned, unsigned, gl_enum, unsigned, unsigned)
-	GL_PROC(void, TextureSubImage2D, unsigned, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
+	GL_PROC(void, TextureStorage2D, unsigned, unsigned, gl_format, unsigned, unsigned)
+	GL_PROC(void, TextureSubImage2D, unsigned, int, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
+	GL_PROC(void, BindTextureUnit, unsigned, unsigned)
 
 	// *INDENT-ON*
 };
@@ -128,6 +130,8 @@ enum class gl_enum : unsigned
 	DST_COLOR = 0x0306, ONE_MINUS_DST_COLOR, SRC_ALPHA_SATURATE,
 
 	CW = 0x0900, CCW,
+
+	TEXTURE0 = 0x84C0,
 
 	ARRAY_BUFFER = 0x8892, ELEMENT_ARRAY_BUFFER,
 
@@ -169,7 +173,7 @@ GL3D_ENUM_PLUS( gl_enum )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-enum class gl_format
+enum class gl_format : unsigned
 {
 	NONE = 0,
 	RGB8 = 0x8051,
@@ -372,7 +376,6 @@ public:
 		unsigned layer = 0;
 		unsigned mip_level = 0;
 		const void *data = nullptr;
-		size_t row_stride = 0;
 	};
 
 	texture( gl_enum type, gl_format format, const uvec4 &dimensions,
@@ -390,7 +393,7 @@ public:
 	texture( gl_format format, const uvec2 &dimensions,
 	         const void *data,
 	         bool buildMips = true, bool makeCopy = true )
-		: texture( format, dimensions, part{ 0, 0, data, 0 }, buildMips, makeCopy )
+		: texture( format, dimensions, part{ 0, 0, data }, buildMips, makeCopy )
 	{
 
 	}
@@ -401,9 +404,9 @@ public:
 	gl_format format() const { return _format; }
 	const uvec4 &dimensions() const { return _dimensions; }
 
-	unsigned width() const { return _dimensions.x; }
-	unsigned height() const { return _dimensions.y; }
-	unsigned depth() const { return _dimensions.z; }
+	unsigned width( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.x >> mipLevel ); }
+	unsigned height( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.y >> mipLevel ); }
+	unsigned depth( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.z >> mipLevel ); }
 	unsigned array_size() const { return _dimensions.w; }
 
 	void synchronize();
@@ -418,6 +421,7 @@ protected:
 	std::unique_ptr<part[]> _parts;
 	unsigned _numParts = 0;
 	bool _owner = false;
+	bool _buildMips = false;
 
 	buffer::ptr _buffer;
 };
@@ -482,6 +486,7 @@ public:
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
 
+	void bind_texture( texture::ptr tex, unsigned slot );
 	void bind_render_target( texture::ptr tex, unsigned slot, unsigned layer = 0, unsigned mipLevel = 0 );
 
 	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
@@ -607,7 +612,7 @@ protected:
 		update_texture,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
-		bind_render_target,
+		bind_texture, bind_render_target,
 		set_uniform_block, set_uniform,
 		draw, draw_indexed,
 		execute,

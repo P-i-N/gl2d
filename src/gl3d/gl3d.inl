@@ -37,7 +37,8 @@ thread_local context *tl_currentContext = nullptr;
 //---------------------------------------------------------------------------------------------------------------------
 int find_uniform_id( const detail::location_variant &location )
 {
-	if ( !location.holds_name() ) return location.id();
+	if ( !location.holds_name() )
+		return location.id();
 
 	int programID;
 	glGetIntegerv( +gl_enum::CURRENT_PROGRAM, &programID );
@@ -66,6 +67,12 @@ internal_format get_internal_format( gl_format format )
 
 	assert( 0 );
 	return internal_format();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+unsigned mip_level_count( const uvec3 &size )
+{
+	return 1 + static_cast<unsigned>( floor( log2( static_cast<float>( maximum( size.x, size.y, size.z ) ) ) ) );
 }
 
 } // namespace gl3d::detail
@@ -391,14 +398,12 @@ texture::texture(
 			p = parts.data[i];
 
 			uvec2 size{ maximum( 1, _dimensions.x >> p.mip_level ), maximum( 1, _dimensions.y >> p.mip_level ) };
-
-			if ( !p.row_stride )
-				p.row_stride = size.x * internalF.pixel_size;
+			auto rowStride = size.x * internalF.pixel_size;
 
 			if ( makeCopy )
 			{
-				auto *copy = new uint8_t[p.row_stride * size.y];
-				memcpy( copy, p.data, p.row_stride * size.y );
+				auto *copy = new uint8_t[rowStride * size.y];
+				memcpy( copy, p.data, rowStride * size.y );
 				p.data = copy;
 			}
 		}
@@ -430,7 +435,36 @@ void texture::synchronize()
 {
 	if ( !_id )
 	{
+		gl.CreateTextures( _type, 1, &_id );
 
+		auto internalF = detail::get_internal_format( _format );
+		unsigned mipLevels = _buildMips
+		                     ? detail::mip_level_count( { _dimensions.x, _dimensions.y, _dimensions.z } )
+		                     : 1;
+
+		switch ( _type )
+		{
+			case gl_enum::TEXTURE_2D:
+			{
+				gl.TextureStorage2D( _id, mipLevels, _format, _dimensions.x, _dimensions.y );
+
+				for ( size_t i = 0; i < _numParts; ++i )
+				{
+					auto &p = _parts[i];
+					gl.TextureSubImage2D(
+					    _id, p.mip_level,
+					    0, 0, width( p.mip_level ), height( p.mip_level ),
+					    internalF.components, internalF.type, p.data );
+				}
+			}
+			break;
+
+			default:
+				assert( 0 );
+				break;
+		}
+
+		clear();
 	}
 }
 
@@ -601,6 +635,23 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_texture( texture::ptr tex, unsigned slot )
+{
+	if ( _recording )
+	{
+		write( cmd_type::bind_texture, slot );
+		_resources.push_back( tex );
+	}
+	else
+	{
+		if ( tex )
+			tex->synchronize();
+
+		gl.BindTextureUnit( slot, tex ? tex->id() : 0 );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_render_target( texture::ptr tex, unsigned slot, unsigned layer, unsigned mipLevel )
 {
 	if ( _recording )
@@ -654,11 +705,8 @@ void cmd_queue::set_uniform( const detail::location_variant &location, bool valu
 		write( cmd_type::set_uniform, gl_enum::BOOL, value );
 		write_location_variant( location );
 	}
-	else
-	{
-		auto id = find_uniform_id( location );
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
 		gl.Uniform1i( id, value ? 1 : 0 );
-	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -669,11 +717,8 @@ void cmd_queue::set_uniform( const detail::location_variant &location, int value
 		write( cmd_type::set_uniform, gl_enum::INT, value );
 		write_location_variant( location );
 	}
-	else
-	{
-		auto id = find_uniform_id( location );
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
 		gl.Uniform1i( id, value );
-	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -684,11 +729,8 @@ void cmd_queue::set_uniform( const detail::location_variant &location, float val
 		write( cmd_type::set_uniform, gl_enum::FLOAT, value );
 		write_location_variant( location );
 	}
-	else
-	{
-		auto id = find_uniform_id( location );
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
 		gl.Uniform1f( id, value );
-	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -809,6 +851,13 @@ void cmd_queue::execute( gl_state *state )
 				auto use16bits = read<bool>();
 				auto offset = read<size_t>();
 				bind_index_buffer( ib, use16bits, offset );
+			}
+			break;
+
+			case cmd_type::bind_texture:
+			{
+				auto tex = std::static_pointer_cast<texture>( _resources[resIndex++] );
+				bind_texture( tex, read<unsigned>() );
 			}
 			break;
 

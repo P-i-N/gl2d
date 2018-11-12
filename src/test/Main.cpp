@@ -49,9 +49,13 @@ int main()
 
 	auto q = cmd_queue::create();
 	q->bind_shader( shader::create( sc ) );
+	q->bind_texture( t, 0 );
+
 	q->set_uniform_block( 0, fd );
+	q->set_uniform( "u_Diffuse", 0 );
+
 	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::get_layout() );
-	//q->draw( gl_enum::TRIANGLES, 0, 3 );
+	q->draw( gl_enum::TRIANGLES, 0, 3 );
 
 	on_tick += [&]()
 	{
