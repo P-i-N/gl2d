@@ -1,5 +1,6 @@
 #define GL3D_IMPLEMENTATION
 #include <gl3d/gl3d_window.h>
+#include <gl3d/gl3d_2d.h>
 
 struct Vertex
 {
