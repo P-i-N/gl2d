@@ -78,7 +78,26 @@ protected:
 	uvec2 _size;
 };
 
-extern detail::callback_chain<void( window::ptr, const detail::files_t & )> on_drop_files;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct window_event
+{
+	enum class type { open, close, resize, move, paint, drop_files };
+
+	type event_type;
+	unsigned window_id;
+
+	union
+	{
+		uvec2 resize;
+		ivec2 move;
+		const detail::files_t *files;
+	};
+
+	window_event( type t, unsigned id ): event_type( t ), window_id( id ) { }
+};
+
+extern detail::callback_chain<bool( window_event & )> on_window_event;
 
 } // namespace gl3d
 

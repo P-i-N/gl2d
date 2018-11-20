@@ -88,9 +88,6 @@ void check_gl_error()
 
 		switch ( err )
 		{
-			case GL_NO_ERROR:
-				errName = "GL_NO_ERROR";
-				break;
 			case GL_INVALID_ENUM:
 				errName = "GL_INVALID_ENUM";
 				break;
@@ -99,15 +96,6 @@ void check_gl_error()
 				break;
 			case GL_INVALID_OPERATION:
 				errName = "GL_INVALID_OPERATION";
-				break;
-			case GL_OUT_OF_MEMORY:
-				errName = "GL_OUT_OF_MEMORY";
-				break;
-			case GL_STACK_UNDERFLOW:
-				errName = "GL_STACK_UNDERFLOW";
-				break;
-			case GL_STACK_OVERFLOW:
-				errName = "GL_STACK_OVERFLOW";
 				break;
 		}
 

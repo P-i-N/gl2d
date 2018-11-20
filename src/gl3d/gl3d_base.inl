@@ -36,7 +36,7 @@ detail::gamepad_state gamepad[detail::max_gamepads];
 detail::space_navigator_state space_navigator;
 
 decltype( on_tick ) on_tick;
-decltype( on_event ) on_event;
+decltype( on_input_event ) on_input_event;
 decltype( on_log_message ) on_log_message;
 decltype( on_vfs_load ) on_vfs_load;
 
@@ -168,10 +168,10 @@ void keyboard_state::change_key_state( key k, bool down, unsigned id )
 	if ( old != down )
 	{
 		key_down[+k] = down;
-		event e( down ? event_type::key_down : event_type::key_up, id );
+		input_event e( down ? input_event::type::key_down : input_event::type::key_up, id );
 		e.keyboard.k = k;
 		e.keyboard.ch = 0;
-		on_event.call( e );
+		on_input_event.call( e );
 	}
 }
 
@@ -182,11 +182,11 @@ void mouse_state::change_button_state( mouse_button b, bool down, unsigned id )
 	if ( old != down )
 	{
 		button_down[+b] = down;
-		event e( down ? event_type::mouse_down : event_type::mouse_up, id );
+		input_event e( down ? input_event::type::mouse_down : input_event::type::mouse_up, id );
 		e.mouse.b = b;
 		e.mouse.pos = pos;
 		e.mouse.delta = { 0, 0 };
-		on_event.call( e );
+		on_input_event.call( e );
 	}
 }
 
@@ -195,12 +195,12 @@ void mouse_state::change_position( ivec2 pos, unsigned id )
 {
 	if ( this->pos != pos )
 	{
-		event e( event_type::mouse_move, id );
+		input_event e( input_event::type::mouse_move, id );
 		e.mouse.b = mouse_button::unknown;
 		e.mouse.pos = pos;
 		e.mouse.delta = pos - this->pos;
 		this->pos = pos;
-		on_event.call( e );
+		on_input_event.call( e );
 	}
 }
 
@@ -211,10 +211,10 @@ void gamepad_state::change_button_state( gamepad_button b, bool down )
 	if ( old != down )
 	{
 		button_down[+b] = down;
-		event e( down ? event_type::gamepad_down : event_type::gamepad_up, UINT_MAX );
+		input_event e( down ? input_event::type::gamepad_down : input_event::type::gamepad_up, UINT_MAX );
 		e.gamepad.port = port;
 		e.gamepad.b = b;
-		on_event.call( e );
+		on_input_event.call( e );
 	}
 }
 
@@ -225,12 +225,12 @@ void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 	if ( oldPos != pos )
 	{
 		this->pos[+axis] = pos;
-		event e( event_type::gamepad_move, UINT_MAX );
+		input_event e( input_event::type::gamepad_move, UINT_MAX );
 		e.gamepad.port = port;
 		e.gamepad.axis = axis;
 		e.gamepad.pos = pos;
 		e.gamepad.delta = pos - oldPos;
-		on_event.call( e );
+		on_input_event.call( e );
 	}
 }
 

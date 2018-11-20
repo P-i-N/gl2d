@@ -25,9 +25,9 @@
 
 namespace gl3d {
 
-namespace detail {
+decltype( on_window_event ) on_window_event;
 
-decltype( on_drop_files ) on_drop_files;
+namespace detail {
 
 bool g_should_quit = false;
 unsigned g_next_window_id = 0;
@@ -149,7 +149,7 @@ window::ptr window::open( std::string_view title, uvec2 size, ivec2 pos, unsigne
 
 	DragAcceptFiles( handle, TRUE );
 
-	on_event.call( event( event_type::open, result->_id ) );
+	on_window_event.call( window_event( window_event::type::open, result->_id ) );
 	return result;
 }
 
@@ -216,7 +216,7 @@ void window::close()
 	{
 		if ( detail::g_windows[i].get() == this )
 		{
-			on_event.call( event( event_type::close, _id ) );
+			on_window_event.call( window_event( window_event::type::close, _id ) );
 
 			_context.reset();
 			DestroyWindow( HWND( _native_handle ) );
@@ -256,9 +256,9 @@ void update_xinput()
 			{
 				port = detail::gamepad_state::allocate_port();
 				g_xinput_port_map[i] = port;
-				event e( event_type::gamepad_connect, UINT_MAX );
+				input_event e( input_event::type::gamepad_connect, UINT_MAX );
 				e.gamepad.port = port;
-				on_event.call( e );
+				on_input_event.call( e );
 			}
 			else
 				port = iter->second;
@@ -287,9 +287,9 @@ void update_xinput()
 		{
 			if ( port != -1 )
 			{
-				event e( event_type::gamepad_disconnect, UINT_MAX );
+				input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
 				e.gamepad.port = port;
-				on_event.call( e );
+				on_input_event.call( e );
 				detail::gamepad_state::release_port( port );
 				g_xinput_port_map.erase( iter );
 			}
@@ -325,7 +325,7 @@ void update()
 		auto ctx = w->context();
 		ctx->make_current();
 		glViewport( 0, 0, w->size().x, w->size().y );
-		on_event.call( event( event_type::paint, w->id() ) );
+		on_window_event.call( window_event( window_event::type::paint, w->id() ) );
 		w->present();
 		ctx->reset();
 	}
@@ -485,17 +485,17 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 
 				case WM_MOUSEWHEEL:
 				{
-					event e( event_type::mouse_wheel, w->id() );
+					input_event e( input_event::type::mouse_wheel, w->id() );
 					e.wheel = { 0, GET_WHEEL_DELTA_WPARAM( wParam ) };
-					on_event.call( e );
+					on_input_event.call( e );
 				}
 				return 0;
 
 				case WM_MOUSEHWHEEL:
 				{
-					event e( event_type::mouse_wheel, w->id() );
+					input_event e( input_event::type::mouse_wheel, w->id() );
 					e.wheel = { GET_WHEEL_DELTA_WPARAM( wParam ), 0 };
-					on_event.call( e );
+					on_input_event.call( e );
 				}
 				return 0;
 
@@ -513,18 +513,18 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 
 				case WM_CHAR:
 				{
-					event e( event_type::key_press, w->id() );
+					input_event e( input_event::type::key_press, w->id() );
 					e.keyboard.k = key::unknown;
 					e.keyboard.ch = static_cast<int>( wParam );
-					on_event.call( e );
+					on_input_event.call( e );
 				}
 				return 0;
 
 				case WM_SIZE:
 				{
-					event e( event_type::resize, w->id() );
+					window_event e( window_event::type::resize, w->id() );
 					e.resize = { LOWORD( lParam ), HIWORD( lParam ) };
-					on_event.call( e );
+					on_window_event.call( e );
 					w->_size = e.resize;
 				}
 				break;
@@ -546,9 +546,9 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 
 				case WM_MOVE:
 				{
-					event e( event_type::move, w->id() );
+					window_event e( window_event::type::move, w->id() );
 					e.move = { LOWORD( lParam ), HIWORD( lParam ) };
-					on_event.call( e );
+					on_window_event.call( e );
 					w->_pos = e.move;
 				}
 				return 0;
@@ -569,7 +569,9 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 						++index;
 					}
 
-					on_drop_files.call( w, files );
+					window_event e( window_event::type::drop_files, w->id() );
+					e.files = &files;
+					on_window_event.call( e );
 				}
 				return 0;
 

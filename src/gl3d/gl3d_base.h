@@ -308,37 +308,27 @@ enum class space_navigator_button
 GL3D_ENUM_PLUS( space_navigator_button )
 
 //---------------------------------------------------------------------------------------------------------------------
-enum class event_type
+struct input_event
 {
-	unknown = 0,
-	run, quit,
-	paint,
-	open, close, resize, move,
-	key_down, key_up, key_press,
-	mouse_down, mouse_up, mouse_move, mouse_wheel,
-	gamepad_down, gamepad_up, gamepad_move, gamepad_connect, gamepad_disconnect
-};
+	enum class type
+	{
+		key_down, key_up, key_press,
+		mouse_down, mouse_up, mouse_move, mouse_wheel,
+		gamepad_down, gamepad_up, gamepad_move, gamepad_connect, gamepad_disconnect
+	};
 
-//---------------------------------------------------------------------------------------------------------------------
-struct event
-{
-	event_type type;
+	type event_type;
 	unsigned window_id;
 
 	union
 	{
-		ivec2 resize, move, wheel;
+		ivec2 wheel;
 		struct { key k; int ch; } keyboard;
 		struct { ivec2 pos, delta; mouse_button b; } mouse;
 		struct { unsigned port; vec2 pos, delta; gamepad_button b; gamepad_axis axis; } gamepad;
 	};
 
-	event( event_type et, unsigned id )
-		: type( et )
-		, window_id( id )
-	{
-
-	}
+	input_event( type t, unsigned id ): event_type( t ), window_id( id ) { }
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -405,7 +395,7 @@ extern detail::space_navigator_state space_navigator;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern detail::callback_chain<void()> on_tick;
-extern detail::callback_chain<bool( event & )> on_event;
+extern detail::callback_chain<bool( input_event & )> on_input_event;
 
 } // namespace gl3d
 
