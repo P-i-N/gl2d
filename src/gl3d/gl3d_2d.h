@@ -7,17 +7,12 @@
 
 namespace gl3d {
 
-class font
+struct font
 {
-public:
 	using ptr = std::shared_ptr<font>;
 
-	font( const void *data, size_t length );
-	font( const detail::bytes_t &bytes ): font( bytes.data(), bytes.size() ) { }
-	font( const char *base64Data, size_t length = 0 );
-
-	int base() const { return _base; }
-	int height() const { return _height; }
+	int base = 0;
+	int line_height = 0;
 
 	struct char_info
 	{
@@ -29,17 +24,11 @@ public:
 		int x_advance;
 	};
 
-	using char_info_map = std::map<int, char_info>;
-	const char_info_map &char_infos() const { return _charInfos; }
+	std::map<int, char_info> char_infos;
+	std::map<std::pair<int, int>, int> kernings;
+	texture::ptr char_atlas;
 
-	using kernings_map = std::map<std::pair<int, int>, int>;
-	const kernings_map &kernings() const { return _kernings; }
-
-protected:
-	int _base = 0, _height = 0;
-	char_info_map _charInfos;
-	kernings_map _kernings;
-	texture::ptr _texture;
+	static ptr create( const char *base64Data );
 };
 
 } // namespace gl3d

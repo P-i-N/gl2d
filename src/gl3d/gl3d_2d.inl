@@ -134,8 +134,12 @@ static const char *monospace_base64 =
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-font::font( const void *data, size_t length )
+font::ptr font::create( const char *base64Data )
 {
+	auto bytes = detail::base64_decode( base64Data );
+	auto data = reinterpret_cast<const void *>( bytes.data() );
+	auto size = bytes.size();
+
 #define GL3D_DATA_EXTRACT(_Type) \
 	(*reinterpret_cast<const _Type *>(data)); data = reinterpret_cast<const uint8_t *>(data) + sizeof(_Type)
 
@@ -163,6 +167,8 @@ font::font( const void *data, size_t length )
 
 	image[texWidth * texHeight - 1] = 0xFFFFFFFFu;
 
+	font::ptr result = std::make_shared<font>();
+
 	/*
 	font_texture->set_params( texWidth, texHeight, GL_RGBA, 1, 1 );
 	font_texture->alloc_pixels( image );
@@ -171,8 +177,8 @@ font::font( const void *data, size_t length )
 
 	data = cursorInput;
 
-	_height = GL3D_DATA_EXTRACT( uint8_t );
-	_base = GL3D_DATA_EXTRACT( uint8_t );
+	result->line_height = GL3D_DATA_EXTRACT( uint8_t );
+	result->base = GL3D_DATA_EXTRACT( uint8_t );
 
 	int numChars = GL3D_DATA_EXTRACT( int );
 	for ( int i = 0; i < numChars; ++i )
@@ -191,7 +197,7 @@ font::font( const void *data, size_t length )
 		for ( int j = 0; j < 4; ++j )
 			chi.uv[j] = vec2( chi.box.corner( j ).x / texWidthf, chi.box.corner( j ).y / texHeightf );
 
-		_charInfos[chi.id] = chi;
+		result->char_infos[chi.id] = chi;
 	}
 
 	int numKernings = GL3D_DATA_EXTRACT( int );
@@ -200,17 +206,11 @@ font::font( const void *data, size_t length )
 		std::pair<int, int> p;
 		p.first = GL3D_DATA_EXTRACT( int );
 		p.second = GL3D_DATA_EXTRACT( int );
-		_kernings[p] = GL3D_DATA_EXTRACT( int8_t );
+		result->kernings[p] = GL3D_DATA_EXTRACT( int8_t );
 	}
-
 #undef GL3D_DATA_EXTRACT
-}
 
-//---------------------------------------------------------------------------------------------------------------------
-font::font( const char *base64Data, size_t length )
-	: font( detail::base64_decode( base64Data, length ) )
-{
-
+	return result;
 }
 
 } // namespace gl3d
