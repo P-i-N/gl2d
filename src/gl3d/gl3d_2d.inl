@@ -167,16 +167,10 @@ font::ptr font::create( const char *base64Data )
 
 	image[texWidth * texHeight - 1] = 0xFFFFFFFFu;
 
-	font::ptr result = std::make_shared<font>();
-
-	/*
-	font_texture->set_params( texWidth, texHeight, GL_RGBA, 1, 1 );
-	font_texture->alloc_pixels( image );
-	font_texture->set_wrap( gl_api.CLAMP_TO_EDGE );
-	*/
-
 	data = cursorInput;
 
+	font::ptr result = std::make_shared<font>();
+	result->char_atlas = texture::create( gl_format::RGBA8, uvec2{ texWidth, texHeight }, image.get() );
 	result->line_height = GL3D_DATA_EXTRACT( uint8_t );
 	result->base = GL3D_DATA_EXTRACT( uint8_t );
 
