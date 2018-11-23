@@ -16,6 +16,21 @@
 
 namespace gl3d {
 
+/* Forward declarations */
+class buffer;
+class cmd_queue;
+class context;
+class shader;
+class shader_code;
+class texture;
+
+enum class gl_enum : unsigned;
+enum class gl_format : unsigned;
+
+namespace detail { struct window_impl; }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 namespace detail {
 
 using bytes_t = std::vector<uint8_t>;

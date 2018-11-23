@@ -16,18 +16,6 @@
 
 namespace gl3d {
 
-/* Forward declarations */
-class buffer;
-class cmd_queue;
-class context;
-class shader;
-class shader_code;
-
-enum class gl_enum : unsigned;
-enum class gl_format : unsigned;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 namespace detail {
 
 struct gl_api
@@ -162,10 +150,10 @@ enum class gl_enum : unsigned
 	CLIENT_STORAGE_BIT = 0x0200,
 
 #if defined(WIN32)
-	CONTEXT_MAJOR_VERSION_ARB = 0x2091, CONTEXT_MINOR_VERSION_ARB,
+	CONTEXT_MAJOR_VERSION = 0x2091, CONTEXT_MINOR_VERSION,
 
-	CONTEXT_PROFILE_MASK_ARB = 0x9126,
-	CONTEXT_CORE_PROFILE_BIT_ARB = 0x0001,
+	CONTEXT_PROFILE_MASK = 0x9126,
+	CONTEXT_CORE_PROFILE_BIT = 0x0001,
 #endif
 };
 
@@ -309,28 +297,6 @@ enum class shader_stage { vertex, geometry, fragment, compute, __count };
 GL3D_ENUM_PLUS( shader_stage )
 
 //---------------------------------------------------------------------------------------------------------------------
-class shader : public detail::gl_object
-{
-public:
-	using ptr = std::shared_ptr<shader>;
-
-	template <typename... Args>
-	static ptr create( Args &&... args ) { return std::make_shared<shader>( args... ); }
-
-	shader( std::shared_ptr<shader_code> code, std::string_view defines = std::string_view() );
-	virtual ~shader();
-
-	void clear();
-	bool compile();
-
-protected:
-	std::shared_ptr<shader_code> _shaderCode;
-	std::string _defines;
-	unsigned _stageIDs[+shader_stage::__count] = { 0, 0, 0, 0 };
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class shader_code
 {
 public:
@@ -351,6 +317,27 @@ protected:
 	std::string _source;
 	std::string _unrolledSource;
 	std::string _stageSources[+shader_stage::__count];
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class shader : public detail::gl_object
+{
+public:
+	using ptr = std::shared_ptr<shader>;
+
+	template <typename... Args>
+	static ptr create( Args &&... args ) { return std::make_shared<shader>( args... ); }
+
+	shader( shader_code::ptr code, std::string_view defines = std::string_view() );
+	virtual ~shader();
+
+	void clear();
+	bool compile();
+
+protected:
+	shader_code::ptr _shaderCode;
+	std::string _defines;
+	unsigned _stageIDs[+shader_stage::__count] = { 0, 0, 0, 0 };
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -576,7 +563,7 @@ protected:
 
 	template <typename T> void read( T &value ) { value = read<T>(); }
 
-	std::pair<const void *, unsigned> read_data()
+	std::pair<const void *, size_t> read_data()
 	{
 		auto size = read<unsigned>();
 		auto data = _recordedData.data() + _position;

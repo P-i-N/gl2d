@@ -190,7 +190,7 @@ void buffer::unmap() const
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-shader::shader( std::shared_ptr<shader_code> code, std::string_view defines )
+shader::shader( shader_code::ptr code, std::string_view defines )
 	: _shaderCode( code )
 	, _defines( defines )
 {
@@ -929,9 +929,9 @@ namespace detail {
 #if defined(WIN32)
 unsigned g_contextAttribs[] =
 {
-	+gl_enum::CONTEXT_MAJOR_VERSION_ARB, 4,
-	+gl_enum::CONTEXT_MINOR_VERSION_ARB, 6,
-	+gl_enum::CONTEXT_PROFILE_MASK_ARB, +gl_enum::CONTEXT_CORE_PROFILE_BIT_ARB,
+	+gl_enum::CONTEXT_MAJOR_VERSION, 4,
+	+gl_enum::CONTEXT_MINOR_VERSION, 6,
+	+gl_enum::CONTEXT_PROFILE_MASK, +gl_enum::CONTEXT_CORE_PROFILE_BIT,
 	0
 };
 

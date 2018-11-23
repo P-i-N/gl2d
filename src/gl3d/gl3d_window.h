@@ -8,8 +8,6 @@
 
 #include "gl3d.h"
 
-namespace gl3d::detail { struct window_impl; }
-
 namespace gl3d {
 
 extern const unsigned &frame_id;
