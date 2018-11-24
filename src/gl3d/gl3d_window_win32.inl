@@ -143,6 +143,7 @@ window::ptr window::open( std::string_view title, uvec2 size, ivec2 pos, unsigne
 	result->_id = detail::g_next_window_id++;
 	result->_native_handle = handle;
 	result->_context = context;
+	result->_immediate = std::make_shared<gl3d::immediate>();
 	result->_title = title;
 	result->_pos = pos;
 	result->_size = size;
@@ -166,6 +167,7 @@ window::ptr window::from_id( unsigned id )
 //---------------------------------------------------------------------------------------------------------------------
 window::~window()
 {
+	_immediate.reset();
 	_context.reset();
 	DestroyWindow( HWND( _native_handle ) );
 }
@@ -324,8 +326,14 @@ void update()
 	{
 		auto ctx = w->context();
 		ctx->make_current();
+
 		glViewport( 0, 0, w->size().x, w->size().y );
 		on_window_event.call( window_event( window_event::type::paint, w->id() ) );
+
+		auto imm = w->immediate();
+		imm->render( ctx, mat4(), mat4() );
+		imm->reset();
+
 		w->present();
 		ctx->reset();
 	}

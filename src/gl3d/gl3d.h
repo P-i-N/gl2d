@@ -105,6 +105,12 @@ enum class gl_enum : unsigned
 
 	TEXTURE_1D = 0x0DE0, TEXTURE_2D,
 	TEXTURE_3D = 0x806F,
+	TEXTURE_2D_ARRAY = 0x8C1A,
+	TEXTURE_CUBE_MAP = 0x8513,
+	TEXTURE_CUBE_MAP_ARRAY = 0x9009,
+
+	TEXTURE_CUBE_MAP_POSITIVE_X_EXT = 0x8515, TEXTURE_CUBE_MAP_NEGATIVE_X_EXT, TEXTURE_CUBE_MAP_POSITIVE_Y_EXT,
+	TEXTURE_CUBE_MAP_NEGATIVE_Y_EXT, TEXTURE_CUBE_MAP_POSITIVE_Z_EXT, TEXTURE_CUBE_MAP_NEGATIVE_Z_EXT,
 
 	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
 	DOUBLE = 0x140A,
@@ -610,6 +616,7 @@ protected:
 
 namespace detail {
 
+//---------------------------------------------------------------------------------------------------------------------
 class context : public cmd_queue
 {
 public:
@@ -632,6 +639,19 @@ protected:
 
 	gl_state _glState;
 	std::unordered_map<std::uintptr_t, unsigned> _layoutVAOs;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+class async_upload_context
+{
+public:
+	using ptr = std::shared_ptr<async_upload_context>;
+
+	async_upload_context( context::ptr mainContext );
+	virtual ~async_upload_context();
+
+protected:
+	context::ptr _context;
 };
 
 } // namespace gl3d::detail

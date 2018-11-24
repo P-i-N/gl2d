@@ -322,6 +322,58 @@ enum class space_navigator_button
 
 GL3D_ENUM_PLUS( space_navigator_button )
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+//---------------------------------------------------------------------------------------------------------------------
+struct keyboard_state
+{
+	bool key_down[+key::__count];
+	bool operator[]( key k ) const { return key_down[+k]; }
+
+	void change_key_state( key k, bool down, unsigned id = UINT_MAX );
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+struct mouse_state
+{
+	bool button_down[+mouse_button::__count];
+	bool operator[]( mouse_button b ) const { return button_down[+b]; }
+	ivec2 pos;
+
+	void change_button_state( mouse_button b, bool down, unsigned id = UINT_MAX );
+	void change_position( ivec2 pos, unsigned id = UINT_MAX );
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+static constexpr unsigned max_gamepads = 8;
+struct gamepad_state
+{
+	unsigned port = UINT_MAX;
+	bool button_down[+gamepad_button::__count];
+	vec2 pos[+gamepad_axis::__count];
+	bool operator[]( gamepad_button b ) const { return button_down[+b]; }
+	bool connected() const { return port < max_gamepads; }
+
+	void change_button_state( gamepad_button b, bool down );
+	void change_axis_state( gamepad_axis axis, vec2 pos );
+
+	static unsigned allocate_port();
+	static void release_port( unsigned port );
+};
+
+//---------------------------------------------------------------------------------------------------------------------
+struct space_navigator_state
+{
+	vec3 pos, rot;
+	bool button_down[+space_navigator_button::__count];
+};
+
+} // namespace gl3d::detail
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //---------------------------------------------------------------------------------------------------------------------
 struct input_event
 {
@@ -343,74 +395,16 @@ struct input_event
 		struct { unsigned port; vec2 pos, delta; gamepad_button b; gamepad_axis axis; } gamepad;
 	};
 
-	input_event( type t, unsigned id ): event_type( t ), window_id( id ) { }
+	input_event( type t, unsigned id ) : event_type( t ), window_id( id ) { }
 };
-
-//---------------------------------------------------------------------------------------------------------------------
-namespace detail {
-struct keyboard_state
-{
-	bool key_down[+key::__count];
-	bool operator[]( key k ) const { return key_down[+k]; }
-
-	void change_key_state( key k, bool down, unsigned id = UINT_MAX );
-};
-}
-
-extern detail::keyboard_state keyboard;
-
-//---------------------------------------------------------------------------------------------------------------------
-namespace detail {
-struct mouse_state
-{
-	bool button_down[+mouse_button::__count];
-	bool operator[]( mouse_button b ) const { return button_down[+b]; }
-	ivec2 pos;
-
-	void change_button_state( mouse_button b, bool down, unsigned id = UINT_MAX );
-	void change_position( ivec2 pos, unsigned id = UINT_MAX );
-};
-}
-
-extern detail::mouse_state mouse;
-
-//---------------------------------------------------------------------------------------------------------------------
-namespace detail {
-static constexpr unsigned max_gamepads = 8;
-
-struct gamepad_state
-{
-	unsigned port = UINT_MAX;
-	bool button_down[+gamepad_button::__count];
-	vec2 pos[+gamepad_axis::__count];
-	bool operator[]( gamepad_button b ) const { return button_down[+b]; }
-	bool connected() const { return port < max_gamepads; }
-
-	void change_button_state( gamepad_button b, bool down );
-	void change_axis_state( gamepad_axis axis, vec2 pos );
-
-	static unsigned allocate_port();
-	static void release_port( unsigned port );
-};
-}
-
-extern detail::gamepad_state gamepad[detail::max_gamepads];
-
-//---------------------------------------------------------------------------------------------------------------------
-namespace detail {
-struct space_navigator_state
-{
-	vec3 pos, rot;
-	bool button_down[+space_navigator_button::__count];
-};
-}
-
-extern detail::space_navigator_state space_navigator;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern detail::callback_chain<void()> on_tick;
 extern detail::callback_chain<bool( input_event & )> on_input_event;
+
+extern detail::keyboard_state keyboard;
+extern detail::mouse_state mouse;
+extern detail::gamepad_state gamepad[detail::max_gamepads];
+extern detail::space_navigator_state space_navigator;
 
 } // namespace gl3d
 

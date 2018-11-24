@@ -1031,6 +1031,20 @@ unsigned context::bind_vao( buffer::ptr vb, const detail::layout &layout, size_t
 	return vaoID;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
+async_upload_context::async_upload_context( context::ptr mainContext )
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+async_upload_context::~async_upload_context()
+{
+
+}
+
 } // namespace gl3d::detail
 
 } // namespace gl3d

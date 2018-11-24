@@ -67,6 +67,28 @@ int main()
 		ctx->execute( q );
 	};
 
+	on_window_event += [&]( window_event & e )->bool
+	{
+		switch ( e.event_type )
+		{
+			case window_event::type::paint:
+			{
+				auto w = window::from_id( e.window_id );
+				auto imm = w->immediate();
+
+				imm->begin( gl_enum::LINES );
+				imm->vertex( { 0, 0 } );
+				imm->vertex( w->size() );
+				imm->end();
+
+				printf( "%f (%.1f fps)\n", gl3d::time, 1.0f / gl3d::delta );
+			}
+			break;
+		}
+
+		return false;
+	};
+
 	run();
 	return 0;
 }

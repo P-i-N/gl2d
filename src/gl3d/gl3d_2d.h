@@ -31,6 +31,36 @@ struct font
 	static ptr create( const char *base64Data );
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class immediate
+{
+public:
+	using ptr = std::shared_ptr<immediate>;
+
+	immediate();
+
+	virtual ~immediate();
+
+	void reset();
+
+	void render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection );
+
+	void begin( gl_enum primitiveType, bool autoClose = false );
+
+	void end();
+
+	void vertex( const vec3 &pos );
+
+	void vertex( const vec2 &pos, float z = 0.0f ) { vertex( { pos.x, pos.y, z } ); }
+
+protected:
+	struct draw_call
+	{
+
+	};
+};
+
 } // namespace gl3d
 
 #endif // __GL3D_2D_H__
