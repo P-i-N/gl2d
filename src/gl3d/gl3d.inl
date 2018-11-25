@@ -356,24 +356,42 @@ bool shader_code::load( const std::filesystem::path &path )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-texture::texture( gl_enum type, gl_format format, const uvec4 &dimensions, bool hasMips )
+texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips )
 	: _type( type )
 	, _format( format )
 	, _dimensions( dimensions )
+	, _owner( false )
 {
+	assert( _dimensions.x > 0 && _dimensions.y > 0 && _dimensions.z > 0 );
+	switch ( _type )
+	{
+		case gl_enum::TEXTURE_1D:
+			_dimensions.y = 1;
+			_dimensions.z = 1;
+			break;
 
+		case gl_enum::TEXTURE_2D:
+			_dimensions.z = 1;
+			break;
+
+		case gl_enum::TEXTURE_CUBE_MAP:
+			_dimensions.z = 6;
+			break;
+
+		case gl_enum::TEXTURE_CUBE_MAP_ARRAY:
+			_dimensions.z = align_up( _dimensions.z, 6u );
+			break;
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 texture::texture(
-    gl_enum type, gl_format format, const uvec4 &dimensions,
+    gl_enum type, gl_format format, const uvec3 &dimensions,
     const detail::type_range<part> &parts,
     bool buildMips, bool makeCopy )
-	: _type( type )
-	, _format( format )
-	, _dimensions( dimensions )
-	, _owner( makeCopy )
+	: texture( type, format, dimensions, buildMips )
 {
+	_owner = makeCopy;
 	auto internalF = detail::get_internal_format( format );
 
 	if ( _numParts = static_cast<unsigned>( parts.size ) )
@@ -432,6 +450,12 @@ void texture::synchronize()
 
 		switch ( _type )
 		{
+			case gl_enum::TEXTURE_1D:
+			{
+
+			}
+			break;
+
 			case gl_enum::TEXTURE_2D:
 			{
 				gl.TextureStorage2D( _id, mipLevels, _format, _dimensions.x, _dimensions.y );
@@ -444,6 +468,30 @@ void texture::synchronize()
 					    0, 0, width( p.mip_level ), height( p.mip_level ),
 					    internalF.components, internalF.type, p.data );
 				}
+			}
+			break;
+
+			case gl_enum::TEXTURE_2D_ARRAY:
+			{
+
+			}
+			break;
+
+			case gl_enum::TEXTURE_3D:
+			{
+
+			}
+			break;
+
+			case gl_enum::TEXTURE_CUBE_MAP:
+			{
+
+			}
+			break;
+
+			case gl_enum::TEXTURE_CUBE_MAP_ARRAY:
+			{
+
 			}
 			break;
 
@@ -460,10 +508,10 @@ void texture::synchronize()
 
 //---------------------------------------------------------------------------------------------------------------------
 cmd_queue::cmd_queue( gl_state *state )
-	: _recording( state == nullptr )
+	: _deferred( state == nullptr )
 	, _state( state )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		_recordedData.reserve( 65536 );
 		_resources.reserve( 1024 );
@@ -491,7 +539,7 @@ void cmd_queue::reset()
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::clear_color( const vec4 &color )
 {
-	if ( _recording )
+	if ( _deferred )
 		write( cmd_type::clear_color, color );
 	else
 	{
@@ -503,7 +551,7 @@ void cmd_queue::clear_color( const vec4 &color )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::clear_depth( float depth )
 {
-	if ( _recording )
+	if ( _deferred )
 		write( cmd_type::clear_depth, depth );
 	else
 	{
@@ -515,7 +563,7 @@ void cmd_queue::clear_depth( float depth )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::update_texture( texture::ptr tex, const void *data, unsigned layer, unsigned mipLevel, size_t rowStride )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::update_texture, layer, mipLevel, rowStride );
 		_resources.push_back( tex );
@@ -527,9 +575,39 @@ void cmd_queue::update_texture( texture::ptr tex, const void *data, unsigned lay
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::update_buffer, offset );
+		write_data( data, size );
+		_resources.push_back( buff );
+	}
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::resize_buffer, preserveContent );
+		write_data( data, size );
+		_resources.push_back( buff );
+	}
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_state( const blend_state &bs )
 {
-	if ( _recording )
+	if ( _deferred )
 		write( cmd_type::bind_blend_state, bs );
 	else
 	{
@@ -540,7 +618,7 @@ void cmd_queue::bind_state( const blend_state &bs )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_state( const depth_stencil_state &ds )
 {
-	if ( _recording )
+	if ( _deferred )
 		write( cmd_type::bind_depth_stencil_state, ds );
 	else
 	{
@@ -551,7 +629,7 @@ void cmd_queue::bind_state( const depth_stencil_state &ds )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_state( const rasterizer_state &rs )
 {
-	if ( _recording )
+	if ( _deferred )
 		write( cmd_type::bind_rasterizer_state, rs );
 	else
 	{
@@ -562,7 +640,7 @@ void cmd_queue::bind_state( const rasterizer_state &rs )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_shader( shader::ptr sh )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::bind_shader );
 		_resources.push_back( sh );
@@ -582,7 +660,7 @@ void cmd_queue::bind_shader( shader::ptr sh )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout, size_t offset )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::bind_vertex_buffer, &layout, offset );
 		_resources.push_back( vb );
@@ -597,7 +675,7 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset, size_t stride )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::bind_vertex_atrribute, slot, glType, offset, stride );
 		_resources.push_back( attribs );
@@ -611,7 +689,7 @@ void cmd_queue::bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_en
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::bind_index_buffer, use16bits, offset );
 		_resources.push_back( ib );
@@ -625,7 +703,7 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_texture( texture::ptr tex, unsigned slot )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::bind_texture, slot );
 		_resources.push_back( tex );
@@ -642,7 +720,7 @@ void cmd_queue::bind_texture( texture::ptr tex, unsigned slot )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_render_target( texture::ptr tex, unsigned slot, unsigned layer, unsigned mipLevel )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::bind_render_target, slot, layer, mipLevel );
 		_resources.push_back( tex );
@@ -658,7 +736,7 @@ void cmd_queue::set_uniform_block( const detail::location_variant &location, con
 {
 	assert( data && size );
 
-	if ( _recording )
+	if ( _deferred )
 	{
 		assert( size <= 65536 );
 		write( cmd_type::set_uniform_block );
@@ -688,7 +766,7 @@ void cmd_queue::set_uniform_block( const detail::location_variant &location, con
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::set_uniform( const detail::location_variant &location, bool value )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::set_uniform, gl_enum::BOOL, value );
 		write_location_variant( location );
@@ -700,7 +778,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, bool valu
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::set_uniform( const detail::location_variant &location, int value )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::set_uniform, gl_enum::INT, value );
 		write_location_variant( location );
@@ -712,7 +790,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, int value
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::set_uniform( const detail::location_variant &location, float value )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::set_uniform, gl_enum::FLOAT, value );
 		write_location_variant( location );
@@ -724,7 +802,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, float val
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::draw, primitive, first, count, instanceCount, instanceBase );
 	}
@@ -737,7 +815,7 @@ void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t inst
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::draw_indexed, primitive, first, count, instanceCount, instanceBase );
 	}
@@ -752,7 +830,7 @@ void cmd_queue::execute( ptr cmdQueue )
 {
 	assert( cmdQueue && cmdQueue.get() != this );
 
-	if ( _recording )
+	if ( _deferred )
 	{
 		write( cmd_type::execute );
 		_resources.push_back( cmdQueue );
@@ -767,7 +845,7 @@ void cmd_queue::execute( ptr cmdQueue )
 void cmd_queue::execute( gl_state *state )
 {
 	_state = state;
-	_recording = false;
+	_deferred = false;
 	_position = 0;
 	size_t resIndex = 0;
 
@@ -791,6 +869,29 @@ void cmd_queue::execute( gl_state *state )
 			{
 				auto depth = read<float>();
 				clear_depth( depth );
+			}
+			break;
+
+			case cmd_type::update_texture:
+			{
+			}
+			break;
+
+			case cmd_type::update_buffer:
+			{
+				auto offset = read<size_t>();
+				auto data = read_data();
+				auto buff = std::static_pointer_cast<buffer>( _resources[resIndex++] );
+				update_buffer( buff, data.first, data.second, offset );
+			}
+			break;
+
+			case cmd_type::resize_buffer:
+			{
+				auto preserveContent = read<bool>();
+				auto data = read_data();
+				auto buff = std::static_pointer_cast<buffer>( _resources[resIndex++] );
+				resize_buffer( buff, data.first, data.second, preserveContent );
 			}
 			break;
 
@@ -919,7 +1020,7 @@ void cmd_queue::execute( gl_state *state )
 	}
 
 	_state = nullptr;
-	_recording = true;
+	_deferred = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

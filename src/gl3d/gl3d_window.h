@@ -39,7 +39,7 @@ class window
 public:
 	using ptr = std::shared_ptr<window>;
 
-	static ptr open( std::string_view title, uvec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_window_flags );
+	static ptr create( std::string_view title, uvec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_window_flags );
 	static ptr from_id( unsigned id );
 
 	virtual ~window();

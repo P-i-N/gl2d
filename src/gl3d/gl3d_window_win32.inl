@@ -75,7 +75,7 @@ struct window_class
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-window::ptr window::open( std::string_view title, uvec2 size, ivec2 pos, unsigned flags )
+window::ptr window::create( std::string_view title, uvec2 size, ivec2 pos, unsigned flags )
 {
 	DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 

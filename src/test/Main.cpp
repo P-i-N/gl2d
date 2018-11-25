@@ -22,7 +22,7 @@ int main()
 {
 	using namespace gl3d;
 
-	window::open( "Main Window", { 1280, 800 }, { 1920 * 0 + 60, 60 } );
+	window::create( "Main Window", { 1280, 800 }, { 1920 * 0 + 60, 60 } );
 
 	Vertex vertices[] =
 	{

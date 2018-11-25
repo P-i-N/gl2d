@@ -55,10 +55,34 @@ public:
 	void vertex( const vec2 &pos, float z = 0.0f ) { vertex( { pos.x, pos.y, z } ); }
 
 protected:
+	bool _dirtyBuffers = true;
+
 	struct draw_call
 	{
-
+		gl_enum primitive = gl_enum::NONE;
+		unsigned startVertex = UINT_MAX;
+		unsigned startIndex = UINT_MAX;
+		unsigned vertexCount = 0;
+		unsigned indexCount = 0;
+		unsigned stateIndex = UINT_MAX;
 	};
+
+	std::vector<draw_call> _drawCalls;
+
+	struct gpu_vertex
+	{
+		vec3 pos;
+		byte_vec4 color;
+		vec2 uv;
+
+		GL3D_LAYOUT( 0, &gpu_vertex::pos, 1, &gpu_vertex::color, 2, &gpu_vertex::uv )
+	};
+
+	std::vector<gpu_vertex> _vertices;
+	std::vector<unsigned> _indices;
+
+	buffer::ptr _vertexBuffer;
+	buffer::ptr _indexBuffer;
 };
 
 } // namespace gl3d

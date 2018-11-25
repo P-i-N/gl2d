@@ -356,10 +356,10 @@ public:
 	template <typename... Args>
 	static ptr create( Args &&... args ) { return std::make_shared<texture>( args... ); }
 
-	texture( gl_enum type, gl_format format, const uvec4 &dimensions, bool hasMips = false );
+	texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips = false );
 
 	texture( gl_format format, const uvec2 &dimensions, bool hasMips = false )
-		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1, 1 }, hasMips )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, hasMips )
 	{
 
 	}
@@ -368,17 +368,18 @@ public:
 	{
 		unsigned layer = 0;
 		unsigned mip_level = 0;
+		unsigned array_index = 0;
 		const void *data = nullptr;
 	};
 
-	texture( gl_enum type, gl_format format, const uvec4 &dimensions,
+	texture( gl_enum type, gl_format format, const uvec3 &dimensions,
 	         const detail::type_range<part> &parts,
 	         bool buildMips = true, bool makeCopy = true );
 
 	texture( gl_format format, const uvec2 &dimensions,
 	         const detail::type_range<part> &parts,
 	         bool buildMips = true, bool makeCopy = true )
-		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1, 1 }, parts, buildMips, makeCopy )
+		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, parts, buildMips, makeCopy )
 	{
 
 	}
@@ -386,7 +387,7 @@ public:
 	texture( gl_format format, const uvec2 &dimensions,
 	         const void *data,
 	         bool buildMips = true, bool makeCopy = true )
-		: texture( format, dimensions, part{ 0, 0, data }, buildMips, makeCopy )
+		: texture( format, dimensions, part{ 0, 0, 0, data }, buildMips, makeCopy )
 	{
 
 	}
@@ -395,12 +396,30 @@ public:
 
 	gl_enum type() const { return _type; }
 	gl_format format() const { return _format; }
-	const uvec4 &dimensions() const { return _dimensions; }
+	const uvec3 &dimensions() const { return _dimensions; }
 
 	unsigned width( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.x >> mipLevel ); }
 	unsigned height( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.y >> mipLevel ); }
-	unsigned depth( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.z >> mipLevel ); }
-	unsigned array_size() const { return _dimensions.w; }
+
+	unsigned layers( unsigned mipLevel = 0 ) const
+	{
+		if ( _type == gl_enum::TEXTURE_2D_ARRAY )
+			return _dimensions.z;
+		else if ( _type == gl_enum::TEXTURE_CUBE_MAP || _type == gl_enum::TEXTURE_CUBE_MAP_ARRAY )
+			return 6;
+
+		return maximum( 1, _dimensions.z >> mipLevel );
+	}
+
+	unsigned array_size() const
+	{
+		if ( _type == gl_enum::TEXTURE_2D_ARRAY )
+			return _dimensions.z;
+		else if ( _type == gl_enum::TEXTURE_CUBE_MAP_ARRAY )
+			return _dimensions.z / 6;
+
+		return 1;
+	}
 
 	void synchronize();
 
@@ -409,7 +428,7 @@ protected:
 
 	gl_enum _type = gl_enum::NONE;
 	gl_format _format = gl_format::NONE;
-	uvec4 _dimensions;
+	uvec3 _dimensions;
 
 	std::unique_ptr<part[]> _parts;
 	unsigned _numParts = 0;
@@ -461,7 +480,7 @@ public:
 	cmd_queue(): cmd_queue( nullptr ) { }
 	virtual ~cmd_queue();
 
-	bool recording() const { return _recording; }
+	bool deferred() const { return _deferred; }
 
 	void reset();
 
@@ -469,6 +488,12 @@ public:
 	void clear_depth( float depth );
 
 	void update_texture( texture::ptr tex, const void *data, unsigned layer = 0, unsigned mipLevel = 0, size_t rowStride = 0 );
+	void update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset = 0 );
+	void resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent = false );
+	void resize_buffer( buffer::ptr buff, size_t size, bool preserveContent = false )
+	{
+		resize_buffer( buff, nullptr, size, preserveContent );
+	}
 
 	void bind_state( const blend_state &bs );
 	void bind_state( const depth_stencil_state &ds );
@@ -593,7 +618,7 @@ protected:
 
 	void execute( gl_state *state );
 
-	bool _recording = true;
+	bool _deferred = true;
 	std::vector<uint8_t> _recordedData;
 	std::vector<detail::basic_object::ptr> _resources;
 	size_t _position = 0;
@@ -602,7 +627,7 @@ protected:
 	enum class cmd_type
 	{
 		clear_color, clear_depth,
-		update_texture,
+		update_texture, update_buffer, resize_buffer,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
 		bind_texture, bind_render_target,

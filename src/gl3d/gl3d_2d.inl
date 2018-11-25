@@ -224,13 +224,28 @@ immediate::~immediate()
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::reset()
 {
-
+	_drawCalls.clear();
+	_vertices.clear();
+	_indices.clear();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection )
 {
+	if ( _dirtyBuffers )
+	{
+		if ( !_vertexBuffer )
+			_vertexBuffer = buffer::create( buffer_usage::dynamic, _vertices );
+		else
+		{
+			auto verticesSize = _vertices.size() * sizeof( gpu_vertex );
 
+			if ( verticesSize > _vertexBuffer->size() )
+				queue->resize_buffer( _vertexBuffer, verticesSize );
+
+			queue->update_buffer( _vertexBuffer, _vertices.data(), verticesSize );
+		}
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
