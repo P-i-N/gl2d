@@ -1,3 +1,51 @@
+# **WORK IN PROGRESS**, use at your own risk or rather don't...
+
+- [ ] multiple windows support
+- [ ] fullscreen support
+- [ ] toggle fullscreen with `Alt+Enter`
+- [ ] shader hot reload
+- [ ] timestamped log messages
+- [ ] support different texture types
+  - [ ] TEXTURE_1D
+  - [ ] TEXTURE_2D
+  - [ ] TEXTURE_3D
+  - [ ] TEXTURE_2D_ARRAY
+  - [ ] TEXTURE_CUBE_MAP
+  - [ ] TEXTURE_CUBE_MAP_ARRAY
+  - [ ] multisampling
+- [ ] bindless textures
+- [ ] blend state: `gl3d::blend_state`
+- [ ] depth stencil state: `gl3d::depth_stencil_state`
+- [ ] rasterizer state: `gl3d::rasterizer_state`
+- [ ] command queue: `gl3d::cmd_queue`
+  - [ ] immediate mode
+  - [ ] deferred mode
+  - [ ] serialized buffer updates
+  - [ ] serialized texture updates
+  - [ ] serialized uniform block updates
+  - [ ] correct VAO handling
+  - [ ] using custom vertex attributes
+  - [ ] support (multiple) render targets
+- [ ] asynchronous upload context: `gl3d::detail::async_upload_context`
+  - [ ] buffer updates
+  - [ ] texture updates
+- [ ] space navigator support
+- [ ] gamepads with raw input
+- [ ] load BMF fonts from files
+- [ ] immediate renderer: `gl3d::immediate`
+  - [ ] emulate good old `glBegin` / `glEnd` as efficiently as possible
+  - [ ] OMG...
+- [ ] simple scene API
+  - [ ] node system/hierarchy
+  - [ ] fast BVH partitioning
+  - [ ] frustum culling
+  - [ ] shadow mapping
+  - [ ] hybrid clustered forward pipeline?
+  - [ ] PBR?
+- [ ] ImGui support with multiple viewports
+
+---
+
 # **G L** 3 D
 Collection of small header-only libraries for writing simple OpenGL applications, tools or demos. Currently compiles and runs on Windows and Visual Studio only.
 
