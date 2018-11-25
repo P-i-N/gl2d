@@ -1,104 +1,132 @@
-# gl3d
-Collection of small header-only libraries for writing simple OpenGL applications, tools or demos. Currently compiles and runs on Windows and Visual Studio only, future support for Linux is possible.
+# **WORK IN PROGRESS**, use at your own risk or rather don't...
+
+- [ ] multiple windows support
+- [ ] fullscreen support
+- [ ] toggle fullscreen with `Alt+Enter`
+- [ ] shader hot reload
+- [ ] timestamped log messages
+- [ ] support different texture types
+  - [ ] TEXTURE_1D
+  - [ ] TEXTURE_2D
+  - [ ] TEXTURE_3D
+  - [ ] TEXTURE_2D_ARRAY
+  - [ ] TEXTURE_CUBE_MAP
+  - [ ] TEXTURE_CUBE_MAP_ARRAY
+  - [ ] multisampling
+- [ ] bindless textures
+- [ ] blend state: `gl3d::blend_state`
+- [ ] depth stencil state: `gl3d::depth_stencil_state`
+- [ ] rasterizer state: `gl3d::rasterizer_state`
+- [ ] command queue: `gl3d::cmd_queue`
+  - [ ] immediate mode
+  - [ ] deferred mode
+  - [ ] serialized buffer updates
+  - [ ] serialized texture updates
+  - [ ] serialized uniform block updates
+  - [ ] correct VAO handling
+  - [ ] using custom vertex attributes
+  - [ ] support (multiple) render targets
+- [ ] asynchronous upload context: `gl3d::detail::async_upload_context`
+  - [ ] buffer updates
+  - [ ] texture updates
+- [ ] space navigator support
+- [ ] gamepads with raw input
+- [ ] load BMF fonts from files
+- [ ] immediate renderer: `gl3d::immediate`
+  - [ ] emulate good old `glBegin` / `glEnd` as efficiently as possible
+  - [ ] OMG...
+- [ ] simple scene API
+  - [ ] node system/hierarchy
+  - [ ] fast BVH partitioning
+  - [ ] frustum culling
+  - [ ] shadow mapping
+  - [ ] hybrid clustered forward pipeline?
+  - [ ] PBR?
+- [ ] ImGui support with multiple viewports
+
+---
+
+# **G L** 3 D
+Collection of small header-only libraries for writing simple OpenGL applications, tools or demos. Currently compiles and runs on Windows and Visual Studio only.
+
++ [Example 1: Open empty window](#example1)
++ [Example 2: Clear window with a color every frame](#example2)
++ [Example 3: Capture window and input device events](#example3)
+
+# Library parts:
+
+### gl3d_base.h
+- utility functions shared between other parts
+- simple logger - `gl3d::log`
+- simple virtual filesystem - `gl3d::vfs`
+- button, axis & key enums for input devices:
+  - `gl3d::key`
+  - `gl3d::mouse_button`
+  - `gl3d::gamepad_button`
+  - `gl3d::gamepad_axis`
+  - `gl3d::space_navigator_button`
+- global input device states:
+  - `gl3d::keyboard`
+  - `gl3d::mouse`
+  - `gl3d::gamepad[]`
+  - `gl3d::space_navigator` **(WIP)**
 
 ### gl3d_math.h
-- Vector and matrix classes (vec2, vec3, mat4, ...)
-- Math utility functions (dot, cross, normalize, ...)
-- Not SSE optimized, simple implementation
+- vector and matrix classes (vec2, vec3, mat4, ...)
+- math utility functions (dot, cross, normalize, ...)
+- **not SSE optimized**
 
 ### gl3d.h
-- Main OpenGL library layer
-- OpenGL 3.0+ support
-- Automatically finds extension functions (glCreateShader, glUniform...)
-- Wrappers for basic OpenGL objects & concepts:
-  - buffers
-  - geometries with easy VAO layout definitions
-  - shaders and programs (techniques) with preprocessor macros
-  - compute shaders
-  - simple uniform binding
-  - textures, texture arrays, cubemaps
-  - render targets (FBO)
-- Depends on gl3d_math.h
+- TODO
+
+### gl3d_window.h
+- TODO
 
 ### gl3d_2d.h
-- 2D drawing library
-- Text rendering with embedded fonts (no need for external loading)
-- Supports colored strings with '^' marks
-- Depends on gl3d.h
-
-### gl3d_input.h
-- Enums for key, mouse and gamepad devices
-- Callback registration for tick & window events
-- Simple access to main input device states:
-  - Keyboard
-  - Mouse
-  - Gamepads
-- No dependencies to other gl3d headers
-
-### gl3d_win32.h
-- Windowing library
-- Creating windows with initialized OpenGL contexts quickly
-- Capturing input events:
-  - mouse events
-  - mouse wheel events
-  - keyboard events (key down, key up, key press)
-  - window events (open, close, resize...)
-  - joystick/gamepad events
-- Frame timing functions
-- Multiple windows support
-- Depends on gl3d_2d.h, gl3d_input.h
-
-### gl3d_imgui.h
-- **TODO**
-- [dear imgui](https://github.com/ocornut/imgui) integration
-- Depends on gl3d_2d.h, gl3d_input.h
+- TODO
 
 ### gl3d_scene.h
-- **TODO**
-- [ ] Simple scene tree management
-- [ ] Forward rendering pipeline
-- [ ] One global light
-- [ ] RAW model loading
-- [ ] OBJ model loading
-- [ ] Texture loading (using [stb_image](https://github.com/nothings/stb))
+- TODO
 
--------------------------------------------------------------------------------
+---
 
-### Example 1 - open window
+<a id="example1"></a>
+## Example 1: Open empty window
+
 ```cpp
 #define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_window.h>
 
 using namespace gl3d;
 
 int main()
 {
-  // Open main window
-  window_open("Example", 400, 300);
+  window::create( "Main Window", { 1280, 800 } );
 
-  // Start main application loop
   run();
-
   return 0;
 }
 ```
 
-### Example 2 - Hello, world!
+---
+
+<a id="example2"></a>
+## Example 2: Clear window with a color every frame
+
 ```cpp
 #define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_window.h>
 
 using namespace gl3d;
 
 int main()
 {
-  window_open("Example", 400, 300);
+  window::create( "Main Window", { 1280, 800 } );
 
-  // Tick handler called once every frame
-  tick_handler = [&]()
+  on_tick += [&]()
   {
-    auto ctx = current_context2d;
-    ctx->text(10, 10, "Hello, world!");
+    auto w = window::from_id( 0 );
+    w->context()->clear_color( { 0.125f, 0.25f, 0.5f, 1.0f } );
   };
 
   run();
@@ -106,59 +134,59 @@ int main()
 }
 ```
 
-### Example 3 - rotating triangle
+---
+
+<a id="example3"></a>
+## Example 3: Capture window and input device events
+
 ```cpp
 #define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_window.h>
 
 using namespace gl3d;
 
 int main()
 {
-  // Triangle geometry
-  geometry::ptr geom = new geometry();
+  window::create( "Main Window", { 1280, 800 } );
 
-  // Allocate 3 vertices
-  auto vertices = geom->alloc_vertices(3);
-
-  // Top vertex
-  vertices->pos = vec3(0, 1, 0);
-  vertices->color = vec4::red();
-  ++vertices;
-
-  // Left vertex
-  vertices->pos = vec3(-1, -1, 0);
-  vertices->color = vec4::green();
-  ++vertices;
-
-  // Right vertex
-  vertices->pos = vec3(1, -1, 0);
-  vertices->color = vec4::blue();
-  ++vertices;
-
-  window_open("Example", 400, 300);
-
-  // Event handler for capturing all application events
-  event_handler = [&](const event &e)
+  on_window_event += [&](window_event &e) -> bool
   {
-    // Paint event called for every window before end of the frame
-    if (e.type == event_type::paint)
+    // Get concrete window instance from window_id
+    auto w = window::from_id(e.window_id);
+
+    switch (e.event_type)
     {
-      auto size = get_window_size(e.window_id);
-      float aspectRatio = static_cast<float>(size.x) / size.y;
+      case window_event::type::resize:
+        // ...
+        break;
 
-      auto ctx = current_context3d;
-      ctx->bind(geom);
-      ctx->set_uniform(GL3D_UNIFORM_PROJECTION_MATRIX, mat4::perspective(120.0f, aspectRatio, 0.01f, 1000.0f));
-      ctx->set_uniform(GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::look_at(15.0f * sin(time()), 0.0f, 15.0f * cos(time()), 0.0f, 0.0f, 0.0f).invert());
-      ctx->draw();
+      case window_event::type::close:
+        // ...
+        break;
+
+      /// etc...
     }
+
+    // Returning false means that the current event was NOT consumed by this
+    // event handler and can be passed to next handler in the callback chain
+    return false;
   };
 
-  tick_handler = [&]()
+  on_input_event += [&](input_event &e) -> bool
   {
-    auto ctx = current_context2d;
-    ctx->text(10, 10, "FPS: ^9%.3f ms", 1.0f / delta());
+    // Get concrete window instance from window_id. Be careful there - some input
+    // events are "global" and does NOT have a source window:
+    // - gamepad or space navigator events
+    auto w = window::from_id(e.window_id);
+
+    // Returning true/false indicates event consumption (same as with on_window_event)
+    return false;
+  };
+
+  on_tick += [&]()
+  {
+    auto w = window::from_id( 0 );
+    w->context()->clear_color( { 0.125f, 0.25f, 0.5f, 1.0f } );
   };
 
   run();

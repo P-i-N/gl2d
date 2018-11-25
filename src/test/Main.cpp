@@ -1,82 +1,93 @@
 #define GL3D_IMPLEMENTATION
-#include <gl3d/gl3d_win32.h>
+#include <gl3d/gl3d_window.h>
+#include <gl3d/gl3d_2d.h>
 
-#include <chrono>
+struct Vertex
+{
+	gl3d::vec3 pos;
+	gl3d::vec4 color;
+
+	GL3D_LAYOUT( 0, &Vertex::pos, 3, &Vertex::color );
+};
+
+struct FrameData
+{
+	gl3d::mat4 ProjectionMatrix;
+	gl3d::mat4 ViewMatrix;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main()
 {
 	using namespace gl3d;
 
-	// Triangle geometry
-	auto geom = std::make_shared<geometry<vertex3d>>();
-	auto vertices = geom->alloc_vertices( 3 );
+	window::create( "Main Window", { 1280, 800 }, { 1920 * 0 + 60, 60 } );
 
-	vertices->pos = vec3( 0,  1, 0 );
-	vertices->color = vec4::red();
-	++vertices;
-
-	vertices->pos = vec3( -1, -1, 0 );
-	vertices->color = vec4::green();
-	++vertices;
-
-	vertices->pos = vec3( 1, -1, 0 );
-	vertices->color = vec4::blue();
-	++vertices;
-
-	window_open( "Example", 400, 300 );
-
-	on_event( [&]( event & e )
+	Vertex vertices[] =
 	{
-		if ( e.canceled )
-			return;
+		{ {  0, -1, 0 }, vec4::red() },
+		{ {  1,  1, 0 }, vec4::green() },
+		{ { -1,  1, 0 }, vec4::blue() }
+	};
 
-		if ( e.type == event_type::paint )
-		{
-			auto size = get_window_size( e.window_id );
-			float aspectRatio = static_cast<float>( size.x ) / size.y;
+	FrameData fd;
+	fd.ProjectionMatrix = gl3d::mat4();
+	fd.ViewMatrix = gl3d::mat4();
 
-			auto ctx = state.ctx3d;
-			ctx->bind_geometry( geom );
-			ctx->set_uniform( GL3D_UNIFORM_PROJECTION_MATRIX, mat4::make_perspective( 60.0f, aspectRatio, 0.01f, 1000.0f ) );
-			ctx->set_uniform( GL3D_UNIFORM_MODELVIEW_MATRIX, mat4::make_inverse( mat4::make_look_at( 5.0f * sin( state.time ), 2.0f, 5.0f * cos( state.time ), 0.0f, 0.0f, 0.0f ) ) );
-			ctx->draw();
-		}
-	} );
+	auto sc = std::make_shared<shader_code>();
+	sc->load( "../../data/shaders/Test.shader" );
 
-	on_tick( [&]()
+	uint8_t checkerboard[] =
 	{
-		auto ctx = state.ctx2d;
-		int y = 16;
+		0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF
+	};
 
-		if ( gamepad[0].connected() )
+	auto t = texture::create( gl_format::RGB8, uvec2{ 4, 4 }, checkerboard );
+
+	auto q = cmd_queue::create();
+	q->bind_shader( shader::create( sc ) );
+	q->bind_texture( t, 0 );
+
+	q->set_uniform_block( 0, fd );
+	q->set_uniform( "u_Diffuse", 0 );
+
+	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::get_layout() );
+	q->draw( gl_enum::TRIANGLES, 0, 3 );
+
+	on_tick += [&]()
+	{
+		auto w = window::from_id( 0 );
+		auto ctx = w->context();
+
+		ctx->clear_color( { 0.0f, 0.0f, 0.0f, 1.0f } );
+		ctx->execute( q );
+	};
+
+	on_window_event += [&]( window_event & e )->bool
+	{
+		switch ( e.event_type )
 		{
-			if ( gamepad[0][gamepad_button::a] ) ctx->texti( 16, y += 16, "^AButton A" );
-			if ( gamepad[0][gamepad_button::b] ) ctx->texti( 16, y += 16, "^CButton B" );
-			if ( gamepad[0][gamepad_button::x] ) ctx->texti( 16, y += 16, "^9Button X" );
-			if ( gamepad[0][gamepad_button::y] ) ctx->texti( 16, y += 16, "^EButton Y" );
-			if ( gamepad[0][gamepad_button::thumb_left] ) ctx->texti( 16, y += 16, "Thumb Left" );
-			if ( gamepad[0][gamepad_button::thumb_right] ) ctx->texti( 16, y += 16, "Thumb Right" );
-			if ( gamepad[0][gamepad_button::shoulder_left] ) ctx->texti( 16, y += 16, "Shoulder Left" );
-			if ( gamepad[0][gamepad_button::shoulder_right] ) ctx->texti( 16, y += 16, "Shoulder Right" );
-			if ( gamepad[0][gamepad_button::up] ) ctx->texti( 16, y += 16, "UP" );
-			if ( gamepad[0][gamepad_button::down] ) ctx->texti( 16, y += 16, "DOWN" );
-			if ( gamepad[0][gamepad_button::left] ) ctx->texti( 16, y += 16, "LEFT" );
-			if ( gamepad[0][gamepad_button::right] ) ctx->texti( 16, y += 16, "RIGHT" );
+			case window_event::type::paint:
+			{
+				auto w = window::from_id( e.window_id );
+				auto imm = w->immediate();
 
-			auto size = get_window_size();
-			float cx = size.x / 2.0f - size.x / 4.0f;
-			float r = size.x / 8.0f;
-			float cy = size.y / 2.0f + r * gamepad[0].axis_x[3];;
+				imm->begin( gl_enum::LINES );
+				imm->vertex( { 0, 0 } );
+				imm->vertex( w->size() );
+				imm->end();
 
-			ctx->line( cx, cy, cx + r * gamepad[0].axis_x[1], cy - r * gamepad[0].axis_y[1] );
-
-			cx = size.x / 2.0f + size.x / 4.0f;
-			cy = size.y / 2.0f + r * gamepad[0].axis_x[4];;
-			ctx->line( cx, cy, cx + r * gamepad[0].axis_x[2], cy - r * gamepad[0].axis_y[2] );
+				printf( "%f (%.1f fps)\n", gl3d::time, 1.0f / gl3d::delta );
+			}
+			break;
 		}
 
-		ctx->texti( 8, 8, "Hello, world!" );
-	} );
+		return false;
+	};
 
 	run();
 	return 0;

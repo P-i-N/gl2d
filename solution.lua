@@ -12,24 +12,6 @@ Projects =
     dir = "src/test",
     type = "console",
   },
-  
-  -- arc
-  {
-    dir = "src/arc",
-    type = "console",
-  },
-
-  -- test_imgui
-  {
-    dir = "src/test_imgui",
-    type = "console",
-  },
-
-  -- test_immediate
-  {
-    dir = "src/test_immediate",
-    type = "console",
-  },
 
   -- fontconv
   {

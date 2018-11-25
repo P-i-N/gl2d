@@ -37,6 +37,9 @@ template <class T> struct xvec2 : xvec_impl<T, 2>
 	template <class T2> auto operator+(const xvec2<T2> &rhs) const { return xvec2<decltype(x + rhs.x)>(x + rhs.x, y + rhs.y); }
 	template <class T2> auto operator-(const xvec2<T2> &rhs) const { return xvec2<decltype(x - rhs.x)>(x - rhs.x, y - rhs.y); }
 
+	template <class T2> bool operator==(const xvec2<T2> &rhs) const { return x == rhs.x && y == rhs.y; }
+	template <class T2> bool operator!=(const xvec2<T2> &rhs) const { return x != rhs.x || y != rhs.y; }
+
 	T length_sq() const { return x*x + y*y; }
 	T length() const { return sqrt(length_sq()); }
 
@@ -58,6 +61,9 @@ template <class T> struct xvec3 : xvec_impl<T, 3>
 	template <class T2> auto operator+(const xvec3<T2> &rhs) const { return xvec3<decltype(x + rhs.x)>(x + rhs.x, y + rhs.y, z + rhs.z); }
 	template <class T2> auto operator-(const xvec3<T2> &rhs) const { return xvec3<decltype(x - rhs.x)>(x - rhs.x, y - rhs.y, z - rhs.z); }
 
+	template <class T2> bool operator==(const xvec3<T2> &rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z; }
+	template <class T2> bool operator!=(const xvec3<T2> &rhs) const { return x != rhs.x || y != rhs.y || z != rhs.z; }
+
 	T length_sq() const { return x*x + y*y + z*z; }
 	T length() const { return sqrt(length_sq()); }
 
@@ -75,7 +81,7 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 	template <class TV> xvec4(const xvec4<TV> &v): xvec_impl((T)v.x, (T)v.y, (T)v.z, (T)v.w) { }
 	template <class TV, class TW> xvec4(const xvec3<TV> &v, TW w) : xvec_impl((T)v.x, (T)v.y, (T)v.z, (T)w) { }
 
-	explicit xvec4(uint32_t argb): xvec_impl(
+	explicit xvec4(unsigned argb): xvec_impl(
 		((argb >> 16) & 0xFFu) / 255.0f,
 		((argb >> 8) & 0xFFu) / 255.0f,
 		(argb & 0xFFu) / 255.0f,
@@ -85,6 +91,9 @@ template <class T> struct xvec4 : xvec_impl<T, 4>
 	template <class T2> auto operator/(T2 scale) const { return xvec4<decltype(x / scale)>(x / scale, y / scale, z / scale, w / scale); }
 	template <class T2> auto operator+(const xvec4<T2> &rhs) const { return xvec4<decltype(x + rhs.x)>(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
 	template <class T2> auto operator-(const xvec4<T2> &rhs) const { return xvec4<decltype(x - rhs.x)>(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
+
+	template <class T2> bool operator==(const xvec4<T2> &rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
+	template <class T2> bool operator!=(const xvec4<T2> &rhs) const { return x != rhs.x || y != rhs.y || z != rhs.z || w != rhs.w; }
 
 	T length_sq() const { return x*x + y*y + z*z + w*w; }
 	T length() const { return sqrt(length_sq()); }
@@ -412,16 +421,23 @@ template <class T> T degrees(T radians) { return radians / static_cast<T>(pi) * 
 template <class T> T radians(T degrees) { return degrees / 180 * static_cast<T>(pi); }
 
 //---------------------------------------------------------------------------------------------------------------------
+template <typename T>
+constexpr T align_up(T x, T alignment) { return ((x + alignment - 1) / alignment) * alignment; }
+
+//---------------------------------------------------------------------------------------------------------------------
 using vec2 = detail::xvec2<float>;
 using dvec2 = detail::xvec2<double>;
 using ivec2 = detail::xvec2<int>;
+using uvec2 = detail::xvec2<unsigned>;
 using vec3 = detail::xvec3<float>;
 using dvec3 = detail::xvec3<double>;
 using ivec3 = detail::xvec3<int>;
+using uvec3 = detail::xvec3<unsigned>;
 using vec4 = detail::xvec4<float>;
 using dvec4 = detail::xvec4<double>;
 using ivec4 = detail::xvec4<int>;
-using byte_vec4 = detail::xvec4<uint8_t>;
+using uvec4 = detail::xvec4<unsigned>;
+using byte_vec4 = detail::xvec4<unsigned char>;
 using mat3 = detail::xmat3<float>;
 using dmat3 = detail::xmat3<double>;
 using mat4 = detail::xmat4<float>;
