@@ -224,6 +224,7 @@ immediate::~immediate()
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::reset()
 {
+	_states.clear();
 	_drawCalls.clear();
 	_vertices.clear();
 	_indices.clear();
@@ -232,6 +233,9 @@ void immediate::reset()
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection )
 {
+	if ( _drawCalls.empty() )
+		return;
+
 	if ( _dirtyBuffers )
 	{
 		if ( !_vertexBuffer )

@@ -7,6 +7,7 @@
 #include <cstdarg>
 #include <fstream>
 #include <sstream>
+#include <chrono>
 
 #if defined(WIN32)
 	#ifndef VC_EXTRALEAN
@@ -269,8 +270,16 @@ struct log_init
 {
 	log_init()
 	{
-		on_log_message += []( log::message_type type, const char *text )
+		using namespace std::chrono;
+		auto logTimeOffset = high_resolution_clock::now();
+
+		on_log_message += [&]( log::message_type type, const char *text )
 		{
+			auto logTime = duration_cast<std::chrono::milliseconds>( steady_clock::now() - logTimeOffset ).count();
+			auto milis = static_cast<int>( logTime % 1000 );
+			auto seconds = static_cast<int>( ( logTime / 1000 ) % 60 );
+			auto minutes = static_cast<int>( logTime / 60000 );
+
 			static std::recursive_mutex s_logMutex;
 			std::scoped_lock lock( s_logMutex );
 
@@ -278,7 +287,7 @@ struct log_init
 			static int s_typeColors[] = { 7, 10, 14, 12, 14 | ( 4 << 4 ) };
 			int color = s_typeColors[static_cast<size_t>( type )];
 			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
-			printf( "%s\n", detail::tl_logBuffer );
+			printf( "[%d:%d:%d] %s\n", minutes, seconds, milis, detail::tl_logBuffer );
 			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), 7 );
 #else
 #error Not implemented!

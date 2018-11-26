@@ -22,7 +22,10 @@ int main()
 {
 	using namespace gl3d;
 
-	window::create( "Main Window", { 1280, 800 }, { 1920 * 0 + 60, 60 } );
+	// Mount folder with example data
+	vfs::mount( "../../data" );
+
+	window::create( "Main Window", { 1280, 800 }, { 1920 * 2 + 60, 60 } );
 
 	Vertex vertices[] =
 	{
@@ -81,7 +84,7 @@ int main()
 				imm->vertex( w->size() );
 				imm->end();
 
-				printf( "%f (%.1f fps)\n", gl3d::time, 1.0f / gl3d::delta );
+				log::info( "%f (%.1f fps)\n", gl3d::time, 1.0f / gl3d::delta );
 			}
 			break;
 		}

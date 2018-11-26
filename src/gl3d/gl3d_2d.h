@@ -57,6 +57,15 @@ public:
 protected:
 	bool _dirtyBuffers = true;
 
+	struct state
+	{
+
+	};
+
+	std::vector<state> _states;
+
+	state _currentState;
+
 	struct draw_call
 	{
 		gl_enum primitive = gl_enum::NONE;
@@ -68,6 +77,8 @@ protected:
 	};
 
 	std::vector<draw_call> _drawCalls;
+
+	draw_call _currentDrawCall;
 
 	struct gpu_vertex
 	{
@@ -83,6 +94,8 @@ protected:
 
 	buffer::ptr _vertexBuffer;
 	buffer::ptr _indexBuffer;
+
+	shader::ptr _shader;
 };
 
 } // namespace gl3d
