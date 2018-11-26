@@ -79,23 +79,31 @@ template <typename F> class callback_chain final
 public:
 	using function_t = std::function<F>;
 
-	callback_chain &operator()( function_t f, int priority = 0 )
+	void clear()
 	{
 		std::scoped_lock lock( _mutex );
-		_callbacks.insert( _callbacks.end(), { priority, f } );
+		_callbacks.clear();
+	}
+
+	unsigned add( function_t f, int priority = 0 )
+	{
+		std::scoped_lock lock( _mutex );
+		auto id = _nextID++;
+		_callbacks.insert( _callbacks.end(), { id, priority, f } );
 		std::sort( _callbacks.begin(), _callbacks.end() );
-		return *this;
+
+		return id;
 	}
 
-	void operator+=( function_t f )
-	{
-		( *this )( f, 0 );
-	}
-
-	bool operator-=( function_t f )
+	bool remove( unsigned id )
 	{
 		std::scoped_lock lock( _mutex );
-		if ( auto iter = std::find( _callbacks.begin(), _callbacks.end(), f ); iter != _callbacks.end() )
+		auto iter = std::find_if( _callbacks.begin(), _callbacks.end(), [id]( const callback_info & info )
+		{
+			return info.id == id;
+		} );
+
+		if ( iter != _callbacks.end() )
 		{
 			_callbacks.erase( iter );
 			std::sort( _callbacks.begin(), _callbacks.end() );
@@ -105,7 +113,11 @@ public:
 		return false;
 	}
 
-	template <typename... Args> std::result_of_t<function_t( Args... )> call( Args &&... args ) const
+	unsigned operator+=( function_t f ) { return add( f, 0 ); }
+
+	bool operator-=( unsigned id ) { return remove( id ); }
+
+	template <typename... Args> std::result_of_t<function_t( Args... )> operator()( Args &&... args ) const
 	{
 		thread_local decltype( _callbacks ) callbacksCopy;
 
@@ -139,6 +151,7 @@ public:
 private:
 	struct callback_info
 	{
+		unsigned id = UINT_MAX;
 		int priority = 0;
 		function_t callback;
 		bool operator<( const callback_info &rhs ) const { return priority < rhs.priority; }
@@ -147,6 +160,7 @@ private:
 
 	mutable std::mutex _mutex;
 	std::vector<callback_info> _callbacks;
+	unsigned _nextID = 0;
 };
 
 //---------------------------------------------------------------------------------------------------------------------

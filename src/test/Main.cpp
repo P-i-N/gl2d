@@ -26,7 +26,6 @@ int main()
 	vfs::mount( "../../data" );
 
 	window::create( "Main Window", { 1280, 800 }, { 1920 * 0 + 60, 60 } );
-	window::create( "Secondary Window", { 640, 400 }, { 1920 * 0 + 60, 60 } );
 
 	Vertex vertices[] =
 	{
@@ -75,10 +74,9 @@ int main()
 			case window_event::type::paint:
 			{
 				auto w = window::from_id( e.window_id );
-				auto ctx = w->context();
 
+				auto ctx = w->context();
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
-				ctx->execute( q );
 
 				auto imm = w->immediate();
 

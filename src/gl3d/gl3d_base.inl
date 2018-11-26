@@ -173,7 +173,7 @@ void keyboard_state::change_key_state( key k, bool down, unsigned id )
 		input_event e( down ? input_event::type::key_down : input_event::type::key_up, id );
 		e.keyboard.k = k;
 		e.keyboard.ch = 0;
-		on_input_event.call( e );
+		on_input_event( e );
 	}
 }
 
@@ -188,7 +188,7 @@ void mouse_state::change_button_state( mouse_button b, bool down, unsigned id )
 		e.mouse.b = b;
 		e.mouse.pos = pos;
 		e.mouse.delta = { 0, 0 };
-		on_input_event.call( e );
+		on_input_event( e );
 	}
 }
 
@@ -202,7 +202,7 @@ void mouse_state::change_position( ivec2 pos, unsigned id )
 		e.mouse.pos = pos;
 		e.mouse.delta = pos - this->pos;
 		this->pos = pos;
-		on_input_event.call( e );
+		on_input_event( e );
 	}
 }
 
@@ -216,7 +216,7 @@ void gamepad_state::change_button_state( gamepad_button b, bool down )
 		input_event e( down ? input_event::type::gamepad_down : input_event::type::gamepad_up, UINT_MAX );
 		e.gamepad.port = port;
 		e.gamepad.b = b;
-		on_input_event.call( e );
+		on_input_event( e );
 	}
 }
 
@@ -232,7 +232,7 @@ void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 		e.gamepad.axis = axis;
 		e.gamepad.pos = pos;
 		e.gamepad.delta = pos - oldPos;
-		on_input_event.call( e );
+		on_input_event( e );
 	}
 }
 
@@ -308,35 +308,35 @@ struct log_init
 void log::info( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message { time, log::message_type::info, detail::tl_logBuffer } );
+	on_log_message( log::message { time, log::message_type::info, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::success( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message{ time, log::message_type::success, detail::tl_logBuffer } );
+	on_log_message( log::message{ time, log::message_type::success, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::warning( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message{ time, log::message_type::warning, detail::tl_logBuffer } );
+	on_log_message( log::message{ time, log::message_type::warning, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::error( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message{ time, log::message_type::error, detail::tl_logBuffer } );
+	on_log_message( log::message{ time, log::message_type::error, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::fatal( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message{ time, log::message_type::fatal, detail::tl_logBuffer } );
+	on_log_message( log::message{ time, log::message_type::fatal, detail::tl_logBuffer } );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +405,7 @@ bool vfs::unmount( const std::filesystem::path &path )
 //---------------------------------------------------------------------------------------------------------------------
 bool vfs::load( const std::filesystem::path &path, detail::bytes_t &bytes )
 {
-	return on_vfs_load.call( path, bytes );
+	return on_vfs_load( path, bytes );
 }
 
 } // namespace gl3d
