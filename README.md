@@ -1,6 +1,6 @@
 # **WORK IN PROGRESS**, use at your own risk or rather don't...
 
-- [ ] multiple windows support
+- [x] multiple windows support
 - [ ] fullscreen support
 - [ ] toggle fullscreen with `Alt+Enter`
 - [ ] shader hot reload
