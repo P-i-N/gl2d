@@ -24,7 +24,7 @@
   - [ ] serialized buffer updates
   - [ ] serialized texture updates
   - [ ] serialized uniform block updates
-  - [ ] correct VAO handling
+  - [x] correct VAO handling
   - [ ] using custom vertex attributes
   - [ ] support (multiple) render targets
 - [ ] asynchronous upload context: `gl3d::detail::async_upload_context`

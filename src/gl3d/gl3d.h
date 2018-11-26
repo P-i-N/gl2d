@@ -76,6 +76,7 @@ struct gl_api
 	GL_PROC(void, VertexArrayAttribFormat, unsigned, unsigned, int, gl_enum, unsigned char, unsigned)
 	GL_PROC(void, VertexArrayAttribBinding, unsigned, unsigned, unsigned)
 	GL_PROC(void, VertexArrayVertexBuffer, unsigned, unsigned, unsigned, const void *, int)
+	GL_PROC(void, VertexArrayElementBuffer, unsigned, unsigned)
 
 	/// Textures
 	GL_PROC(void, CreateTextures, gl_enum, unsigned, unsigned *)
@@ -505,7 +506,7 @@ public:
 	void bind_shader( shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
-	void bind_index_buffer( buffer::ptr indices, bool use16bits, size_t offset = 0 );
+	void bind_index_buffer( buffer::ptr indices, bool use16bits = false, size_t offset = 0 );
 
 	void bind_texture( texture::ptr tex, unsigned slot );
 	void bind_render_target( texture::ptr tex, unsigned slot, unsigned layer = 0, unsigned mipLevel = 0 );
@@ -533,6 +534,23 @@ protected:
 		buffer::ptr uniform_block_buffer;
 		size_t uniform_block_cursor = 0;
 		int uniform_block_alignment = 0;
+
+		buffer::ptr vb;
+		const detail::layout *layout = nullptr;
+		size_t vb_offset = 0;
+		buffer::ptr ib;
+		size_t ib_offset = 0;
+
+		unsigned current_vao = 0;
+		bool dirty_vao = true;
+
+		void reset()
+		{
+			vb = ib = nullptr;
+			layout = nullptr;
+			vb_offset = ib_offset = 0;
+			dirty_vao = true;
+		}
 	};
 
 	cmd_queue( gl_state *state );
@@ -659,11 +677,26 @@ public:
 
 	void make_current();
 
-	unsigned bind_vao( buffer::ptr vb, const detail::layout &layout, size_t offset );
+	unsigned bind_vao( gl_state *state );
+	unsigned bind_vao( buffer::ptr vb, buffer::ptr ib, const detail::layout &layout, size_t offset );
 
 protected:
 	void *_window_native_handle = nullptr;
 	void *_native_handle = nullptr;
+
+	struct vao_desc
+	{
+		const detail::layout *layout = nullptr;
+		size_t offset = 0;
+
+		unsigned vb_id = 0;
+		unsigned ib_id = 0;
+
+		unsigned vao_id = 0;
+		unsigned unused_frames = 0;
+	};
+
+	std::vector<vao_desc> _vaoDescs;
 
 	gl_state _glState;
 	std::unordered_map<std::uintptr_t, unsigned> _layoutVAOs;

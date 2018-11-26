@@ -216,16 +216,37 @@ immediate::immediate()
 {
 	static const char *s_immediateShader = R"SHADER_SOURCE(
 	#vertex
+	layout (location = 0) in vec3 vertex_Position;
+	layout (location = 1) in vec4 vertex_Color;
+	layout (location = 2) in vec2 vertex_UV;
 
+	layout (std140, binding = 0) uniform FrameData
+	{
+		mat4 ProjectionMatrix;
+		mat4 ViewMatrix;
+	};
+
+	out vec4 color;
+
+	void main()
+	{
+		gl_Position = ProjectionMatrix * ViewMatrix * vec4(vertex_Position, 1);
+		color = vertex_Color;
+	}
 
 	#fragment
+	in vec4 color;
 
+	out vec4 out_Color;
 
+	void main()
+	{
+		out_Color = vec4(color);
+	}
 	)SHADER_SOURCE";
 
 	auto code = shader_code::create();
 	code->source( s_immediateShader );
-
 	_shader = shader::create( code );
 
 	reset();
@@ -287,6 +308,10 @@ void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj
 
 		_dirtyBuffers = false;
 	}
+
+	queue->bind_shader( _shader );
+	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::get_layout() );
+	queue->bind_index_buffer( _indexBuffer );
 
 	for ( auto &dc : _drawCalls )
 	{

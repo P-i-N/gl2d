@@ -77,6 +77,7 @@ int main()
 
 				auto ctx = w->context();
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
+				ctx->execute( q );
 
 				auto imm = w->immediate();
 
