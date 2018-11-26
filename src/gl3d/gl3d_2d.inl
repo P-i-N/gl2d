@@ -8,6 +8,8 @@ namespace gl3d {
 
 namespace detail {
 
+static constexpr size_t k_vertexBatchAllocation = 256;
+
 //---------------------------------------------------------------------------------------------------------------------
 bool is_base64( uint8_t c ) { return ( isalnum( c ) || ( c == '+' ) || ( c == '/' ) ); }
 
@@ -212,7 +214,21 @@ font::ptr font::create( const char *base64Data )
 //---------------------------------------------------------------------------------------------------------------------
 immediate::immediate()
 {
+	static const char *s_immediateShader = R"SHADER_SOURCE(
+	#vertex
 
+
+	#fragment
+
+
+	)SHADER_SOURCE";
+
+	auto code = shader_code::create();
+	code->source( s_immediateShader );
+
+	_shader = shader::create( code );
+
+	reset();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -224,10 +240,17 @@ immediate::~immediate()
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::reset()
 {
+	_dirtyBuffers = true;
+
 	_states.clear();
 	_drawCalls.clear();
-	_vertices.clear();
 	_indices.clear();
+
+	_vertices.resize( detail::k_vertexBatchAllocation );
+	_currentVertex = _vertices.begin();
+
+	_currentUV = { 0, 0 };
+	_currentColor = { 1, 1, 1, 1 };
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -245,29 +268,91 @@ void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj
 			auto verticesSize = _vertices.size() * sizeof( gpu_vertex );
 
 			if ( verticesSize > _vertexBuffer->size() )
-				queue->resize_buffer( _vertexBuffer, verticesSize );
-
-			queue->update_buffer( _vertexBuffer, _vertices.data(), verticesSize );
+				queue->resize_buffer( _vertexBuffer, _vertices.data(), verticesSize );
+			else
+				queue->update_buffer( _vertexBuffer, _vertices.data(), verticesSize );
 		}
+
+		if ( !_indexBuffer )
+			_indexBuffer = buffer::create( buffer_usage::dynamic, _indices );
+		else
+		{
+			auto indicesSize = _indices.size() * sizeof( unsigned );
+
+			if ( indicesSize > _indexBuffer->size() )
+				queue->resize_buffer( _indexBuffer, _indices.data(), indicesSize );
+			else
+				queue->update_buffer( _indexBuffer, _indices.data(), indicesSize );
+		}
+
+		_dirtyBuffers = false;
+	}
+
+	for ( auto &dc : _drawCalls )
+	{
+
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::begin( gl_enum primitiveType, bool autoClose )
 {
+	assert( !building_mesh() );
 
+	_currentDrawCall.primitive = primitiveType;
+	_currentDrawCall.startVertex = static_cast<unsigned>( _currentVertex - _vertices.begin() );
+	_currentDrawCall.startIndex = static_cast<unsigned>( _indices.size() );
+	_currentDrawCall.vertexCount = 0;
+	_currentDrawCall.indexCount = 0;
+	_currentDrawCall.stateIndex = UINT_MAX;
+
+	_buildingMesh = true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::end()
 {
+	assert( building_mesh() );
+	_buildingMesh = false;
 
+	auto numVertices = static_cast<unsigned>( _currentVertex - _vertices.begin() ) - _currentDrawCall.startVertex;
+	if ( !numVertices )
+		return;
+
+	switch ( _currentDrawCall.primitive )
+	{
+		case gl_enum::LINES:
+		{
+			_currentDrawCall.vertexCount = numVertices;
+			_currentDrawCall.indexCount = numVertices;
+
+			_indices.resize( _indices.size() + numVertices );
+			for ( unsigned i = 0, *index = _indices.data() + _currentDrawCall.startIndex, v = _currentDrawCall.startVertex; i < numVertices; ++i )
+				*index++ = v++;
+		}
+		break;
+	}
+
+	_drawCalls.push_back( _currentDrawCall );
+	_dirtyBuffers = true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void immediate::vertex( const vec3 &pos )
 {
+	assert( building_mesh() );
 
+	if ( _currentVertex == _vertices.end() )
+	{
+		_vertices.resize( _vertices.size() + detail::k_vertexBatchAllocation );
+		_currentVertex = _vertices.end() - detail::k_vertexBatchAllocation;
+	}
+
+	_currentVertex->pos = pos;
+	_currentVertex->color = _currentColor;
+	_currentVertex->uv = _currentUV;
+
+	++_currentVertex;
 }
 
 } // namespace gl3d

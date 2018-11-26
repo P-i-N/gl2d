@@ -24,6 +24,7 @@
 
 #define GL3D_FORMAT_LOG_TEXT(_Input) \
 	if (!(_Input)) return; \
+	uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::steady_clock::now() - detail::g_logTimeOffset ).count(); \
 	va_list ap; \
 	va_start(ap, _Input); \
 	vsnprintf(detail::tl_logBuffer, detail::logBufferSize, _Input, ap); \
@@ -266,28 +267,31 @@ std::vector<mount_info> g_mountInfos;
 
 struct vfs_init { vfs_init() { vfs::mount( "." ); } } g_vfsInit;
 
+std::chrono::steady_clock::time_point g_logTimeOffset = std::chrono::steady_clock::now();
+
 struct log_init
 {
 	log_init()
 	{
 		using namespace std::chrono;
-		auto logTimeOffset = high_resolution_clock::now();
 
-		on_log_message += [&]( log::message_type type, const char *text )
+		on_log_message += [&]( const log::message & msg )
 		{
-			auto logTime = duration_cast<std::chrono::milliseconds>( steady_clock::now() - logTimeOffset ).count();
-			auto milis = static_cast<int>( logTime % 1000 );
-			auto seconds = static_cast<int>( ( logTime / 1000 ) % 60 );
-			auto minutes = static_cast<int>( logTime / 60000 );
+			auto milis = static_cast<int>( msg.time % 1000ull );
+			auto seconds = static_cast<int>( ( msg.time / 1000ull ) % 60 );
+			auto minutes = static_cast<int>( msg.time / 60000ull );
 
 			static std::recursive_mutex s_logMutex;
 			std::scoped_lock lock( s_logMutex );
 
 #if defined(WIN32)
+			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), 8 );
+			printf( "[%02d:%02d.%03d] ", minutes, seconds, milis );
+
 			static int s_typeColors[] = { 7, 10, 14, 12, 14 | ( 4 << 4 ) };
-			int color = s_typeColors[static_cast<size_t>( type )];
+			int color = s_typeColors[static_cast<size_t>( msg.type )];
 			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), color );
-			printf( "[%d:%d:%d] %s\n", minutes, seconds, milis, detail::tl_logBuffer );
+			printf( "%s\n", msg.text );
 			SetConsoleTextAttribute( GetStdHandle( STD_OUTPUT_HANDLE ), 7 );
 #else
 #error Not implemented!
@@ -304,35 +308,35 @@ struct log_init
 void log::info( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message_type::info, detail::tl_logBuffer );
+	on_log_message.call( log::message { time, log::message_type::info, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::success( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message_type::success, detail::tl_logBuffer );
+	on_log_message.call( log::message{ time, log::message_type::success, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::warning( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message_type::warning, detail::tl_logBuffer );
+	on_log_message.call( log::message{ time, log::message_type::warning, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::error( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message_type::error, detail::tl_logBuffer );
+	on_log_message.call( log::message{ time, log::message_type::error, detail::tl_logBuffer } );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void log::fatal( const char *fmt, ... )
 {
 	GL3D_FORMAT_LOG_TEXT( fmt );
-	on_log_message.call( log::message_type::fatal, detail::tl_logBuffer );
+	on_log_message.call( log::message{ time, log::message_type::fatal, detail::tl_logBuffer } );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -341,14 +345,27 @@ void log::fatal( const char *fmt, ... )
 void vfs::mount( const std::filesystem::path &path )
 {
 	auto absPath = std::filesystem::absolute( path );
+	absPath.make_preferred();
+	auto absPathStr = absPath.string();
+
+	log::info( "Mounting VFS path: %s", absPathStr.c_str() );
 
 	std::scoped_lock lock( detail::g_mountInfosMutex );
 	auto iter = std::find( detail::g_mountInfos.begin(), detail::g_mountInfos.end(), absPath );
 	if ( iter == detail::g_mountInfos.end() )
 	{
-		auto callback = [absPath]( const std::filesystem::path & relPath, detail::bytes_t &bytes )->bool
+		auto callback = [absPath, absPathStr]( const std::filesystem::path & relPath, detail::bytes_t &bytes )->bool
 		{
 			auto finalPath = std::filesystem::absolute( absPath / relPath );
+			finalPath.make_preferred();
+			auto finalPathStr = finalPath.string();
+
+			if ( finalPathStr.length() <= absPathStr.length() )
+				return false;
+
+			if ( _memicmp( absPathStr.c_str(), finalPathStr.c_str(), absPathStr.length() ) )
+				return false;
+
 			if ( std::filesystem::is_regular_file( finalPath ) )
 			{
 				std::ifstream ifs( finalPath.c_str(), std::ios_base::in | std::ios_base::binary );

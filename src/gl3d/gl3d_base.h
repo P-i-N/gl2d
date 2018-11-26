@@ -225,16 +225,23 @@ template <typename T> struct type_range
 
 struct log
 {
-	enum class message_type { info, success, warning, error, fatal };
-
 	static void info( const char *fmt, ... );
 	static void success( const char *fmt, ... );
 	static void warning( const char *fmt, ... );
 	static void error( const char *fmt, ... );
 	static void fatal( const char *fmt, ... );
+
+	enum class message_type { info, success, warning, error, fatal };
+
+	struct message
+	{
+		uint64_t time = 0;
+		message_type type;
+		const char *text = nullptr;
+	};
 };
 
-extern detail::callback_chain<void( log::message_type, const char * )> on_log_message;
+extern detail::callback_chain<void( const log::message & )> on_log_message;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

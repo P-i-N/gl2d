@@ -1037,7 +1037,7 @@ unsigned g_contextAttribs[] =
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-context::context( void *windowNativeHandle )
+context::context( void *windowNativeHandle, ptr sharedContext )
 	: cmd_queue( &_glState )
 	, _window_native_handle( windowNativeHandle )
 {
@@ -1051,7 +1051,7 @@ context::context( void *windowNativeHandle )
 
 	_native_handle = gl.CreateContextAttribsARB(
 	                     hdc,
-	                     nullptr,
+	                     sharedContext ? HGLRC( sharedContext->_native_handle ) : nullptr,
 	                     reinterpret_cast<const int *>( g_contextAttribs ) );
 
 	reset();

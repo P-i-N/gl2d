@@ -4,7 +4,8 @@
 - [ ] fullscreen support
 - [ ] toggle fullscreen with `Alt+Enter`
 - [ ] shader hot reload
-- [ ] timestamped log messages
+- [ ] make `gl3d::shader_code` API better (constructors, `::valid()` method, etc.)
+- [x] timestamped log messages
 - [ ] support different texture types
   - [ ] TEXTURE_1D
   - [ ] TEXTURE_2D

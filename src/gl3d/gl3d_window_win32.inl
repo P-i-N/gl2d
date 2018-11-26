@@ -134,11 +134,17 @@ window::ptr window::create( std::string_view title, uvec2 size, ivec2 pos, unsig
 	auto pf = ChoosePixelFormat( hdc, &pfd );
 	SetPixelFormat( hdc, pf, &pfd );
 
-	auto context = std::make_shared<detail::context>( handle );
+	auto context = std::make_shared<detail::context>(
+	                   handle,
+	                   detail::g_windows.empty()
+	                   ? nullptr
+	                   : detail::g_windows.front()->context() );
+
 	if ( !context )
 		return nullptr;
 
 	auto &result = detail::g_windows.emplace_back( std::make_shared<window>() );
+
 	result->_flags = flags;
 	result->_id = detail::g_next_window_id++;
 	result->_native_handle = handle;

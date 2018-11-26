@@ -308,6 +308,9 @@ class shader_code
 public:
 	using ptr = std::shared_ptr<shader_code>;
 
+	template <typename... Args>
+	static ptr create( Args &&... args ) { return std::make_shared<shader_code>( args... ); }
+
 	const std::filesystem::path &path() const { return _path; }
 	const std::string &source() const { return _source; }
 	const std::string &unrolled_source() const { return _unrolledSource; }
@@ -647,7 +650,7 @@ class context : public cmd_queue
 public:
 	using ptr = std::shared_ptr<context>;
 
-	context( void *windowNativeHandle );
+	context( void *windowNativeHandle, ptr sharedContext = nullptr );
 	context( ptr sharedContext );
 	virtual ~context();
 

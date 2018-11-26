@@ -50,12 +50,15 @@ public:
 
 	void end();
 
+	bool building_mesh() const { return _buildingMesh; }
+
 	void vertex( const vec3 &pos );
 
 	void vertex( const vec2 &pos, float z = 0.0f ) { vertex( { pos.x, pos.y, z } ); }
 
 protected:
 	bool _dirtyBuffers = true;
+	bool _buildingMesh = false;
 
 	struct state
 	{
@@ -83,18 +86,21 @@ protected:
 	struct gpu_vertex
 	{
 		vec3 pos;
-		byte_vec4 color;
+		vec4 color;
 		vec2 uv;
 
 		GL3D_LAYOUT( 0, &gpu_vertex::pos, 1, &gpu_vertex::color, 2, &gpu_vertex::uv )
 	};
 
+	vec4 _currentColor;
+	vec2 _currentUV;
+
 	std::vector<gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;
+	decltype( _vertices )::iterator _currentVertex;
 
 	buffer::ptr _vertexBuffer;
 	buffer::ptr _indexBuffer;
-
 	shader::ptr _shader;
 };
 
