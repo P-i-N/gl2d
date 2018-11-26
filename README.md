@@ -3,6 +3,7 @@
 - [x] multiple windows support
 - [ ] fullscreen support
 - [ ] toggle fullscreen with `Alt+Enter`
+- [ ] frame limiter
 - [ ] shader hot reload
 - [ ] make `gl3d::shader_code` API better (constructors, `::valid()` method, etc.)
 - [x] timestamped log messages
@@ -25,6 +26,7 @@
   - [ ] serialized texture updates
   - [ ] serialized uniform block updates
   - [x] correct VAO handling
+  - [ ] erase unused VAOs after while (300 frames/5 seconds?)
   - [ ] using custom vertex attributes
   - [ ] support (multiple) render targets
 - [ ] asynchronous upload context: `gl3d::detail::async_upload_context`
