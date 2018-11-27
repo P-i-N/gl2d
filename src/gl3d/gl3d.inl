@@ -24,6 +24,7 @@
 
 #include <gl/GL.h>
 
+#include <atomic>
 #include <cassert>
 
 namespace gl3d {
@@ -33,6 +34,7 @@ detail::gl_api gl;
 namespace detail {
 
 thread_local context *tl_currentContext = nullptr;
+std::atomic_uint64_t g_nextMutationID = 0;
 
 //---------------------------------------------------------------------------------------------------------------------
 int find_uniform_id( const detail::location_variant &location )
@@ -74,6 +76,16 @@ unsigned mip_level_count( const uvec3 &size )
 {
 	return 1 + static_cast<unsigned>( floor( log2( static_cast<float>( maximum( size.x, size.y, size.z ) ) ) ) );
 }
+
+//---------------------------------------------------------------------------------------------------------------------
+basic_object::basic_object()
+	: _mutationId( g_nextMutationID++ )
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void basic_object::mutate() const { _mutationId = g_nextMutationID++; }
 
 } // namespace gl3d::detail
 
