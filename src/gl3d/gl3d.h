@@ -232,18 +232,6 @@ class basic_object
 {
 public:
 	using ptr = std::shared_ptr<basic_object>;
-
-	/// @brief
-	///   Unique identifier of internal data content. Most objects will change this with every
-	///   modification made to its internal data
-	uint64_t mutation_id() const { return _mutationId; }
-
-protected:
-	basic_object();
-
-	void mutate() const;
-
-	mutable uint64_t _mutationId;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
