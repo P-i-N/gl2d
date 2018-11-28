@@ -258,6 +258,7 @@ struct mount_info
 {
 	std::filesystem::path path;
 	std::function<bool( const std::filesystem::path &, std::vector<uint8_t> & )> callback;
+	unsigned callback_id = UINT_MAX;
 
 	bool operator==( const std::filesystem::path &p ) const { return path == p; }
 };
@@ -383,8 +384,8 @@ void vfs::mount( const std::filesystem::path &path )
 			return false;
 		};
 
-		on_vfs_load += callback;
-		detail::g_mountInfos.push_back( { absPath, callback } );
+		auto callbackID = on_vfs_load += callback;
+		detail::g_mountInfos.push_back( { absPath, callback, callbackID } );
 	}
 }
 
@@ -398,6 +399,7 @@ bool vfs::unmount( const std::filesystem::path &path )
 	if ( iter == detail::g_mountInfos.end() )
 		return false;
 
+	on_vfs_load -= iter->callback_id;
 	detail::g_mountInfos.erase( iter );
 	return true;
 }
