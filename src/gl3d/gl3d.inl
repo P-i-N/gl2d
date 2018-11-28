@@ -804,6 +804,42 @@ void cmd_queue::set_uniform( const detail::location_variant &location, float val
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const vec2 &value )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform, gl_enum::FLOAT_VEC2, value );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.Uniform2fv( id, 1, value.data );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const vec3 &value )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform, gl_enum::FLOAT_VEC3, value );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.Uniform3fv( id, 1, value.data );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const vec4 &value )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform, gl_enum::FLOAT_VEC4, value );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.Uniform4fv( id, 1, value.data );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
 	if ( _deferred )
@@ -990,6 +1026,27 @@ void cmd_queue::execute( gl_state *state )
 					case gl_enum::FLOAT:
 					{
 						auto value = read<float>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+
+					case gl_enum::FLOAT_VEC2:
+					{
+						auto value = read<vec2>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+
+					case gl_enum::FLOAT_VEC3:
+					{
+						auto value = read<vec3>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+
+					case gl_enum::FLOAT_VEC4:
+					{
+						auto value = read<vec4>();
 						set_uniform( read_location_variant(), value );
 					}
 					break;

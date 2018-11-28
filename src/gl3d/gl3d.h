@@ -10,9 +10,9 @@
 #include "gl3d_math.h"
 
 #define GL3D_LAYOUT(...) \
-	static const gl3d::detail::layout &get_layout() { \
-		static gl3d::detail::layout layout { __VA_ARGS__ }; \
-		return layout; }
+	static const gl3d::detail::layout &layout() { \
+		static gl3d::detail::layout l { __VA_ARGS__ }; \
+		return l; }
 
 namespace gl3d {
 
@@ -54,6 +54,8 @@ struct gl_api
 	GL_PROC(void, Uniform1i, int, int)
 	GL_PROC(void, Uniform1f, int, float)
 	GL_PROC(void, Uniform2fv, int, int, const float *)
+	GL_PROC(void, Uniform3fv, int, int, const float *)
+	GL_PROC(void, Uniform4fv, int, int, const float *)
 	GL_PROC(void, UniformMatrix4fv, int, int, unsigned char, const float *)
 
 	/// Buffers
@@ -523,6 +525,9 @@ public:
 	void set_uniform( const detail::location_variant &location, bool value );
 	void set_uniform( const detail::location_variant &location, int value );
 	void set_uniform( const detail::location_variant &location, float value );
+	void set_uniform( const detail::location_variant &location, const vec2 &value );
+	void set_uniform( const detail::location_variant &location, const vec3 &value );
+	void set_uniform( const detail::location_variant &location, const vec4 &value );
 
 	void draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
 	void draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );

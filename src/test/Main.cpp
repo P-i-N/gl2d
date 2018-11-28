@@ -58,7 +58,7 @@ int main()
 	q->set_uniform_block( 0, fd );
 	q->set_uniform( "u_Diffuse", 0 );
 
-	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::get_layout() );
+	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::layout() );
 	q->draw( gl_enum::TRIANGLES, 0, 3 );
 
 	on_tick += [&]()

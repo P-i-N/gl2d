@@ -310,7 +310,7 @@ void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj
 	}
 
 	queue->bind_shader( _shader );
-	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::get_layout() );
+	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::layout() );
 	queue->bind_index_buffer( _indexBuffer );
 
 	for ( auto &dc : _drawCalls )
