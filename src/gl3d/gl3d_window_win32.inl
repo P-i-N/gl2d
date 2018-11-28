@@ -544,6 +544,7 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				break;
 
 				case WM_SIZING:
+				case WM_PAINT:
 					update();
 					break;
 
