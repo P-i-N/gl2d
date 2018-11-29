@@ -336,8 +336,10 @@ void update()
 		glViewport( 0, 0, w->size().x, w->size().y );
 		on_window_event( window_event( window_event::type::paint, w->id() ) );
 
+		auto projMatrix = mat4::make_ortho( 0, int( w->size().x ), int( w->size().y ), 0, -1, 1 );
+
 		auto imm = w->immediate();
-		imm->render( ctx, mat4(), mat4() );
+		imm->render( ctx, mat4(), projMatrix );
 		imm->reset();
 
 		w->present();

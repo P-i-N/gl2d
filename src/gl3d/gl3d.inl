@@ -291,7 +291,10 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 	for ( auto &stageSource : _stageSources )
 		stageSource.clear();
 
-	std::string sharedSource = "#version 420 core\n";
+	std::string sharedSource =
+	    "#version 460 core\n"
+	    "#extension GL_ARB_gpu_shader_int64 : enable\n";
+
 	std::string *currentStage = &sharedSource;
 
 	_unrolledSource = ss.str();
@@ -840,6 +843,18 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const vec
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const mat4 &value )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform, gl_enum::FLOAT_MAT4, value );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.Uniform4fv( id, 4, value.data );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
 	if ( _deferred )
@@ -1047,6 +1062,13 @@ void cmd_queue::execute( gl_state *state )
 					case gl_enum::FLOAT_VEC4:
 					{
 						auto value = read<vec4>();
+						set_uniform( read_location_variant(), value );
+					}
+					break;
+
+					case gl_enum::FLOAT_MAT4:
+					{
+						auto value = read<mat4>();
 						set_uniform( read_location_variant(), value );
 					}
 					break;

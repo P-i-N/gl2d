@@ -220,28 +220,38 @@ immediate::immediate()
 	layout (location = 1) in vec4 vertex_Color;
 	layout (location = 2) in vec2 vertex_UV;
 
-	layout (std140, binding = 0) uniform FrameData
-	{
-		mat4 ProjectionMatrix;
-		mat4 ViewMatrix;
-	};
+	layout(std430, binding = 0) buffer b_TransformsBuffer { mat4 m_Transforms[]; };
 
-	out vec4 color;
+	uniform mat4 u_ProjectionMatrix;
+	uniform mat4 u_ViewMatrix;
+
+	out vec4 Color;
+	out vec2 UV;
+	flat out uint ScissorsIndex;
+	flat out uint TextureIndex;
 
 	void main()
 	{
-		gl_Position = ProjectionMatrix * ViewMatrix * vec4(vertex_Position, 1);
-		color = vertex_Color;
+		gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(vertex_Position, 1);
+		Color = vertex_Color;
 	}
 
 	#fragment
-	in vec4 color;
+
+	layout(std430, binding = 1) buffer b_ScissorsBuffer { ivec4 m_Scissors[]; };
+	layout(std430, binding = 2) buffer b_TexturesBuffer { uint64_t m_Textures[]; };
+
+	layout(origin_upper_left) in vec4 gl_FragCoord;
+	in vec4 Color;
+	in vec2 UV;
+	flat in uint ScissorsIndex;
+	flat in uint TextureIndex;
 
 	out vec4 out_Color;
 
 	void main()
 	{
-		out_Color = vec4(color);
+		out_Color = vec4(Color);
 	}
 	)SHADER_SOURCE";
 
@@ -312,6 +322,8 @@ void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj
 	queue->bind_shader( _shader );
 	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::layout() );
 	queue->bind_index_buffer( _indexBuffer );
+	queue->set_uniform( "u_ProjectionMatrix", projection );
+	queue->set_uniform( "u_ViewMatrix", view );
 
 	for ( auto &dc : _drawCalls )
 	{

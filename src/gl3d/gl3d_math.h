@@ -284,10 +284,10 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 
 	template <typename T2> static xmat4 make_ortho(T2 l, T2 r, T2 b, T2 t, T2 nearClip, T2 farClip)
 	{
-		return { 2 / (r - l), 0, 0, 0,
-		         0, 2 / (t - b), 0, 0,
-		         0, 0, -2 / (farClip - nearClip), 0,
-		         -(r + l) / (r - l), -(t + b) / (t - b), -(farClip + nearClip) / (farClip - nearClip), 1 };
+		return { T(2 / (r - l)), 0, 0, 0,
+		         0, T(2 / (t - b)), 0, 0,
+		         0, 0, T(-2 / (farClip - nearClip)), 0,
+		         T(-(r + l) / (r - l)), T(-(t + b) / (t - b)), T(-(farClip + nearClip) / (farClip - nearClip)), 1 };
 	}
 
 	static xmat4 make_inverse(const xmat4 &mat)
