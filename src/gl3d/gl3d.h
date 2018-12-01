@@ -531,7 +531,7 @@ public:
 	void set_uniform( const detail::location_variant &location, const vec2 &value );
 	void set_uniform( const detail::location_variant &location, const vec3 &value );
 	void set_uniform( const detail::location_variant &location, const vec4 &value );
-	void set_uniform( const detail::location_variant &location, const mat4 &value );
+	void set_uniform( const detail::location_variant &location, const mat4 &value, bool transpose = false );
 
 	void draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
 	void draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );

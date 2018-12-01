@@ -856,15 +856,15 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const vec
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::set_uniform( const detail::location_variant &location, const mat4 &value )
+void cmd_queue::set_uniform( const detail::location_variant &location, const mat4 &value, bool transpose )
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT_MAT4, value );
+		write( cmd_type::set_uniform, gl_enum::FLOAT_MAT4, value, transpose );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
-		gl.UniformMatrix4fv( id, 1, 0, value.data );
+		gl.UniformMatrix4fv( id, 1, transpose ? 1 : 0, value.data );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1137,7 +1137,8 @@ void cmd_queue::execute( gl_state *state )
 					case gl_enum::FLOAT_MAT4:
 					{
 						auto value = read<mat4>();
-						set_uniform( read_location_variant(), value );
+						auto transpose = read<bool>();
+						set_uniform( read_location_variant(), value, transpose );
 					}
 					break;
 				}
