@@ -7,7 +7,7 @@
 #include <thread>
 
 #include "gl3d.h"
-#include "gl3d_2d.h"
+#include "gl3d_quick_draw.h"
 
 namespace gl3d {
 
@@ -48,7 +48,7 @@ public:
 	unsigned id() const { return _id; }
 	void *native_handle() const { return _native_handle; }
 	auto context() const { return _context; }
-	auto immediate() const { return _immediate; }
+	auto quick_draw() const { return _qd; }
 
 	bool closed() const { return _native_handle == nullptr; }
 
@@ -73,7 +73,7 @@ protected:
 	unsigned _id = UINT_MAX;
 	void *_native_handle = nullptr;
 	detail::context::ptr _context;
-	immediate::ptr _immediate;
+	quick_draw::ptr _qd;
 	std::string _title;
 	ivec2 _pos;
 	uvec2 _size;

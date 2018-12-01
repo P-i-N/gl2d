@@ -1,8 +1,8 @@
-#ifndef __GL3D_2D_H_IMPL__
-	#define __GL3D_2D_H_IMPL__
+#ifndef __GL3D_QUICK_DRAW_H_IMPL__
+	#define __GL3D_QUICK_DRAW_H_IMPL__
 #endif
 
-#include "gl3d_2d.h"
+#include "gl3d_quick_draw.h"
 
 namespace gl3d {
 
@@ -212,7 +212,7 @@ font::ptr font::create( const char *base64Data )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-immediate::immediate()
+quick_draw::quick_draw()
 {
 	static const char *s_immediateShader = R"SHADER_SOURCE(
 	#vertex
@@ -263,13 +263,13 @@ immediate::immediate()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-immediate::~immediate()
+quick_draw::~quick_draw()
 {
 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void immediate::reset()
+void quick_draw::reset()
 {
 	_dirtyBuffers = true;
 
@@ -285,7 +285,7 @@ void immediate::reset()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection )
+void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection )
 {
 	if ( _drawCalls.empty() )
 		return;
@@ -332,7 +332,19 @@ void immediate::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void immediate::begin( gl_enum primitiveType, bool autoClose )
+void quick_draw::push_transform()
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::pop_transform()
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::begin( gl_enum primitiveType, bool autoClose )
 {
 	assert( !building_mesh() );
 
@@ -347,7 +359,7 @@ void immediate::begin( gl_enum primitiveType, bool autoClose )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void immediate::end()
+void quick_draw::end()
 {
 	assert( building_mesh() );
 	_buildingMesh = false;
@@ -375,7 +387,7 @@ void immediate::end()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void immediate::vertex( const vec3 &pos )
+void quick_draw::vertex( const vec3 &pos )
 {
 	assert( building_mesh() );
 

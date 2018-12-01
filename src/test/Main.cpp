@@ -1,6 +1,5 @@
 #define GL3D_IMPLEMENTATION
 #include <gl3d/gl3d_window.h>
-#include <gl3d/gl3d_2d.h>
 
 struct Vertex
 {
@@ -74,17 +73,15 @@ int main()
 			case window_event::type::paint:
 			{
 				auto w = window::from_id( e.window_id );
-
 				auto ctx = w->context();
+				auto qd = w->quick_draw();
+
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
-				ctx->execute( q );
 
-				auto imm = w->immediate();
-
-				imm->begin( gl_enum::LINES );
-				imm->vertex( { 0, 0 } );
-				imm->vertex( w->size() );
-				imm->end();
+				qd->begin( gl_enum::LINES );
+				qd->vertex( { 0, 0 } );
+				qd->vertex( w->size() );
+				qd->end();
 			}
 			break;
 		}

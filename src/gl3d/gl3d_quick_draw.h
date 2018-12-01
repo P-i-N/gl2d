@@ -1,5 +1,5 @@
-#ifndef __GL3D_2D_H__
-#define __GL3D_2D_H__
+#ifndef __GL3D_QUICK_DRAW_H__
+#define __GL3D_QUICK_DRAW_H__
 
 #include <map>
 
@@ -33,18 +33,26 @@ struct font
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class immediate
+enum class sorting_mode { none = 0, front_to_back, back_to_front };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class quick_draw
 {
 public:
-	using ptr = std::shared_ptr<immediate>;
+	using ptr = std::shared_ptr<quick_draw>;
 
-	immediate();
+	quick_draw();
 
-	virtual ~immediate();
+	virtual ~quick_draw();
 
 	void reset();
 
 	void render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection );
+
+	void push_transform();
+
+	void pop_transform();
 
 	void begin( gl_enum primitiveType, bool autoClose = false );
 
@@ -106,13 +114,13 @@ protected:
 
 } // namespace gl3d
 
-#endif // __GL3D_2D_H__
+#endif // __GL3D_QUICK_DRAW_H__
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef GL3D_IMPLEMENTATION
-	#ifndef __GL3D_2D_H_IMPL__
-		#define __GL3D_2D_H_IMPL__
-		#include "gl3d_2d.inl"
-	#endif // __GL3D_2D_H_IMPL__
+	#ifndef __GL3D_QUICK_DRAW_H_IMPL__
+		#define __GL3D_QUICK_DRAW_H_IMPL__
+		#include "gl3d_quick_draw.inl"
+	#endif // __GL3D_QUICK_DRAW_H_IMPL__
 #endif // GL3D_IMPLEMENTATION

@@ -149,7 +149,7 @@ window::ptr window::create( std::string_view title, uvec2 size, ivec2 pos, unsig
 	result->_id = detail::g_next_window_id++;
 	result->_native_handle = handle;
 	result->_context = context;
-	result->_immediate = std::make_shared<gl3d::immediate>();
+	result->_qd = std::make_shared<gl3d::quick_draw>();
 	result->_title = title;
 	result->_pos = pos;
 	result->_size = size;
@@ -173,7 +173,7 @@ window::ptr window::from_id( unsigned id )
 //---------------------------------------------------------------------------------------------------------------------
 window::~window()
 {
-	_immediate.reset();
+	_qd.reset();
 	_context.reset();
 	DestroyWindow( HWND( _native_handle ) );
 }
@@ -338,9 +338,9 @@ void update()
 
 		auto projMatrix = mat4::make_ortho( 0, int( w->size().x ), int( w->size().y ), 0, -1, 1 );
 
-		auto imm = w->immediate();
-		imm->render( ctx, mat4(), projMatrix );
-		imm->reset();
+		auto qd = w->quick_draw();
+		qd->render( ctx, mat4(), projMatrix );
+		qd->reset();
 
 		w->present();
 		ctx->reset();
