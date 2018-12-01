@@ -327,7 +327,7 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 
 	for ( auto &dc : _drawCalls )
 	{
-
+		queue->draw_indexed( dc.primitive, dc.startIndex, dc.indexCount );
 	}
 }
 

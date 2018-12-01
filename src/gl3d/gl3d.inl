@@ -670,10 +670,16 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 	}
 	else
 	{
-		_state->vb = vb;
-		_state->layout = &layout;
-		_state->vb_offset = offset;
-		_state->dirty_vao = true;
+		if ( vb ) vb->synchronize();
+
+		if ( _state->current_vb != vb || _state->current_vb_layout != &layout || _state->current_vb_offset != offset )
+		{
+			_state->current_vb = vb;
+			_state->current_vb_layout = &layout;
+			_state->current_vb_offset = offset;
+
+			_state->dirty_input_assembly = true;
+		}
 	}
 }
 
@@ -701,9 +707,16 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 	}
 	else
 	{
-		_state->ib = ib;
-		_state->ib_offset = offset;
-		_state->dirty_vao = true;
+		if ( ib ) ib->synchronize();
+
+		if ( _state->current_ib != ib )
+		{
+			_state->current_ib = ib;
+			_state->dirty_input_assembly = true;
+		}
+
+		_state->current_ib_16bits = use16bits;
+		_state->current_ib_offset = offset;
 	}
 }
 
@@ -863,8 +876,10 @@ void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t inst
 	}
 	else
 	{
-		detail::tl_currentContext->bind_vao( _state );
-		glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
+		if ( _state->dirty_input_assembly && synchronize_input_assembly() )
+		{
+			glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
+		}
 	}
 }
 
@@ -877,7 +892,25 @@ void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, siz
 	}
 	else
 	{
-		detail::tl_currentContext->bind_vao( _state );
+		if ( _state->dirty_input_assembly && synchronize_input_assembly() )
+		{
+			if ( _state->current_ib_16bits )
+			{
+				glDrawElements(
+				    +primitive,
+				    static_cast<int>( count ),
+				    +gl_enum::UNSIGNED_SHORT,
+				    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ) );
+			}
+			else
+			{
+				glDrawElements(
+				    +primitive,
+				    static_cast<int>( count ),
+				    +gl_enum::UNSIGNED_INT,
+				    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ) );
+			}
+		}
 	}
 }
 
@@ -895,6 +928,41 @@ void cmd_queue::execute( ptr cmdQueue )
 	{
 		cmdQueue->execute( _state );
 	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool cmd_queue::synchronize_input_assembly()
+{
+	unsigned vaoID = _state->current_vb_layout
+	                 ? detail::tl_currentContext->get_or_create_layout_vao( _state->current_vb_layout )
+	                 : 0;
+
+	if ( vaoID )
+	{
+		if ( _state->current_vb )
+		{
+			gl.VertexArrayVertexBuffer( vaoID, 0,
+			                            _state->current_vb->id(),
+			                            reinterpret_cast<const void *>( _state->current_vb_offset ),
+			                            _state->current_vb_layout->stride );
+		}
+		else
+			gl.VertexArrayVertexBuffer( vaoID, 0, 0, nullptr, 0 );
+
+		if ( _state->current_ib )
+			gl.VertexArrayElementBuffer( vaoID, _state->current_ib->id() );
+		else
+			gl.VertexArrayElementBuffer( vaoID, 0 );
+
+		gl.BindVertexArray( vaoID );
+	}
+	else
+	{
+
+	}
+
+	_state->dirty_input_assembly = false;
+	return true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1181,75 +1249,38 @@ void context::make_current()
 #endif
 
 //---------------------------------------------------------------------------------------------------------------------
-unsigned context::bind_vao( gl_state *state )
+unsigned context::get_or_create_layout_vao( const detail::layout *layout )
 {
-	if ( !state->dirty_vao )
-		return state->current_vao;
-
-	if ( state->vb )
-		state->vb->synchronize();
-
-	if ( state->ib )
-		state->ib->synchronize();
-
-	if ( state->current_vao = bind_vao( state->vb, state->ib, *state->layout, state->vb_offset ) )
-		state->dirty_vao = false;
-
-	return state->current_vao;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-unsigned context::bind_vao( buffer::ptr vb, buffer::ptr ib, const detail::layout &layout, size_t offset )
-{
+	assert( layout );
 	unsigned vaoID = 0;
 
-	// Find compatible VAO
-	for ( auto &desc : _vaoDescs )
+	auto ptrKey = reinterpret_cast<std::uintptr_t>( layout );
+	if ( auto iter = _layoutVAOs.find( ptrKey ); iter == _layoutVAOs.end() )
 	{
-		if ( desc.layout != &layout )
-			continue;
+		gl.CreateVertexArrays( 1, &vaoID );
 
-		if ( ( vb->id() != desc.vb_id ) || ( offset != desc.offset ) )
-			continue;
+		for ( unsigned i = 0; i < 8; ++i )
+		{
+			if ( layout->mask & ( 1u << i ) )
+				gl.EnableVertexArrayAttrib( vaoID, i );
+			else
+				gl.DisableVertexArrayAttrib( vaoID, i );
+		}
 
-		if ( ( !ib && desc.ib_id ) || ( ib && ib->id() != desc.ib_id ) )
-			continue;
+		for ( auto &a : layout->attribs )
+		{
+			gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
+			gl.VertexArrayAttribBinding( vaoID, a.location, 0 );
+		}
 
-		desc.unused_frames = 0;
-		gl.BindVertexArray( desc.vao_id );
-
-		check_gl_error();
-		return desc.vao_id;
+		_layoutVAOs.insert( { ptrKey, { layout, vaoID, 0 } } );
+	}
+	else
+	{
+		iter->second.unused_frames = 0;
+		vaoID = iter->second.vao_id;
 	}
 
-	gl.CreateVertexArrays( 1, &vaoID );
-
-	for ( unsigned i = 0; i < 8; ++i )
-	{
-		if ( layout.mask & ( 1u << i ) )
-			gl.EnableVertexArrayAttrib( vaoID, i );
-		else
-			gl.DisableVertexArrayAttrib( vaoID, i );
-	}
-
-	for ( auto &a : layout.attribs )
-	{
-		gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
-		gl.VertexArrayAttribBinding( vaoID, a.location, 0 );
-	}
-
-	auto &desc = _vaoDescs.emplace_back();
-	desc.layout = &layout;
-	desc.offset = offset;
-	desc.vb_id = vb->id();
-	desc.ib_id = ib ? ib->id() : 0;
-	desc.vao_id = vaoID;
-
-	gl.VertexArrayVertexBuffer( vaoID, 0, vb->id(), reinterpret_cast<const void *>( offset ), layout.stride );
-	gl.VertexArrayElementBuffer( vaoID, ib ? ib->id() : 0 );
-	gl.BindVertexArray( vaoID );
-
-	check_gl_error();
 	return vaoID;
 }
 

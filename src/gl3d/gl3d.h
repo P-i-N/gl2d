@@ -1,6 +1,7 @@
 #ifndef __GL3D_H__
 #define __GL3D_H__
 
+#include <initializer_list>
 #include <vector>
 #include <memory>
 
@@ -139,6 +140,8 @@ enum class gl_enum : unsigned
 	FRAGMENT_SHADER = 0x8B30, VERTEX_SHADER,
 	GEOMETRY_SHADER = 0x8DD9,
 	COMPUTE_SHADER = 0x91B9,
+
+	VERTEX_ARRAY_BINDING = 0x85B5,
 
 	READ_ONLY = 0x88B8, WRITE_ONLY, READ_WRITE,
 
@@ -542,21 +545,22 @@ protected:
 		size_t uniform_block_cursor = 0;
 		int uniform_block_alignment = 0;
 
-		buffer::ptr vb;
-		const detail::layout *layout = nullptr;
-		size_t vb_offset = 0;
-		buffer::ptr ib;
-		size_t ib_offset = 0;
+		buffer::ptr current_vb;
+		const detail::layout *current_vb_layout = nullptr;
+		size_t current_vb_offset = 0;
 
-		unsigned current_vao = 0;
-		bool dirty_vao = true;
+		buffer::ptr current_ib;
+		bool current_ib_16bits = false;
+		size_t current_ib_offset = 0;
+
+		bool dirty_input_assembly = true;
 
 		void reset()
 		{
-			vb = ib = nullptr;
-			layout = nullptr;
-			vb_offset = ib_offset = 0;
-			dirty_vao = true;
+			current_vb = nullptr;
+			current_vb_layout = nullptr;
+			current_ib = nullptr;
+			dirty_input_assembly = true;
 		}
 	};
 
@@ -644,6 +648,7 @@ protected:
 		return static_cast<int>( size_or_id ) - 1;
 	}
 
+	bool synchronize_input_assembly();
 	void execute( gl_state *state );
 
 	bool _deferred = true;
@@ -684,8 +689,7 @@ public:
 
 	void make_current();
 
-	unsigned bind_vao( gl_state *state );
-	unsigned bind_vao( buffer::ptr vb, buffer::ptr ib, const detail::layout &layout, size_t offset );
+	unsigned get_or_create_layout_vao( const detail::layout *layout );
 
 protected:
 	void *_window_native_handle = nullptr;
@@ -694,19 +698,12 @@ protected:
 	struct vao_desc
 	{
 		const detail::layout *layout = nullptr;
-		size_t offset = 0;
-
-		unsigned vb_id = 0;
-		unsigned ib_id = 0;
-
 		unsigned vao_id = 0;
 		unsigned unused_frames = 0;
 	};
 
-	std::vector<vao_desc> _vaoDescs;
-
+	std::unordered_map<std::uintptr_t, vao_desc> _layoutVAOs;
 	gl_state _glState;
-	std::unordered_map<std::uintptr_t, unsigned> _layoutVAOs;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
