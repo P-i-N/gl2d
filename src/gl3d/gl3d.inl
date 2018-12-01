@@ -864,7 +864,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const mat
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
-		gl.Uniform4fv( id, 4, value.data );
+		gl.UniformMatrix4fv( id, 1, 0, value.data );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
