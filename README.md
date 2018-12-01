@@ -35,7 +35,7 @@
 - [ ] space navigator support
 - [ ] gamepads with raw input
 - [ ] load BMF fonts from files
-- [ ] immediate renderer: `gl3d::immediate`
+- [ ] simple renderer with emulated immediate mode: `gl3d::quick_draw`
   - [ ] emulate good old `glBegin` / `glEnd` as efficiently as possible
   - [ ] OMG...
 - [ ] simple scene API
