@@ -128,6 +128,7 @@ enum class gl_enum : unsigned
 	SRC_COLOR = 0x0300, ONE_MINUS_SRC_COLOR, SRC_ALPHA, ONE_MINUS_SRC_ALPHA, DST_ALPHA, ONE_MINUS_DST_ALPHA,
 	DST_COLOR = 0x0306, ONE_MINUS_DST_COLOR, SRC_ALPHA_SATURATE,
 
+	FRONT = 0x0404, BACK,
 	CW = 0x0900, CCW,
 
 	TEXTURE0 = 0x84C0,
@@ -493,7 +494,7 @@ struct depth_stencil_state
 //---------------------------------------------------------------------------------------------------------------------
 struct rasterizer_state
 {
-	gl_enum face_cull_mode = gl_enum::NONE;
+	gl_enum face_cull_mode = gl_enum::BACK;
 	unsigned front_ccw : 1;
 	unsigned wireframe : 1;
 	unsigned depth_clamp : 1;

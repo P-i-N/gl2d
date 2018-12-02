@@ -73,9 +73,9 @@ int main()
 		// Bottom
 		qd3D->color( { 1, 1, 0 } );
 		qd3D->vertex( { 1, 1, -1 } );
-		qd3D->vertex( { 1, -1, -1 } );
-		qd3D->vertex( { -1, -1, -1 } );
 		qd3D->vertex( { -1, 1, -1 } );
+		qd3D->vertex( { -1, -1, -1 } );
+		qd3D->vertex( { 1, -1, -1 } );
 
 		// Front
 		qd3D->color( { 0, 1, 0 } );
@@ -86,9 +86,23 @@ int main()
 
 		// Back
 		qd3D->color( { 0, 0, 1 } );
-		qd3D->vertex( { 1, 1, 1 } );
-		qd3D->vertex( { 1, -1, 1 } );
+		qd3D->vertex( { 1, 1, -1 } );
 		qd3D->vertex( { 1, -1, -1 } );
+		qd3D->vertex( { 1, -1, 1 } );
+		qd3D->vertex( { 1, 1, 1 } );
+
+		// Left
+		qd3D->color( { 1, 0, 1 } );
+		qd3D->vertex( { 1, -1, -1 } );
+		qd3D->vertex( { -1, -1, -1 } );
+		qd3D->vertex( { -1, -1, 1 } );
+		qd3D->vertex( { 1, -1, 1 } );
+
+		// Right
+		qd3D->color( { 1, 0, 0 } );
+		qd3D->vertex( { 1, 1, 1 } );
+		qd3D->vertex( { -1, 1, 1 } );
+		qd3D->vertex( { -1, 1, -1 } );
 		qd3D->vertex( { 1, 1, -1 } );
 	}
 	qd3D->end();
@@ -111,7 +125,12 @@ int main()
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 				ctx->clear_depth( 1.0f );
 
-				qd3D->render( ctx, mat4::make_inverse( mat4::make_look_at( -2, 0, 2, 0, 0, 0, 0, 0, 1 ) ), mat4::make_perspective( 100.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
+				float x = 3.0f * sin( gl3d::time );
+				float y = 3.0f * cos( gl3d::time );
+				float z = 3.0f * sin( gl3d::time * 0.37f );
+
+				qd3D->render( ctx, mat4::make_inverse( mat4::make_look_at( x, y, z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f ) ), mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f,
+				              1000.0f ) );
 			}
 			break;
 		}

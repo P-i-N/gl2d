@@ -274,10 +274,7 @@ void quick_draw::reset()
 	_dirtyBuffers = true;
 
 	_states.clear();
-	auto &state = _states.emplace_back();
-	state.ds.depth_test = 1;
-	state.ds.depth_write = 1;
-	_currentState = state;
+	_currentState = _states.emplace_back();
 
 	_drawCalls.clear();
 	_indices.clear();
@@ -339,6 +336,7 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 		{
 			auto &state = _states[dc.stateIndex];
 			queue->set_state( state.ds );
+			queue->set_state( state.rs );
 			currentStateIndex = dc.stateIndex;
 		}
 
