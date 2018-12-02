@@ -20,8 +20,8 @@
 - [ ] depth stencil state: `gl3d::depth_stencil_state`
 - [ ] rasterizer state: `gl3d::rasterizer_state`
 - [ ] command queue: `gl3d::cmd_queue`
-  - [ ] immediate mode
-  - [ ] deferred mode
+  - [x] immediate mode
+  - [x] deferred mode
   - [x] serialized buffer updates
   - [ ] serialized texture updates
   - [ ] serialized uniform block updates
