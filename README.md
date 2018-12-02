@@ -22,7 +22,7 @@
 - [ ] command queue: `gl3d::cmd_queue`
   - [ ] immediate mode
   - [ ] deferred mode
-  - [ ] serialized buffer updates
+  - [x] serialized buffer updates
   - [ ] serialized texture updates
   - [ ] serialized uniform block updates
   - [x] correct VAO handling
