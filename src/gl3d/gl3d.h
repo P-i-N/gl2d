@@ -265,7 +265,9 @@ protected:
 enum class buffer_usage
 {
 	immutable,
-	dynamic, persistent,
+	dynamic,
+	dynamic_resizable,
+	persistent,
 	persistent_coherent
 };
 

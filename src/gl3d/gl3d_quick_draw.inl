@@ -293,7 +293,7 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 	if ( _dirtyBuffers )
 	{
 		if ( !_vertexBuffer )
-			_vertexBuffer = buffer::create( buffer_usage::dynamic, _vertices );
+			_vertexBuffer = buffer::create( buffer_usage::dynamic_resizable, _vertices );
 		else
 		{
 			auto verticesSize = _vertices.size() * sizeof( gpu_vertex );
@@ -305,7 +305,7 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 		}
 
 		if ( !_indexBuffer )
-			_indexBuffer = buffer::create( buffer_usage::dynamic, _indices );
+			_indexBuffer = buffer::create( buffer_usage::dynamic_resizable, _indices );
 		else
 		{
 			auto indicesSize = _indices.size() * sizeof( unsigned );

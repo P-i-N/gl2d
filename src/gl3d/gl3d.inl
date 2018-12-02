@@ -135,15 +135,18 @@ void buffer::synchronize()
 		gl.CreateBuffers( 1, &_id );
 		if ( !_size ) return;
 
-		auto flags = +gl_enum::MAP_WRITE_BIT;
+		auto flags = +gl_enum::DYNAMIC_STORAGE_BIT | +gl_enum::MAP_WRITE_BIT;
 
 		switch ( _usage )
 		{
 			case buffer_usage::immutable:
+			case buffer_usage::dynamic:
 			case buffer_usage::persistent:
 			case buffer_usage::persistent_coherent:
 			{
-				if ( _usage == buffer_usage::persistent )
+				if ( _usage == buffer_usage::immutable )
+					flags &= ~( +gl_enum::DYNAMIC_STORAGE_BIT );
+				else if ( _usage == buffer_usage::persistent )
 					flags |= +gl_enum::MAP_PERSISTENT_BIT;
 				else if ( _usage == buffer_usage::persistent_coherent )
 					flags |= +gl_enum::MAP_PERSISTENT_BIT | +gl_enum::MAP_COHERENT_BIT;
@@ -152,7 +155,7 @@ void buffer::synchronize()
 			}
 			break;
 
-			case buffer_usage::dynamic:
+			case buffer_usage::dynamic_resizable:
 				gl.NamedBufferData( _id, static_cast<int>( _size ), _data, gl_enum::DYNAMIC_DRAW );
 				break;
 		}
@@ -625,7 +628,7 @@ void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, 
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent )
 {
-	assert( buff && buff->usage() == buffer_usage::dynamic );
+	assert( buff && buff->usage() == buffer_usage::dynamic_resizable );
 
 	if ( _deferred )
 	{

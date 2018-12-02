@@ -79,7 +79,8 @@ int main()
 
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 
-				for ( int i = 0; i < 1000; ++i )
+				int numLines = gl3d::frame_id > 1 ? 1000 : 1;
+				for ( int i = 0; i < numLines; ++i )
 				{
 					qd->begin( gl_enum::LINES );
 					{
