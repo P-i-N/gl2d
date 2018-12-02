@@ -65,7 +65,7 @@ template <class T> struct xvec3 : xvec_impl<T, 3>
 	template <class T2> bool operator!=(const xvec3<T2> &rhs) const { return x != rhs.x || y != rhs.y || z != rhs.z; }
 
 	T length_sq() const { return x*x + y*y + z*z; }
-	T length() const { return sqrt(length_sq()); }
+	T length() const { return T(sqrt(length_sq())); }
 
 	static constexpr xvec3 &unit_x() { static xvec3 v(1, 0, 0); return v; }
 	static constexpr xvec3 &unit_y() { static xvec3 v(0, 1, 0); return v; }
@@ -260,11 +260,15 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 	template <typename T2>
 	static xmat4 make_look_at(T2 eyeX, T2 eyeY, T2 eyeZ, T2 targetX, T2 targetY, T2 targetZ, T2 upX = 0, T2 upY = 1, T2 upZ = 0)
 	{
-		auto l = normalize(detail::xvec3<T2>(targetX - eyeX, targetY - eyeY, targetZ - eyeZ));
-		auto s = normalize(cross(l, detail::xvec3<T2>(upX, upY, upZ)));
+		auto l = normalize(detail::xvec3<T>(targetX - eyeX, targetY - eyeY, targetZ - eyeZ));
+		auto s = normalize(cross(l, detail::xvec3<T>(upX, upY, upZ)));
 		auto u = cross(s, l);
 
-		return xmat4(s.x, s.y, s.z, 0, u.x, u.y, u.z, 0, -l.x, -l.y, -l.z, 0, eyeX, eyeY, eyeZ, 1);
+		return xmat4(
+			T(s.x), T(s.y), T(s.z), 0,
+			T(u.x), T(u.y), T(u.z), 0,
+			T(-l.x), T(-l.y), T(-l.z), 0,
+			T(eyeX), T(eyeY), T(eyeZ), 1);
 	}
 
 	template <typename T2> static xmat4 make_perspective(T2 l, T2 r, T2 b, T2 t, T2 nearClip, T2 farClip)

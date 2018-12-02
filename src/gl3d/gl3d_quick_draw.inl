@@ -274,18 +274,24 @@ void quick_draw::reset()
 	_dirtyBuffers = true;
 
 	_states.clear();
+	auto &state = _states.emplace_back();
+	state.ds.depth_test = 1;
+	state.ds.depth_write = 1;
+	_currentState = state;
+
 	_drawCalls.clear();
 	_indices.clear();
 
 	_vertices.resize( detail::k_vertexBatchAllocation );
 	_currentVertex = _vertices.begin();
+	_startVertex = UINT_MAX;
 
 	_currentUV = { 0, 0 };
 	_currentColor = { 1, 1, 1, 1 };
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection )
+void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj )
 {
 	if ( _drawCalls.empty() )
 		return;
@@ -322,12 +328,21 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 	queue->bind_shader( _shader );
 	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::layout() );
 	queue->bind_index_buffer( _indexBuffer );
-	queue->set_uniform( "u_ProjectionMatrix", projection );
+	queue->set_uniform( "u_ProjectionMatrix", proj );
 	queue->set_uniform( "u_ViewMatrix", view );
+
+	unsigned currentStateIndex = UINT_MAX;
 
 	for ( auto &dc : _drawCalls )
 	{
-		queue->draw_indexed( dc.primitive, dc.startIndex, dc.indexCount );
+		if ( dc.stateIndex != currentStateIndex )
+		{
+			auto &state = _states[dc.stateIndex];
+			queue->set_state( state.ds );
+			currentStateIndex = dc.stateIndex;
+		}
+
+		queue->draw_indexed( dc.primitive, dc.firstIndex, dc.indexCount );
 	}
 }
 
@@ -349,12 +364,12 @@ void quick_draw::begin( gl_enum primitiveType, bool autoClose )
 	assert( !building_mesh() );
 
 	_currentDrawCall.primitive = primitiveType;
-	_currentDrawCall.startVertex = static_cast<unsigned>( _currentVertex - _vertices.begin() );
-	_currentDrawCall.startIndex = static_cast<unsigned>( _indices.size() );
+	_currentDrawCall.firstIndex = static_cast<unsigned>( _indices.size() );
 	_currentDrawCall.indexCount = 0;
-	_currentDrawCall.stateIndex = UINT_MAX;
+	_currentDrawCall.stateIndex = static_cast<unsigned>( _states.size() - 1 );
 
 	_buildingMesh = true;
+	_startVertex = static_cast<unsigned>( _currentVertex - _vertices.begin() );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -363,7 +378,7 @@ void quick_draw::end()
 	assert( building_mesh() );
 	_buildingMesh = false;
 
-	auto numVertices = static_cast<unsigned>( _currentVertex - _vertices.begin() ) - _currentDrawCall.startVertex;
+	auto numVertices = static_cast<unsigned>( _currentVertex - _vertices.begin() ) - _startVertex;
 	if ( !numVertices )
 		return;
 
@@ -371,11 +386,35 @@ void quick_draw::end()
 	{
 		case gl_enum::LINES:
 		{
+			assert( ( numVertices % 2 ) == 0 );
 			_currentDrawCall.indexCount = numVertices;
 
 			_indices.resize( _indices.size() + numVertices );
-			for ( unsigned i = 0, *index = _indices.data() + _currentDrawCall.startIndex, v = _currentDrawCall.startVertex; i < numVertices; ++i )
+			for ( unsigned i = 0, *index = _indices.data() + _currentDrawCall.firstIndex, v = _startVertex; i < numVertices; ++i )
 				*index++ = v++;
+		}
+		break;
+
+		case gl_enum::QUADS:
+		{
+			_currentDrawCall.primitive = gl_enum::TRIANGLES;
+
+			assert( ( numVertices % 4 ) == 0 );
+			_currentDrawCall.indexCount = ( numVertices / 4 ) * 6;
+
+			_indices.resize( _indices.size() + _currentDrawCall.indexCount );
+			for ( unsigned i = 0, *index = _indices.data() + _currentDrawCall.firstIndex, v = _startVertex; i < numVertices; i += 4 )
+			{
+				*index++ = v;
+				*index++ = v + 1;
+				*index++ = v + 2;
+
+				*index++ = v;
+				*index++ = v + 2;
+				*index++ = v + 3;
+
+				v += 4;
+			}
 		}
 		break;
 	}
@@ -385,6 +424,7 @@ void quick_draw::end()
 		_drawCalls.push_back( _currentDrawCall );
 
 	_dirtyBuffers = true;
+	_startVertex = UINT_MAX;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -403,6 +443,12 @@ void quick_draw::vertex( const vec3 &pos )
 	_currentVertex->uv = _currentUV;
 
 	++_currentVertex;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::color( const vec4 &c )
+{
+	_currentColor = c;
 }
 
 } // namespace gl3d

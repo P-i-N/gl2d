@@ -654,39 +654,6 @@ void cmd_queue::resize_buffer( buffer::ptr buff, const void *data, size_t size )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_state( const blend_state &bs )
-{
-	if ( _deferred )
-		write( cmd_type::bind_blend_state, bs );
-	else
-	{
-
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_state( const depth_stencil_state &ds )
-{
-	if ( _deferred )
-		write( cmd_type::bind_depth_stencil_state, ds );
-	else
-	{
-
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_state( const rasterizer_state &rs )
-{
-	if ( _deferred )
-		write( cmd_type::bind_rasterizer_state, rs );
-	else
-	{
-
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_shader( shader::ptr sh )
 {
 	if ( _deferred )
@@ -928,6 +895,87 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const mat
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_state( const blend_state &bs )
+{
+	if ( _deferred )
+		write( cmd_type::bind_blend_state, bs );
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_state( const depth_stencil_state &ds )
+{
+	if ( _deferred )
+		write( cmd_type::bind_depth_stencil_state, ds );
+	else
+	{
+		if ( ds.depth_test )
+			glEnable( GL_DEPTH_TEST );
+		else
+			glDisable( GL_DEPTH_TEST );
+
+		if ( ds.depth_write )
+			glDepthMask( GL_TRUE );
+		else
+			glDepthMask( GL_FALSE );
+
+		glDepthFunc( +ds.depth_func );
+
+		if ( ds.stencil_test )
+			glEnable( GL_STENCIL_TEST );
+		else
+			glDisable( GL_STENCIL_TEST );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_state( const rasterizer_state &rs )
+{
+	if ( _deferred )
+		write( cmd_type::bind_rasterizer_state, rs );
+	else
+	{
+		if ( rs.front_ccw )
+			glFrontFace( GL_CCW );
+		else
+			glFrontFace( GL_CW );
+
+		if ( rs.face_cull_mode == gl_enum::NONE )
+			glDisable( GL_CULL_FACE );
+		else if ( +rs.face_cull_mode == GL_FRONT )
+		{
+			glEnable( GL_CULL_FACE );
+			glCullFace( GL_FRONT );
+		}
+		else if ( +rs.face_cull_mode == GL_BACK )
+		{
+			glEnable( GL_CULL_FACE );
+			glCullFace( GL_BACK );
+		}
+		else
+			assert( 0 );
+
+		if ( rs.wireframe )
+			glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+		else
+			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+
+		if ( rs.depth_clamp )
+			glEnable( +gl_enum::DEPTH_CLAMP );
+		else
+			glDisable( +gl_enum::DEPTH_CLAMP );
+
+		if ( rs.scissor_test )
+			glEnable( GL_SCISSOR_TEST );
+		else
+			glDisable( GL_SCISSOR_TEST );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount, size_t instanceBase )
 {
 	if ( _deferred )
@@ -1080,15 +1128,15 @@ void cmd_queue::execute( gl_state *state )
 			break;
 
 			case cmd_type::bind_blend_state:
-				bind_state( read<blend_state>() );
+				set_state( read<blend_state>() );
 				break;
 
 			case cmd_type::bind_depth_stencil_state:
-				bind_state( read<depth_stencil_state>() );
+				set_state( read<depth_stencil_state>() );
 				break;
 
 			case cmd_type::bind_rasterizer_state:
-				bind_state( read<rasterizer_state>() );
+				set_state( read<rasterizer_state>() );
 				break;
 
 			case cmd_type::bind_shader:

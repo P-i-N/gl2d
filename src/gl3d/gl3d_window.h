@@ -59,6 +59,7 @@ public:
 
 	void size( uvec2 size ) { adjust( _pos, size ); }
 	uvec2 size() const { return _size; }
+	float aspect_ratio() const { return static_cast<float>( _size.x ) / _size.y; }
 
 	void position( ivec2 pos ) { adjust( pos, _size ); }
 	ivec2 position() const { return _pos; }

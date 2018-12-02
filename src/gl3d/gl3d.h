@@ -106,7 +106,7 @@ enum class gl_enum : unsigned
 	ONE = 1,
 
 	POINTS = 0x0000, LINES,
-	LINE_STRIP = 0x0003, TRIANGLES, TRIANGLE_STRIP,
+	LINE_STRIP = 0x0003, TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN, QUADS,
 
 	TEXTURE_1D = 0x0DE0, TEXTURE_2D,
 	TEXTURE_3D = 0x806F,
@@ -143,6 +143,8 @@ enum class gl_enum : unsigned
 	COMPUTE_SHADER = 0x91B9,
 
 	VERTEX_ARRAY_BINDING = 0x85B5,
+
+	DEPTH_CLAMP = 0x864F,
 
 	READ_ONLY = 0x88B8, WRITE_ONLY, READ_WRITE,
 
@@ -462,17 +464,30 @@ protected:
 struct blend_state
 {
 	uint8_t mask = 0xFFu;
+
+	blend_state()
+	{
+
+	}
 };
 
 //---------------------------------------------------------------------------------------------------------------------
 struct depth_stencil_state
 {
 	gl_enum depth_func = gl_enum::LESS;
-	uint8_t stencil_read_mask = 0;
-	uint8_t stencil_write_mask = 0;
+	uint8_t stencil_read_mask = 0xFFu;
+	uint8_t stencil_write_mask = 0xFFu;
 	unsigned stencil_test : 1;
 	unsigned depth_test : 1;
 	unsigned depth_write : 1;
+
+	depth_stencil_state()
+		: stencil_test( 0 )
+		, depth_test( 1 )
+		, depth_write( 1 )
+	{
+
+	}
 };
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -481,8 +496,17 @@ struct rasterizer_state
 	gl_enum face_cull_mode = gl_enum::NONE;
 	unsigned front_ccw : 1;
 	unsigned wireframe : 1;
-	unsigned depth_camp : 1;
+	unsigned depth_clamp : 1;
 	unsigned scissor_test : 1;
+
+	rasterizer_state()
+		: front_ccw( 0 )
+		, wireframe( 0 )
+		, depth_clamp( 1 )
+		, scissor_test( 0 )
+	{
+
+	}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -510,10 +534,6 @@ public:
 	void resize_buffer( buffer::ptr buff, const void *data, size_t size );
 	void resize_buffer( buffer::ptr buff, size_t size ) { resize_buffer( buff, nullptr, size ); }
 
-	void bind_state( const blend_state &bs );
-	void bind_state( const depth_stencil_state &ds );
-	void bind_state( const rasterizer_state &rs );
-
 	void bind_shader( shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
 	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
@@ -538,6 +558,10 @@ public:
 	void set_uniform( const detail::location_variant &location, const vec4 &value );
 	void set_uniform( const detail::location_variant &location, const mat3 &value, bool transpose = false );
 	void set_uniform( const detail::location_variant &location, const mat4 &value, bool transpose = false );
+
+	void set_state( const blend_state &bs );
+	void set_state( const depth_stencil_state &ds );
+	void set_state( const rasterizer_state &rs );
 
 	void draw( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );
 	void draw_indexed( gl_enum primitive, size_t first, size_t count, size_t instanceCount = 1, size_t instanceBase = 0 );

@@ -16,9 +16,9 @@
   - [ ] TEXTURE_CUBE_MAP_ARRAY
   - [ ] multisampling
 - [ ] bindless textures
-- [ ] blend state: `gl3d::blend_state`
-- [ ] depth stencil state: `gl3d::depth_stencil_state`
-- [ ] rasterizer state: `gl3d::rasterizer_state`
+- [x] blend state: `gl3d::blend_state`
+- [x] depth stencil state: `gl3d::depth_stencil_state`
+- [x] rasterizer state: `gl3d::rasterizer_state`
 - [ ] command queue: `gl3d::cmd_queue`
   - [x] immediate mode
   - [x] deferred mode

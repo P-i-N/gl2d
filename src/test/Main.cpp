@@ -24,7 +24,7 @@ int main()
 	// Mount folder with example data
 	vfs::mount( "../../data" );
 
-	window::create( "Main Window", { 1280, 800 }, { 1920 * 0 + 60, 60 } );
+	window::create( "Main Window", { 1280, 800 } );
 
 	Vertex vertices[] =
 	{
@@ -60,6 +60,39 @@ int main()
 	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::layout() );
 	q->draw( gl_enum::TRIANGLES, 0, 3 );
 
+	auto qd3D = std::make_shared<quick_draw>();
+	qd3D->begin( gl_enum::QUADS );
+	{
+		// Top
+		qd3D->color( { 1, 1, 1 } );
+		qd3D->vertex( { 1, 1, 1 } );
+		qd3D->vertex( { 1, -1, 1 } );
+		qd3D->vertex( { -1, -1, 1 } );
+		qd3D->vertex( { -1, 1, 1 } );
+
+		// Bottom
+		qd3D->color( { 1, 1, 0 } );
+		qd3D->vertex( { 1, 1, -1 } );
+		qd3D->vertex( { 1, -1, -1 } );
+		qd3D->vertex( { -1, -1, -1 } );
+		qd3D->vertex( { -1, 1, -1 } );
+
+		// Front
+		qd3D->color( { 0, 1, 0 } );
+		qd3D->vertex( { -1, 1, 1 } );
+		qd3D->vertex( { -1, -1, 1 } );
+		qd3D->vertex( { -1, -1, -1 } );
+		qd3D->vertex( { -1, 1, -1 } );
+
+		// Back
+		qd3D->color( { 0, 0, 1 } );
+		qd3D->vertex( { 1, 1, 1 } );
+		qd3D->vertex( { 1, -1, 1 } );
+		qd3D->vertex( { 1, -1, -1 } );
+		qd3D->vertex( { 1, 1, -1 } );
+	}
+	qd3D->end();
+
 	on_tick += [&]()
 	{
 		auto w = window::from_id( 0 );
@@ -73,21 +106,12 @@ int main()
 			case window_event::type::paint:
 			{
 				auto w = window::from_id( e.window_id );
-				auto s = w->size();
 				auto ctx = w->context();
-				auto qd = w->quick_draw();
 
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
+				ctx->clear_depth( 1.0f );
 
-				for ( int i = 0; i < 100; ++i )
-				{
-					qd->begin( gl_enum::LINES );
-					{
-						qd->vertex( { rand() % s.x, rand() % s.y } );
-						qd->vertex( { rand() % s.x, rand() % s.y } );
-					}
-					qd->end();
-				}
+				qd3D->render( ctx, mat4::make_inverse( mat4::make_look_at( -2, 0, 2, 0, 0, 0, 0, 0, 1 ) ), mat4::make_perspective( 100.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
 			}
 			break;
 		}

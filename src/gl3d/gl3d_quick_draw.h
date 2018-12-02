@@ -48,7 +48,7 @@ public:
 
 	void reset();
 
-	void render( cmd_queue::ptr queue, const mat4 &view, const mat4 &projection );
+	void render( cmd_queue::ptr queue, const mat4 &view, const mat4 &proj );
 
 	void push_transform();
 
@@ -64,13 +64,19 @@ public:
 
 	void vertex( const vec2 &pos, float z = 0.0f ) { vertex( { pos.x, pos.y, z } ); }
 
+	void color( const vec4 &c );
+
+	void color( const vec3 &c, float alpha = 1.0f ) { color( { c.x, c.y, c.z, alpha } ); }
+
 protected:
 	bool _dirtyBuffers = true;
 	bool _buildingMesh = false;
 
 	struct state
 	{
-
+		blend_state bs;
+		depth_stencil_state ds;
+		rasterizer_state rs;
 	};
 
 	std::vector<state> _states;
@@ -80,15 +86,13 @@ protected:
 	struct draw_call
 	{
 		gl_enum primitive = gl_enum::NONE;
-		unsigned startVertex = UINT_MAX;
-		unsigned startIndex = UINT_MAX;
-		unsigned vertexCount = 0;
+		unsigned firstIndex = UINT_MAX;
 		unsigned indexCount = 0;
 		unsigned stateIndex = UINT_MAX;
 
 		bool try_merging_with( const draw_call &dc )
 		{
-			if ( stateIndex != dc.stateIndex || primitive != dc.primitive || ( startIndex + indexCount ) != dc.startIndex )
+			if ( stateIndex != dc.stateIndex || primitive != dc.primitive || ( firstIndex + indexCount ) != dc.firstIndex )
 				return false;
 
 			indexCount += dc.indexCount;
@@ -115,6 +119,7 @@ protected:
 	std::vector<gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;
 	decltype( _vertices )::iterator _currentVertex;
+	unsigned _startVertex = UINT_MAX;
 
 	buffer::ptr _vertexBuffer;
 	buffer::ptr _indexBuffer;
