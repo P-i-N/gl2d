@@ -73,15 +73,21 @@ int main()
 			case window_event::type::paint:
 			{
 				auto w = window::from_id( e.window_id );
+				auto s = w->size();
 				auto ctx = w->context();
 				auto qd = w->quick_draw();
 
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 
-				qd->begin( gl_enum::LINES );
-				qd->vertex( { 0, 0 } );
-				qd->vertex( w->size() );
-				qd->end();
+				for ( int i = 0; i < 1000; ++i )
+				{
+					qd->begin( gl_enum::LINES );
+					{
+						qd->vertex( { rand() % s.x, rand() % s.y } );
+						qd->vertex( { rand() % s.x, rand() % s.y } );
+					}
+					qd->end();
+				}
 			}
 			break;
 		}

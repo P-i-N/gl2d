@@ -157,6 +157,8 @@ enum class gl_enum : unsigned
 
 	MAP_READ_BIT = 0x0001,
 	MAP_WRITE_BIT = 0x0002,
+	MAP_INVALIDATE_RANGE_BIT = 0x0004,
+	MAP_INVALIDATE_BUFFER_BIT = 0x0008,
 	MAP_PERSISTENT_BIT = 0x0040,
 	MAP_COHERENT_BIT = 0x0080,
 	DYNAMIC_STORAGE_BIT = 0x0100,
@@ -263,8 +265,7 @@ protected:
 enum class buffer_usage
 {
 	immutable,
-	dynamic,
-	persistent,
+	dynamic, persistent,
 	persistent_coherent
 };
 
@@ -293,7 +294,9 @@ public:
 
 	void synchronize();
 
-	void *map() const;
+	void *map( unsigned accessFlags = +gl_enum::WRITE_ONLY ) const;
+
+	void *map( size_t offset, size_t length, unsigned accessFlags = +gl_enum::MAP_WRITE_BIT | +gl_enum::MAP_INVALIDATE_RANGE_BIT ) const;
 
 	void unmap() const;
 
@@ -499,7 +502,7 @@ public:
 	void clear_depth( float depth );
 
 	void update_texture( texture::ptr tex, const void *data, unsigned layer = 0, unsigned mipLevel = 0, size_t rowStride = 0 );
-	void update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset = 0 );
+	void update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset = 0, bool preserveContent = false );
 	void resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent = false );
 	void resize_buffer( buffer::ptr buff, size_t size, bool preserveContent = false )
 	{

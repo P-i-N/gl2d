@@ -170,12 +170,23 @@ void buffer::synchronize()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void *buffer::map() const
+void *buffer::map( unsigned accessFlags ) const
 {
 	if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
 		return _data;
 
-	return gl.MapNamedBuffer( _id, +gl_enum::WRITE_ONLY );
+	return gl.MapNamedBuffer( _id, accessFlags );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void *buffer::map( size_t offset, size_t length, unsigned accessFlags ) const
+{
+	assert( offset + length <= size() );
+
+	if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
+		return _data + offset;
+
+	return gl.MapNamedBufferRange( _id, static_cast<unsigned>( offset ), static_cast<unsigned>( length ), accessFlags );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -566,6 +577,8 @@ void cmd_queue::clear_depth( float depth )
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::update_texture( texture::ptr tex, const void *data, unsigned layer, unsigned mipLevel, size_t rowStride )
 {
+	assert( tex );
+
 	if ( _deferred )
 	{
 		write( cmd_type::update_texture, layer, mipLevel, rowStride );
@@ -578,23 +591,42 @@ void cmd_queue::update_texture( texture::ptr tex, const void *data, unsigned lay
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset )
+void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset, bool preserveContent )
 {
+	assert( buff && ( size + offset ) <= buff->size() );
+
 	if ( _deferred )
 	{
-		write( cmd_type::update_buffer, offset );
+		write( cmd_type::update_buffer, offset, preserveContent );
 		write_data( data, size );
 		_resources.push_back( buff );
 	}
 	else
 	{
+		bool mapWholeBuffer = ( offset == 0 ) && ( size == buff->size() );
 
+		if ( mapWholeBuffer )
+		{
+			memcpy( buff->map(), data, size );
+			buff->unmap();
+		}
+		else
+		{
+			auto accessFlags = preserveContent
+			                   ? ( +gl_enum::MAP_WRITE_BIT )
+			                   : ( +gl_enum::MAP_WRITE_BIT | +gl_enum::MAP_INVALIDATE_RANGE_BIT );
+
+			memcpy( buff->map( offset, size, accessFlags ), data, size );
+			buff->unmap();
+		}
 	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent )
 {
+	assert( buff && buff->usage() == buffer_usage::dynamic );
+
 	if ( _deferred )
 	{
 		write( cmd_type::resize_buffer, preserveContent );
@@ -888,10 +920,10 @@ void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t inst
 	}
 	else
 	{
-		if ( _state->dirty_input_assembly && synchronize_input_assembly() )
-		{
-			glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
-		}
+		if ( _state->dirty_input_assembly )
+			synchronize_input_assembly();
+
+		glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
 	}
 }
 
@@ -904,24 +936,24 @@ void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, siz
 	}
 	else
 	{
-		if ( _state->dirty_input_assembly && synchronize_input_assembly() )
+		if ( _state->dirty_input_assembly )
+			synchronize_input_assembly();
+
+		if ( _state->current_ib_16bits )
 		{
-			if ( _state->current_ib_16bits )
-			{
-				glDrawElements(
-				    +primitive,
-				    static_cast<int>( count ),
-				    +gl_enum::UNSIGNED_SHORT,
-				    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ) );
-			}
-			else
-			{
-				glDrawElements(
-				    +primitive,
-				    static_cast<int>( count ),
-				    +gl_enum::UNSIGNED_INT,
-				    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ) );
-			}
+			glDrawElements(
+			    +primitive,
+			    static_cast<int>( count ),
+			    +gl_enum::UNSIGNED_SHORT,
+			    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ) );
+		}
+		else
+		{
+			glDrawElements(
+			    +primitive,
+			    static_cast<int>( count ),
+			    +gl_enum::UNSIGNED_INT,
+			    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ) );
 		}
 	}
 }
@@ -1016,9 +1048,10 @@ void cmd_queue::execute( gl_state *state )
 			case cmd_type::update_buffer:
 			{
 				auto offset = read<size_t>();
+				auto preserveContent = read<bool>();
 				auto data = read_data();
 				auto buff = std::static_pointer_cast<buffer>( _resources[resIndex++] );
-				update_buffer( buff, data.first, data.second, offset );
+				update_buffer( buff, data.first, data.second, offset, preserveContent );
 			}
 			break;
 
