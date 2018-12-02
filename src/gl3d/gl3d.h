@@ -302,6 +302,8 @@ public:
 
 	void unmap() const;
 
+	void resize( const void *data, size_t length );
+
 protected:
 	buffer_usage _usage;
 	uint8_t *_data = nullptr;
@@ -505,11 +507,8 @@ public:
 
 	void update_texture( texture::ptr tex, const void *data, unsigned layer = 0, unsigned mipLevel = 0, size_t rowStride = 0 );
 	void update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset = 0, bool preserveContent = false );
-	void resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent = false );
-	void resize_buffer( buffer::ptr buff, size_t size, bool preserveContent = false )
-	{
-		resize_buffer( buff, nullptr, size, preserveContent );
-	}
+	void resize_buffer( buffer::ptr buff, const void *data, size_t size );
+	void resize_buffer( buffer::ptr buff, size_t size ) { resize_buffer( buff, nullptr, size ); }
 
 	void bind_state( const blend_state &bs );
 	void bind_state( const depth_stencil_state &ds );

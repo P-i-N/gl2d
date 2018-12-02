@@ -184,7 +184,7 @@ void *buffer::map( unsigned accessFlags ) const
 //---------------------------------------------------------------------------------------------------------------------
 void *buffer::map( size_t offset, size_t length, unsigned accessFlags ) const
 {
-	assert( offset + length <= size() );
+	assert( _id && offset + length <= size() );
 
 	if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
 		return _data + offset;
@@ -195,10 +195,21 @@ void *buffer::map( size_t offset, size_t length, unsigned accessFlags ) const
 //---------------------------------------------------------------------------------------------------------------------
 void buffer::unmap() const
 {
+	assert( _id );
+
 	if ( _usage == buffer_usage::persistent || _usage == buffer_usage::persistent_coherent )
 		return;
 
 	gl.UnmapNamedBuffer( _id );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void buffer::resize( const void *data, size_t length )
+{
+	assert( _id &&  _usage == buffer_usage::dynamic_resizable );
+
+	gl.NamedBufferData( _id, static_cast<int>( length ), data, gl_enum::DYNAMIC_DRAW );
+	_size = length;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -606,9 +617,9 @@ void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, 
 	}
 	else
 	{
-		bool mapWholeBuffer = ( offset == 0 ) && ( size == buff->size() );
+		buff->synchronize();
 
-		if ( mapWholeBuffer )
+		if ( offset == 0 && ( size == buff->size() ) )
 		{
 			memcpy( buff->map(), data, size );
 			buff->unmap();
@@ -626,19 +637,20 @@ void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, 
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::resize_buffer( buffer::ptr buff, const void *data, size_t size, bool preserveContent )
+void cmd_queue::resize_buffer( buffer::ptr buff, const void *data, size_t size )
 {
 	assert( buff && buff->usage() == buffer_usage::dynamic_resizable );
 
 	if ( _deferred )
 	{
-		write( cmd_type::resize_buffer, preserveContent );
+		write( cmd_type::resize_buffer );
 		write_data( data, size );
 		_resources.push_back( buff );
 	}
 	else
 	{
-
+		buff->synchronize();
+		buff->resize( data, size );
 	}
 }
 
@@ -1060,10 +1072,9 @@ void cmd_queue::execute( gl_state *state )
 
 			case cmd_type::resize_buffer:
 			{
-				auto preserveContent = read<bool>();
 				auto data = read_data();
 				auto buff = std::static_pointer_cast<buffer>( _resources[resIndex++] );
-				resize_buffer( buff, data.first, data.second, preserveContent );
+				resize_buffer( buff, data.first, data.second );
 			}
 			break;
 

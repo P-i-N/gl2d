@@ -80,9 +80,9 @@ int main()
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 
 				int numLines = gl3d::frame_id > 1 ? 1000 : 1;
-				for ( int i = 0; i < numLines; ++i )
 				{
 					qd->begin( gl_enum::LINES );
+					for ( int i = 0; i < numLines; ++i )
 					{
 						qd->vertex( { rand() % s.x, rand() % s.y } );
 						qd->vertex( { rand() % s.x, rand() % s.y } );
