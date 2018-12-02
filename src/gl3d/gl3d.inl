@@ -607,7 +607,7 @@ void cmd_queue::update_texture( texture::ptr tex, const void *data, unsigned lay
 //---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, size_t offset, bool preserveContent )
 {
-	assert( buff && ( size + offset ) <= buff->size() );
+	assert( buff && buff->usage() != buffer_usage::immutable && ( size + offset ) <= buff->size() );
 
 	if ( _deferred )
 	{
@@ -626,9 +626,8 @@ void cmd_queue::update_buffer( buffer::ptr buff, const void *data, size_t size, 
 		}
 		else
 		{
-			auto accessFlags = preserveContent
-			                   ? ( +gl_enum::MAP_WRITE_BIT )
-			                   : ( +gl_enum::MAP_WRITE_BIT | +gl_enum::MAP_INVALIDATE_RANGE_BIT );
+			auto accessFlags = +gl_enum::MAP_WRITE_BIT;
+			if ( preserveContent ) accessFlags |= +gl_enum::MAP_INVALIDATE_RANGE_BIT;
 
 			memcpy( buff->map( offset, size, accessFlags ), data, size );
 			buff->unmap();
@@ -699,7 +698,9 @@ void cmd_queue::bind_shader( shader::ptr sh )
 	{
 		if ( sh )
 		{
-			if ( !sh->id() ) sh->compile();
+			if ( !sh->id() )
+				sh->compile();
+
 			gl.UseProgram( sh->id() );
 		}
 		else
