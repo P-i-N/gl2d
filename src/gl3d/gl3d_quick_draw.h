@@ -85,6 +85,15 @@ protected:
 		unsigned vertexCount = 0;
 		unsigned indexCount = 0;
 		unsigned stateIndex = UINT_MAX;
+
+		bool try_merging_with( const draw_call &dc )
+		{
+			if ( stateIndex != dc.stateIndex || primitive != dc.primitive || ( startIndex + indexCount ) != dc.startIndex )
+				return false;
+
+			indexCount += dc.indexCount;
+			return true;
+		}
 	};
 
 	std::vector<draw_call> _drawCalls;

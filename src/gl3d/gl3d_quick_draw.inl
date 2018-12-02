@@ -351,7 +351,6 @@ void quick_draw::begin( gl_enum primitiveType, bool autoClose )
 	_currentDrawCall.primitive = primitiveType;
 	_currentDrawCall.startVertex = static_cast<unsigned>( _currentVertex - _vertices.begin() );
 	_currentDrawCall.startIndex = static_cast<unsigned>( _indices.size() );
-	_currentDrawCall.vertexCount = 0;
 	_currentDrawCall.indexCount = 0;
 	_currentDrawCall.stateIndex = UINT_MAX;
 
@@ -372,7 +371,6 @@ void quick_draw::end()
 	{
 		case gl_enum::LINES:
 		{
-			_currentDrawCall.vertexCount = numVertices;
 			_currentDrawCall.indexCount = numVertices;
 
 			_indices.resize( _indices.size() + numVertices );
@@ -382,7 +380,10 @@ void quick_draw::end()
 		break;
 	}
 
-	_drawCalls.push_back( _currentDrawCall );
+	bool pushDrawCall = _drawCalls.empty() || ( !_drawCalls.back().try_merging_with( _currentDrawCall ) );
+	if ( pushDrawCall )
+		_drawCalls.push_back( _currentDrawCall );
+
 	_dirtyBuffers = true;
 }
 
