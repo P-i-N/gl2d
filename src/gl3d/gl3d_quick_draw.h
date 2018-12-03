@@ -2,6 +2,7 @@
 #define __GL3D_QUICK_DRAW_H__
 
 #include <map>
+#include <unordered_map>
 
 #include "gl3d.h"
 
@@ -53,6 +54,8 @@ public:
 	void push_transform();
 
 	void pop_transform();
+
+	void set_texture( texture::ptr tex );
 
 	void begin( gl_enum primitiveType, bool autoClose = false );
 
@@ -115,14 +118,19 @@ protected:
 
 	vec4 _currentColor;
 	vec2 _currentUV;
+	uvec3 _currentInstanceData;
 
 	std::vector<gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;
 	decltype( _vertices )::iterator _currentVertex;
 	unsigned _startVertex = UINT_MAX;
 
+	std::vector<uint64_t> _textureHandles;
+	std::unordered_map<texture::ptr, unsigned> _textureIndexMap;
+
 	buffer::ptr _vertexBuffer;
 	buffer::ptr _indexBuffer;
+	buffer::ptr _texturesBuffer;
 	shader::ptr _shader;
 };
 

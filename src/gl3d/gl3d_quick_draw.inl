@@ -283,6 +283,9 @@ void quick_draw::reset()
 	_currentVertex = _vertices.begin();
 	_startVertex = UINT_MAX;
 
+	_textureHandles.clear();
+	_textureIndexMap.clear();
+
 	_currentUV = { 0, 0 };
 	_currentColor = { 1, 1, 1, 1 };
 }
@@ -354,6 +357,28 @@ void quick_draw::push_transform()
 void quick_draw::pop_transform()
 {
 
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::set_texture( texture::ptr tex )
+{
+	if ( tex )
+	{
+		auto iter = _textureIndexMap.find( tex );
+		if ( iter != _textureIndexMap.end() )
+		{
+			_currentInstanceData.x = iter->second;
+			return;
+		}
+
+		_currentInstanceData.x = static_cast<unsigned>( _textureHandles.size() );
+		_textureIndexMap.insert( { tex, _currentInstanceData.x } );
+		_textureHandles.push_back( 0 );
+	}
+	else
+	{
+
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
