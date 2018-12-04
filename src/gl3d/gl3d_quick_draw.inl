@@ -360,7 +360,7 @@ void quick_draw::pop_transform()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void quick_draw::set_texture( texture::ptr tex )
+void quick_draw::bind_texture( texture::ptr tex )
 {
 	if ( tex )
 	{

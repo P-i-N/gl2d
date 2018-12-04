@@ -55,7 +55,7 @@ public:
 
 	void pop_transform();
 
-	void set_texture( texture::ptr tex );
+	void bind_texture( texture::ptr tex );
 
 	void begin( gl_enum primitiveType );
 
