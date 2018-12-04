@@ -129,8 +129,9 @@ int main()
 				float y = 3.0f * cos( gl3d::time );
 				float z = 3.0f * sin( gl3d::time * 0.37f );
 
-				qd3D->render( ctx, mat4::make_inverse( mat4::make_look_at( x, y, z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f ) ), mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f,
-				              1000.0f ) );
+				qd3D->render( ctx,
+				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),
+				              mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
 			}
 			break;
 		}

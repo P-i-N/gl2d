@@ -382,7 +382,7 @@ void quick_draw::set_texture( texture::ptr tex )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void quick_draw::begin( gl_enum primitiveType, bool autoClose )
+void quick_draw::begin( gl_enum primitiveType )
 {
 	assert( !building_mesh() );
 
@@ -472,6 +472,12 @@ void quick_draw::vertex( const vec3 &pos )
 void quick_draw::color( const vec4 &c )
 {
 	_currentColor = c;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::uv( const vec2 &texCoord )
+{
+	_currentUV = texCoord;
 }
 
 } // namespace gl3d

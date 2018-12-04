@@ -336,7 +336,7 @@ void update()
 		glViewport( 0, 0, w->size().x, w->size().y );
 		on_window_event( window_event( window_event::type::paint, w->id() ) );
 
-		auto projMatrix = mat4::make_ortho( 0, int( w->size().x ), int( w->size().y ), 0, -1, 1 );
+		auto projMatrix = mat4::make_ortho( 0, float( w->size().x ), float( w->size().y ), 0, -1, 1 );
 
 		auto qd = w->quick_draw();
 		qd->render( ctx, mat4(), projMatrix );

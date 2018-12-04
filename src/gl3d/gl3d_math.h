@@ -248,30 +248,30 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 
 	template <typename TV> static xmat4 make_translation(const xvec3<TV> &pos)
 	{
-		return { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, pos.x, pos.y, pos.z, 1 };
+		return { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, T(pos.x), T(pos.y), T(pos.z), 1 };
 	}
 
-	template <typename TV> static xmat4 make_scale(const xvec3<TV> &xyz) { return { xyz.x, 0, 0, 0, 0, xyz.y, 0, 0, 0, 0, xyz.z, 0, 0, 0, 0, 1 }; }
-	template <typename TS> static xmat4 make_scale(TS xyz) { return { xyz, 0, 0, 0, 0, xyz, 0, 0, 0, 0, xyz, 0, 0, 0, 0, 1 }; }
+	template <typename TV> static xmat4 make_scale(const xvec3<TV> &xyz) { return { T(xyz.x), 0, 0, 0, 0, T(xyz.y), 0, 0, 0, 0, T(xyz.z), 0, 0, 0, 0, 1 }; }
+	template <typename TS> static xmat4 make_scale(TS xyz) { return { T(xyz), 0, 0, 0, 0, T(xyz), 0, 0, 0, 0, T(xyz), 0, 0, 0, 0, 1 }; }
 
 	template <typename TA, typename TV>
 	static xmat4 make_rotation(TA angleDeg, const xvec3<TV> &axis) { return xmat3<T>::make_rotation(angleDeg, axis); }
 
-	template <typename T2>
-	static xmat4 make_look_at(T2 eyeX, T2 eyeY, T2 eyeZ, T2 targetX, T2 targetY, T2 targetZ, T2 upX = 0, T2 upY = 1, T2 upZ = 0)
+	template <typename TE, typename TT, typename TU>
+	static xmat4 make_look_at(const xvec3<TE> &eye, const xvec3<TT> &target, const xvec3<TU> &up = { 0, 1, 0 })
 	{
-		auto l = normalize(detail::xvec3<T>(targetX - eyeX, targetY - eyeY, targetZ - eyeZ));
-		auto s = normalize(cross(l, detail::xvec3<T>(upX, upY, upZ)));
+		auto l = normalize(target - eye);
+		auto s = normalize(cross(l, up));
 		auto u = cross(s, l);
 
 		return xmat4(
 			T(s.x), T(s.y), T(s.z), 0,
 			T(u.x), T(u.y), T(u.z), 0,
 			T(-l.x), T(-l.y), T(-l.z), 0,
-			T(eyeX), T(eyeY), T(eyeZ), 1);
+			T(eye.x), T(eye.y), T(eye.z), 1);
 	}
 
-	template <typename T2> static xmat4 make_perspective(T2 l, T2 r, T2 b, T2 t, T2 nearClip, T2 farClip)
+	static xmat4 make_perspective(T l, T r, T b, T t, T nearClip, T farClip)
 	{
 		return { 2 * nearClip / (r - l), 0, 0, 0,
 		         0, 2 * nearClip / (t - b), 0, 0,
@@ -279,19 +279,19 @@ template <typename T> struct xmat4 : xmat_data<T, 4>
 		         0, 0, -(2 * farClip * nearClip) / (farClip - nearClip), 0 };
 	}
 
-	template <typename T2> static xmat4 make_perspective(T2 fovYDeg, T2 aspectRatio, T2 nearClip, T2 farClip)
+	static xmat4 make_perspective(T fovYDeg, T aspectRatio, T nearClip, T farClip)
 	{
 		T tangent = tan(radians(fovYDeg / 2));
 		T height = nearClip * tangent, width = height * aspectRatio;
 		return make_perspective(-width, width, -height, height, nearClip, farClip);
 	}
 
-	template <typename T2> static xmat4 make_ortho(T2 l, T2 r, T2 b, T2 t, T2 nearClip, T2 farClip)
+	static xmat4 make_ortho(T l, T r, T b, T t, T nearClip, T farClip)
 	{
-		return { T(2) / T(r - l), 0, 0, 0,
-		         0, T(2) / T(t - b), 0, 0,
-		         0, 0, T(-2) / T(farClip - nearClip), 0,
-		         T(-(r + l)) / T(r - l), T(-(t + b)) / T(t - b), T(-(farClip + nearClip)) / T(farClip - nearClip), 1 };
+		return { 2 / (r - l), 0, 0, 0,
+		         0, 2 / (t - b), 0, 0,
+		         0, 0, (-2) / (farClip - nearClip), 0,
+		         (-(r + l)) / (r - l), (-(t + b)) / (t - b), (-(farClip + nearClip)) / (farClip - nearClip), 1 };
 	}
 
 	static xmat4 make_inverse(const xmat4 &mat)

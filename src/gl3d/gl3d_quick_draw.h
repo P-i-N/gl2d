@@ -57,7 +57,7 @@ public:
 
 	void set_texture( texture::ptr tex );
 
-	void begin( gl_enum primitiveType, bool autoClose = false );
+	void begin( gl_enum primitiveType );
 
 	void end();
 
@@ -70,6 +70,8 @@ public:
 	void color( const vec4 &c );
 
 	void color( const vec3 &c, float alpha = 1.0f ) { color( { c.x, c.y, c.z, alpha } ); }
+
+	void uv( const vec2 &texCoord );
 
 protected:
 	bool _dirtyBuffers = true;
