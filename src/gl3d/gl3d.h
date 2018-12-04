@@ -377,6 +377,10 @@ public:
 	template <typename... Args>
 	static ptr create( Args &&... args ) { return std::make_shared<texture>( args... ); }
 
+	static ptr white_pixel();
+
+	static ptr checkerboard();
+
 	texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips = false );
 
 	texture( gl_format format, const uvec2 &dimensions, bool hasMips = false )

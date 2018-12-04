@@ -384,6 +384,39 @@ bool shader_code::load( const std::filesystem::path &path )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
+texture::ptr texture::white_pixel()
+{
+	static uint32_t whiteRGBA = 0xFFFFFFFFu;
+	static auto result = texture::create( gl_format::RGBA8, uvec2{ 1, 1 }, &whiteRGBA );
+	return result;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+texture::ptr texture::checkerboard()
+{
+#define B 0xFF000000u
+#define W 0xFFFFFFFFu
+
+	static uint32_t checkerboardRGBA[] =
+	{
+		B, W, B, W, B, W, B, W,
+		W, B, W, B, W, B, W, B,
+		B, W, B, W, B, W, B, W,
+		W, B, W, B, W, B, W, B,
+		B, W, B, W, B, W, B, W,
+		W, B, W, B, W, B, W, B,
+		B, W, B, W, B, W, B, W,
+		W, B, W, B, W, B, W, B,
+	};
+
+#undef W
+#undef B
+
+	static auto result = texture::create( gl_format::RGBA8, uvec2{ 8, 8 }, checkerboardRGBA );
+	return result;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips )
 	: _type( type )
 	, _format( format )
