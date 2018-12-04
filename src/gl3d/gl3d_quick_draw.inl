@@ -252,7 +252,7 @@ quick_draw::quick_draw()
 
 	void main()
 	{
-		out_Color = Color * texture(sampler2D(m_Textures[1]), UV);
+		out_Color = Color * texture(sampler2D(m_Textures[0]), UV);
 	}
 	)SHADER_SOURCE";
 
@@ -384,29 +384,7 @@ void quick_draw::pop_transform()
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::bind_texture( texture::ptr tex )
 {
-	if ( _buildingMesh )
-	{
-		auto numVertices = static_cast<unsigned>( _currentVertex - _vertices.begin() ) - _startVertex;
-
-		switch ( _currentDrawCall.primitive )
-		{
-			case gl_enum::LINES:
-				assert( !( numVertices % 2 ) );
-				break;
-
-			case gl_enum::TRIANGLES:
-				assert( !( numVertices % 3 ) );
-				break;
-
-			case gl_enum::QUADS:
-				assert( !( numVertices % 4 ) );
-				break;
-
-			default:
-				assert( 0 );
-				break;
-		}
-	}
+	assert( !building_mesh() );
 
 	if ( tex )
 	{

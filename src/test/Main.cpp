@@ -51,10 +51,11 @@ int main()
 	q->draw( gl_enum::TRIANGLES, 0, 3 );
 
 	auto qd3D = std::make_shared<quick_draw>();
+
+	qd3D->bind_texture( texture::checkerboard() );
 	qd3D->begin( gl_enum::QUADS );
 	{
 		// Top
-		qd3D->bind_texture( texture::checkerboard() );
 		qd3D->color( { 1, 1, 1 } );
 		qd3D->uv( { 0, 0 } );
 		qd3D->vertex( { 1, 1, 1 } );
@@ -64,9 +65,13 @@ int main()
 		qd3D->vertex( { -1, -1, 1 } );
 		qd3D->uv( { 0, 1 } );
 		qd3D->vertex( { -1, 1, 1 } );
+	}
+	qd3D->end();
 
+	qd3D->bind_texture( nullptr );
+	qd3D->begin( gl_enum::QUADS );
+	{
 		// Bottom
-		qd3D->bind_texture( nullptr );
 		qd3D->color( { 1, 1, 0 } );
 		qd3D->vertex( { 1, 1, -1 } );
 		qd3D->vertex( { -1, 1, -1 } );
