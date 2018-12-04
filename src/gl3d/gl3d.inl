@@ -562,6 +562,9 @@ void texture::synchronize()
 		}
 
 		clear();
+
+		_bindlessHandle = gl.GetTextureHandleARB( _id );
+		gl.MakeTextureHandleResidentARB( _bindlessHandle );
 	}
 }
 
@@ -796,6 +799,37 @@ void cmd_queue::bind_render_target( texture::ptr tex, unsigned slot, unsigned la
 	else
 	{
 
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_storage_buffer( buffer::ptr buff, unsigned slot, size_t offset, size_t length )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::bind_storage_buffer, slot, offset, length );
+		_resources.push_back( buff );
+	}
+	else
+	{
+		if ( buff )
+		{
+			buff->synchronize();
+			if ( length == size_t( -1 ) )
+				length = buff->size() - offset;
+
+			assert( length <= buff->size() );
+
+			gl.BindBufferRange(
+			    gl_enum::SHADER_STORAGE_BUFFER,
+			    slot, buff->id(),
+			    static_cast<unsigned>( offset ),
+			    static_cast<unsigned>( length ) );
+		}
+		else
+		{
+
+		}
 	}
 }
 
@@ -1218,6 +1252,16 @@ void cmd_queue::execute( gl_state *state )
 			case cmd_type::bind_render_target:
 			{
 				assert( 0 );
+			}
+			break;
+
+			case cmd_type::bind_storage_buffer:
+			{
+				auto buff = std::static_pointer_cast<buffer>( _resources[resIndex++] );
+				auto slot = read<unsigned>();
+				auto offset = read<size_t>();
+				auto length = read<size_t>();
+				bind_storage_buffer( buff, slot, offset, length );
 			}
 			break;
 

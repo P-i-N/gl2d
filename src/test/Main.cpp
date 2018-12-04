@@ -40,19 +40,9 @@ int main()
 	auto sc = std::make_shared<shader_code>();
 	sc->load( "shaders/Test.shader" );
 
-	uint8_t checkerboard[] =
-	{
-		0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF,
-		0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF
-	};
-
-	auto t = texture::create( gl_format::RGB8, uvec2{ 4, 4 }, checkerboard );
-
 	auto q = cmd_queue::create();
 	q->bind_shader( shader::create( sc ) );
-	q->bind_texture( t, 0 );
+	q->bind_texture( texture::checkerboard(), 0 );
 
 	q->set_uniform_block( 0, fd );
 	q->set_uniform( "u_Diffuse", 0 );
@@ -64,13 +54,19 @@ int main()
 	qd3D->begin( gl_enum::QUADS );
 	{
 		// Top
+		qd3D->bind_texture( texture::checkerboard() );
 		qd3D->color( { 1, 1, 1 } );
+		qd3D->uv( { 0, 0 } );
 		qd3D->vertex( { 1, 1, 1 } );
+		qd3D->uv( { 1, 0 } );
 		qd3D->vertex( { 1, -1, 1 } );
+		qd3D->uv( { 1, 1 } );
 		qd3D->vertex( { -1, -1, 1 } );
+		qd3D->uv( { 0, 1 } );
 		qd3D->vertex( { -1, 1, 1 } );
 
 		// Bottom
+		qd3D->bind_texture( nullptr );
 		qd3D->color( { 1, 1, 0 } );
 		qd3D->vertex( { 1, 1, -1 } );
 		qd3D->vertex( { -1, 1, -1 } );

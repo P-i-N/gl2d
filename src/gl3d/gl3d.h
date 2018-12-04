@@ -83,11 +83,13 @@ struct gl_api
 	GL_PROC(void, VertexArrayElementBuffer, unsigned, unsigned)
 
 	/// Textures
-	GL_PROC(void, CreateTextures, gl_enum, unsigned, unsigned *)
-	GL_PROC(void, TextureParameteri, unsigned, gl_enum, int)
-	GL_PROC(void, TextureStorage2D, unsigned, unsigned, gl_format, unsigned, unsigned)
-	GL_PROC(void, TextureSubImage2D, unsigned, int, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
-	GL_PROC(void, BindTextureUnit, unsigned, unsigned)
+	GL_PROC(    void, CreateTextures, gl_enum, unsigned, unsigned *)
+	GL_PROC(    void, TextureParameteri, unsigned, gl_enum, int)
+	GL_PROC(    void, TextureStorage2D, unsigned, unsigned, gl_format, unsigned, unsigned)
+	GL_PROC(    void, TextureSubImage2D, unsigned, int, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
+	GL_PROC(    void, BindTextureUnit, unsigned, unsigned)
+	GL_PROC(uint64_t, GetTextureHandleARB, unsigned)
+	GL_PROC(    void, MakeTextureHandleResidentARB, uint64_t)
 
 	// *INDENT-ON*
 };
@@ -157,6 +159,8 @@ enum class gl_enum : unsigned
 
 	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
 	CURRENT_PROGRAM = 0x8B8D,
+
+	SHADER_STORAGE_BUFFER = 0x90D2,
 
 	MAP_READ_BIT = 0x0001,
 	MAP_WRITE_BIT = 0x0002,
@@ -446,6 +450,8 @@ public:
 		return 1;
 	}
 
+	uint64_t bindless_handle() const { return _bindlessHandle; }
+
 	void synchronize();
 
 protected:
@@ -461,6 +467,7 @@ protected:
 	bool _buildMips = false;
 
 	buffer::ptr _buffer;
+	uint64_t _bindlessHandle = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -546,6 +553,7 @@ public:
 
 	void bind_texture( texture::ptr tex, unsigned slot );
 	void bind_render_target( texture::ptr tex, unsigned slot, unsigned layer = 0, unsigned mipLevel = 0 );
+	void bind_storage_buffer( buffer::ptr buff, unsigned slot, size_t offset = 0, size_t length = size_t( -1 ) );
 
 	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
 
@@ -698,7 +706,7 @@ protected:
 		update_texture, update_buffer, resize_buffer,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
-		bind_texture, bind_render_target,
+		bind_texture, bind_render_target, bind_storage_buffer,
 		set_uniform_block, set_uniform,
 		draw, draw_indexed,
 		execute,

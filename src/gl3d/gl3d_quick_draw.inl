@@ -234,6 +234,7 @@ quick_draw::quick_draw()
 	{
 		gl_Position = u_ProjectionMatrix * u_ViewMatrix * vec4(vertex_Position, 1);
 		Color = vertex_Color;
+		UV = vertex_UV;
 	}
 
 	#fragment
@@ -251,7 +252,7 @@ quick_draw::quick_draw()
 
 	void main()
 	{
-		out_Color = vec4(Color);
+		out_Color = Color * texture(sampler2D(m_Textures[1]), UV);
 	}
 	)SHADER_SOURCE";
 
@@ -283,8 +284,8 @@ void quick_draw::reset()
 	_currentVertex = _vertices.begin();
 	_startVertex = UINT_MAX;
 
-	_textureHandles.clear();
-	_textureIndexMap.clear();
+	_textureHandles = { 0 };
+	_textureIndexMap = { { texture::white_pixel(), 0 } };
 
 	_currentUV = { 0, 0 };
 	_currentColor = { 1, 1, 1, 1 };
@@ -322,14 +323,35 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 				queue->update_buffer( _indexBuffer, _indices.data(), indicesSize );
 		}
 
+		for ( auto &kvp : _textureIndexMap )
+		{
+			auto tex = kvp.first;
+			tex->synchronize();
+			_textureHandles[kvp.second] = tex->bindless_handle();
+		}
+
+		if ( !_texturesBuffer )
+			_texturesBuffer = buffer::create( buffer_usage::dynamic_resizable, _textureHandles );
+		else
+		{
+			auto handlesSize = _textureHandles.size() * sizeof( uint64_t );
+
+			if ( handlesSize > _texturesBuffer->size() )
+				queue->resize_buffer( _texturesBuffer, _textureHandles.data(), handlesSize );
+			else
+				queue->update_buffer( _texturesBuffer, _textureHandles.data(), handlesSize );
+		}
+
 		_dirtyBuffers = false;
 	}
 
 	queue->bind_shader( _shader );
 	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::layout() );
 	queue->bind_index_buffer( _indexBuffer );
+	queue->bind_storage_buffer( _texturesBuffer, 2 );
 	queue->set_uniform( "u_ProjectionMatrix", proj );
 	queue->set_uniform( "u_ViewMatrix", view );
+	queue->set_uniform( "b_TexturesBuffer", 2 );
 
 	unsigned currentStateIndex = UINT_MAX;
 
@@ -362,6 +384,30 @@ void quick_draw::pop_transform()
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::bind_texture( texture::ptr tex )
 {
+	if ( _buildingMesh )
+	{
+		auto numVertices = static_cast<unsigned>( _currentVertex - _vertices.begin() ) - _startVertex;
+
+		switch ( _currentDrawCall.primitive )
+		{
+			case gl_enum::LINES:
+				assert( !( numVertices % 2 ) );
+				break;
+
+			case gl_enum::TRIANGLES:
+				assert( !( numVertices % 3 ) );
+				break;
+
+			case gl_enum::QUADS:
+				assert( !( numVertices % 4 ) );
+				break;
+
+			default:
+				assert( 0 );
+				break;
+		}
+	}
+
 	if ( tex )
 	{
 		auto iter = _textureIndexMap.find( tex );
@@ -374,6 +420,7 @@ void quick_draw::bind_texture( texture::ptr tex )
 		_currentInstanceData.x = static_cast<unsigned>( _textureHandles.size() );
 		_textureIndexMap.insert( { tex, _currentInstanceData.x } );
 		_textureHandles.push_back( 0 );
+		_dirtyBuffers = true;
 	}
 	else
 	{
