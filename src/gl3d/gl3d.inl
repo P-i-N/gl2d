@@ -498,6 +498,24 @@ void texture::clear()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void texture::resident( bool set )
+{
+	if ( _resident == set )
+		return;
+
+	if ( _resident = set )
+	{
+		_bindlessHandle = gl.GetTextureHandleARB( _id );
+		gl.MakeTextureHandleResidentARB( _bindlessHandle );
+	}
+	else
+	{
+		_bindlessHandle = gl.GetTextureHandleARB( _id );
+		gl.MakeTextureHandleNonResidentARB( _bindlessHandle );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void texture::synchronize()
 {
 	if ( !_id )

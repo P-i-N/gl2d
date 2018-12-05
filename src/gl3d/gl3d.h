@@ -90,6 +90,7 @@ struct gl_api
 	GL_PROC(    void, BindTextureUnit, unsigned, unsigned)
 	GL_PROC(uint64_t, GetTextureHandleARB, unsigned)
 	GL_PROC(    void, MakeTextureHandleResidentARB, uint64_t)
+	GL_PROC(    void, MakeTextureHandleNonResidentARB, uint64_t)
 
 	// *INDENT-ON*
 };
@@ -450,6 +451,9 @@ public:
 		return 1;
 	}
 
+	void resident( bool set );
+	bool resident() const { return _resident; }
+
 	uint64_t bindless_handle() const { return _bindlessHandle; }
 
 	void synchronize();
@@ -467,7 +471,9 @@ protected:
 	bool _buildMips = false;
 
 	buffer::ptr _buffer;
+
 	uint64_t _bindlessHandle = 0;
+	bool _resident = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
