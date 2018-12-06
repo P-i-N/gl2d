@@ -57,6 +57,8 @@ public:
 
 	void bind_texture( texture::ptr tex );
 
+	void bind_font( font::ptr f );
+
 	void begin( gl_enum primitiveType );
 
 	void end();

@@ -58,6 +58,7 @@ internal_format get_internal_format( gl_format format )
 {
 	static std::unordered_map<gl_format, internal_format> s_internalFormatMap =
 	{
+		{ gl_format::R8, { gl_enum::RED, gl_enum::UNSIGNED_BYTE, 1 } },
 		{ gl_format::RGB8, { gl_enum::RGB, gl_enum::UNSIGNED_BYTE, 3 } },
 		{ gl_format::RGBA8, { gl_enum::RGBA, gl_enum::UNSIGNED_BYTE, 4 } }
 	};
