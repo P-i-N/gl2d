@@ -14,6 +14,7 @@ namespace gl3d {
 extern const unsigned &frame_id;
 extern const float &time;
 extern const float &delta;
+extern unsigned fps_limit;
 
 void run();
 

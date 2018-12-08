@@ -18,6 +18,8 @@
 #include <Xinput.h>
 #include <shellapi.h>
 
+#include <chrono>
+
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "xinput.lib")
 
@@ -742,6 +744,7 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 const unsigned &frame_id = detail::g_frame_id;
 const float &time = detail::g_time;
 const float &delta = detail::g_delta;
+unsigned fps_limit = 0;
 
 //---------------------------------------------------------------------------------------------------------------------
 void run()
@@ -755,6 +758,10 @@ void run()
 
 	while ( true )
 	{
+		auto nextFrameMark = std::chrono::high_resolution_clock::now();
+		if ( fps_limit )
+			nextFrameMark += std::chrono::microseconds( 1000000u / fps_limit );
+
 		MSG msg;
 		while ( PeekMessage( &msg, nullptr, 0, 0, PM_REMOVE ) )
 		{
@@ -763,12 +770,11 @@ void run()
 		}
 
 		if ( !detail::g_should_quit )
-		{
 			detail::update();
-			std::this_thread::yield();
-		}
 		else
 			break;
+
+		std::this_thread::sleep_until( nextFrameMark );
 	}
 }
 
