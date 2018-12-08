@@ -460,7 +460,7 @@ void parse_raw_input( RAWINPUT *raw )
 	thread_local std::vector<uint8_t> tl_valueCapsBuffer;
 	thread_local std::vector<USAGE> tl_usages;
 
-	UINT bufferSize;
+	UINT bufferSize = 0;
 	if ( GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) )
 		return;
 
@@ -494,10 +494,6 @@ void parse_raw_input( RAWINPUT *raw )
 	auto buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>( tl_buttonCapsBuffer.data() );
 	HidP_GetButtonCaps( HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, preparsedData );
 
-	tl_valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
-	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( tl_valueCapsBuffer.data() );
-	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData );
-
 	ULONG numPressedButtons = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1;
 	tl_usages.resize( numPressedButtons );
 	HidP_GetUsages( HidP_Input,
@@ -507,13 +503,34 @@ void parse_raw_input( RAWINPUT *raw )
 	auto &g = gamepad[port];
 	g.native_handle = raw->header.hDevice;
 
-	// Resolve buttons
+	uint64_t buttonFlags = 0;
 
-	ULONG numValues = valueCaps->Range.UsageMax - valueCaps->Range.UsageMin + 1;
+	// Resolve buttons
+	for ( ULONG i = 0, S = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1; i < S; ++i )
+	{
+		auto id = tl_usages[i];
+		if ( !id )
+			continue;
+
+		buttonFlags |= ( 1ull << tl_usages[i] );
+	}
+
+	g.change_button_state( gamepad_button::a, ( buttonFlags & ( 1ull << 3 ) ) != 0 );
+	g.change_button_state( gamepad_button::b, ( buttonFlags & ( 1ull << 2 ) ) != 0 );
+	g.change_button_state( gamepad_button::x, ( buttonFlags & ( 1ull << 4 ) ) != 0 );
+	g.change_button_state( gamepad_button::y, ( buttonFlags & ( 1ull << 1 ) ) != 0 );
+	g.change_button_state( gamepad_button::shoulder_left, ( buttonFlags & ( 1ull << 7 ) ) != 0 );
+	g.change_button_state( gamepad_button::shoulder_right, ( buttonFlags & ( 1ull << 8 ) ) != 0 );
+	g.change_button_state( gamepad_button::thumb_left, ( buttonFlags & ( 1ull << 11 ) ) != 0 );
+	g.change_button_state( gamepad_button::thumb_right, ( buttonFlags & ( 1ull << 12 ) ) != 0 );
 
 	auto thumbL = g.pos[+gamepad_axis::thumb_left];
 	auto thumbR = g.pos[+gamepad_axis::thumb_right];
 	auto triggs = g.pos[+gamepad_axis::triggers];
+
+	tl_valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
+	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( tl_valueCapsBuffer.data() );
+	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData );
 
 	// Resolve valus (axis states)
 	for ( unsigned i = 0; i < caps.NumberInputValueCaps; ++i )
