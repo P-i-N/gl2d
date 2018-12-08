@@ -473,6 +473,14 @@ void parse_raw_input( RAWINPUT *raw )
 	auto iter = g_rawInputPortMap.find( raw->header.hDevice );
 	if ( iter == g_rawInputPortMap.end() )
 	{
+		UINT nameLength = 0;
+		GetRawInputDeviceInfoA( raw->header.hDevice, RIDI_DEVICENAME, nullptr, &nameLength );
+		std::unique_ptr<char[]> name( new char[nameLength + 1] );
+		GetRawInputDeviceInfoA( raw->header.hDevice, RIDI_DEVICENAME, name.get(), &nameLength );
+		name[nameLength] = 0;
+
+		log::info( "Connected device: %s", name.get() );
+
 		port = detail::gamepad_state::allocate_port();
 		g_rawInputPortMap[raw->header.hDevice] = port;
 		input_event e( input_event::type::gamepad_connect, UINT_MAX );
@@ -542,7 +550,11 @@ void parse_raw_input( RAWINPUT *raw )
 		    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue, preparsedData,
 		    ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
 
-		auto value = clamp( ( static_cast<int>( rawValue ) - 127 ) / 127.0f, -1.0f, 1.0f );
+		auto range = valueCaps[i].LogicalMax - valueCaps[i].LogicalMin;
+		auto middle = ( valueCaps[i].LogicalMin + valueCaps[i].LogicalMax ) / 2;
+		auto rawValueSigned = static_cast<LONG>( rawValue ) - middle;
+
+		auto value = 2.0f * rawValueSigned / range;
 		if ( abs( value ) < 0.05f )
 			value = 0;
 
