@@ -542,7 +542,9 @@ void parse_raw_input( RAWINPUT *raw )
 		    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue, preparsedData,
 		    ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
 
-		auto value = clamp( ( rawValue - 127 ) / 127.0f, -1.0f, 1.0f );
+		auto value = clamp( ( static_cast<int>( rawValue ) - 127 ) / 127.0f, -1.0f, 1.0f );
+		if ( abs( value ) < 0.05f )
+			value = 0;
 
 		auto type = valueCaps[i].Range.UsageMin;
 		if ( type == 57 )
