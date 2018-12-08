@@ -16,7 +16,7 @@
   - [ ] TEXTURE_CUBE_MAP_ARRAY
   - [ ] multisampling
 - [ ] bindless textures
-- [x] blend state: `gl3d::blend_state`
+- [ ] blend state: `gl3d::blend_state`
 - [x] depth stencil state: `gl3d::depth_stencil_state`
 - [x] rasterizer state: `gl3d::rasterizer_state`
 - [ ] command queue: `gl3d::cmd_queue`
@@ -33,7 +33,7 @@
   - [ ] buffer updates
   - [ ] texture updates
 - [ ] space navigator support
-- [ ] gamepads with raw input
+- [x] gamepads with raw input
 - [ ] load BMF fonts from files
 - [ ] simple renderer with emulated immediate mode: `gl3d::quick_draw`
   - [ ] emulate good old `glBegin` / `glEnd` as efficiently as possible

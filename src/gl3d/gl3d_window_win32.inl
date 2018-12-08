@@ -42,6 +42,8 @@ float g_time = 0.0f;
 float g_delta = 0.0f;
 
 std::vector<window::ptr> g_windows;
+std::map<int, unsigned> g_xinputPortMap;
+std::map<void *, unsigned> g_rawInputPortMap;
 
 //---------------------------------------------------------------------------------------------------------------------
 struct window_impl
@@ -111,12 +113,21 @@ window::ptr window::create( std::string_view title, uvec2 size, ivec2 pos, unsig
 
 	if ( detail::g_windows.empty() )
 	{
-		RAWINPUTDEVICE rid;
-		rid.usUsagePage = 1;
-		rid.usUsage = 5;
-		rid.dwFlags = RIDEV_DEVNOTIFY | RIDEV_INPUTSINK;
-		rid.hwndTarget = HWND( handle );
-		RegisterRawInputDevices( &rid, 1, sizeof( RAWINPUTDEVICE ) );
+		RAWINPUTDEVICE rid[2];
+
+		// Gamepads
+		rid[0].usUsagePage = 1;
+		rid[0].usUsage = 5;
+		rid[0].dwFlags = RIDEV_DEVNOTIFY | RIDEV_INPUTSINK;
+		rid[0].hwndTarget = HWND( handle );
+
+		// Joysticks
+		rid[1].usUsagePage = 1;
+		rid[1].usUsage = 4;
+		rid[1].dwFlags = RIDEV_DEVNOTIFY | RIDEV_INPUTSINK;
+		rid[1].hwndTarget = HWND( handle );
+
+		RegisterRawInputDevices( rid, 2, sizeof( RAWINPUTDEVICE ) );
 	}
 
 	PIXELFORMATDESCRIPTOR pfd =
@@ -250,20 +261,19 @@ namespace detail {
 //---------------------------------------------------------------------------------------------------------------------
 void update_xinput()
 {
-	static std::map<int, int> g_xinput_port_map;
-
 	for ( int i = 0; i < XUSER_MAX_COUNT; ++i )
 	{
-		auto iter = g_xinput_port_map.find( i );
-		int port = iter != g_xinput_port_map.end() ? iter->second : -1;
+		auto iter = g_xinputPortMap.find( i );
+		unsigned port = ( iter != g_xinputPortMap.end() ) ? iter->second : UINT_MAX;
+
 		XINPUT_STATE state;
 		ZeroMemory( &state, sizeof( XINPUT_STATE ) );
 		if ( XInputGetState( i, &state ) == ERROR_SUCCESS )
 		{
-			if ( port == -1 )
+			if ( port == UINT_MAX )
 			{
 				port = detail::gamepad_state::allocate_port();
-				g_xinput_port_map[i] = port;
+				g_xinputPortMap[i] = port;
 				input_event e( input_event::type::gamepad_connect, UINT_MAX );
 				e.gamepad.port = port;
 				on_input_event( e );
@@ -272,6 +282,7 @@ void update_xinput()
 				port = iter->second;
 
 			auto &g = gamepad[port];
+			g.native_handle = nullptr; // nullptr means this is XInput controller
 
 			g.change_button_state( gamepad_button::a, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_A ) != 0 );
 			g.change_button_state( gamepad_button::b, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_B ) != 0 );
@@ -288,20 +299,61 @@ void update_xinput()
 
 			g.change_axis_state( gamepad_axis::thumb_left, { state.Gamepad.sThumbLX / 32767.0f, state.Gamepad.sThumbLY / 32767.0f } );
 			g.change_axis_state( gamepad_axis::thumb_right, { state.Gamepad.sThumbRX / 32767.0f, state.Gamepad.sThumbRY / 32767.0f } );
-			g.change_axis_state( gamepad_axis::trigger_left, { state.Gamepad.bLeftTrigger / 255.0f, 0.0f } );
-			g.change_axis_state( gamepad_axis::trigger_right, { state.Gamepad.bRightTrigger / 255.0f, 0.0f } );
+			g.change_axis_state( gamepad_axis::triggers, { state.Gamepad.bLeftTrigger / 255.0f, state.Gamepad.bRightTrigger / 255.0f } );
 		}
-		else
+		else if ( port != UINT_MAX )
 		{
-			if ( port != -1 )
+			input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
+			e.gamepad.port = port;
+			on_input_event( e );
+			detail::gamepad_state::release_port( port );
+			g_xinputPortMap.erase( iter );
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void update_raw_input()
+{
+	UINT numDevices;
+	if ( GetRawInputDeviceList( nullptr, &numDevices, sizeof( RAWINPUTDEVICELIST ) ) )
+		return;
+
+	thread_local std::vector<RAWINPUTDEVICELIST> tl_deviceList;
+	tl_deviceList.resize( numDevices );
+
+	if ( GetRawInputDeviceList( tl_deviceList.data(), &numDevices, sizeof( RAWINPUTDEVICELIST ) ) == UINT_MAX )
+		return;
+
+	for ( auto &g : gamepad )
+	{
+		if ( !g.connected() )
+			continue;
+
+		bool found = false;
+		for ( auto &device : tl_deviceList )
+		{
+			if ( device.hDevice == g.native_handle )
 			{
-				input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
-				e.gamepad.port = port;
-				on_input_event( e );
-				detail::gamepad_state::release_port( port );
-				g_xinput_port_map.erase( iter );
+				found = true;
+				break;
 			}
 		}
+
+		if ( found )
+			continue;
+
+		auto iter = g_rawInputPortMap.find( g.native_handle );
+		if ( iter == g_rawInputPortMap.end() )
+			continue;
+
+		assert( iter->second == g.port );
+		input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
+		e.gamepad.port = g.port;
+		on_input_event( e );
+		detail::gamepad_state::release_port( g.port );
+		g_rawInputPortMap.erase( iter );
+		g.native_handle = nullptr;
 	}
 }
 
@@ -318,6 +370,7 @@ void update()
 	g_last_timer_counter = li.QuadPart;
 
 	update_xinput();
+	update_raw_input();
 
 	if ( auto w = window::from_id( 0 ); w != nullptr )
 	{
@@ -400,45 +453,116 @@ mouse_button xbutton_to_mouse_button( WPARAM xb )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-std::vector<uint8_t> g_raw_input_buffer;
-
 void parse_raw_input( RAWINPUT *raw )
 {
-	// We can use statics here, this should be called from one thread only anyway
-	static std::vector<uint8_t> preparsedDataBuffer;
-	static std::vector<uint8_t> buttonCapsBuffer;
-	static std::vector<uint8_t> valueCapsBuffer;
-	static std::vector<USAGE> usages;
+	thread_local std::vector<uint8_t> tl_preparsedDataBuffer;
+	thread_local std::vector<uint8_t> tl_buttonCapsBuffer;
+	thread_local std::vector<uint8_t> tl_valueCapsBuffer;
+	thread_local std::vector<USAGE> tl_usages;
+
 	UINT bufferSize;
 
-	if ( GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) ) return;
-	if ( !bufferSize ) return;
-	preparsedDataBuffer.resize( bufferSize );
-	GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, preparsedDataBuffer.data(), &bufferSize );
-	auto preparsedData = reinterpret_cast<PHIDP_PREPARSED_DATA>( preparsedDataBuffer.data() );
+	log::info( "%p", raw->header.hDevice );
+
+	if ( GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) )
+		return;
+
+	if ( !bufferSize )
+		return;
+
+	unsigned port = UINT_MAX;
+	auto iter = g_rawInputPortMap.find( raw->header.hDevice );
+	if ( iter == g_rawInputPortMap.end() )
+	{
+		port = detail::gamepad_state::allocate_port();
+		g_rawInputPortMap[raw->header.hDevice] = port;
+		input_event e( input_event::type::gamepad_connect, UINT_MAX );
+		e.gamepad.port = port;
+		on_input_event( e );
+	}
+	else
+		port = iter->second;
+
+	if ( port == UINT_MAX )
+		return;
+
+	tl_preparsedDataBuffer.resize( bufferSize );
+	GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, tl_preparsedDataBuffer.data(), &bufferSize );
+	auto preparsedData = reinterpret_cast<PHIDP_PREPARSED_DATA>( tl_preparsedDataBuffer.data() );
+
 	HIDP_CAPS caps;
 	HidP_GetCaps( preparsedData, &caps );
 
-	buttonCapsBuffer.resize( sizeof( HIDP_BUTTON_CAPS ) * caps.NumberInputButtonCaps );
-	auto buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>( buttonCapsBuffer.data() );
+	tl_buttonCapsBuffer.resize( sizeof( HIDP_BUTTON_CAPS ) * caps.NumberInputButtonCaps );
+	auto buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>( tl_buttonCapsBuffer.data() );
 	HidP_GetButtonCaps( HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, preparsedData );
 
-	valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
-	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( valueCapsBuffer.data() );
+	tl_valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
+	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( tl_valueCapsBuffer.data() );
 	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData );
 
-	// Check buttons
-	ULONG numButtons = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1;
-	usages.resize( numButtons );
+	ULONG numPressedButtons = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1;
+	tl_usages.resize( numPressedButtons );
 	HidP_GetUsages( HidP_Input,
-	                buttonCaps->UsagePage, 0, usages.data(), &numButtons, preparsedData,
+	                buttonCaps->UsagePage, 0, tl_usages.data(), &numPressedButtons, preparsedData,
 	                reinterpret_cast<PCHAR>( raw->data.hid.bRawData ), raw->data.hid.dwSizeHid );
 
-	for ( int index : usages )
+	auto &g = gamepad[port];
+	g.native_handle = raw->header.hDevice;
+
+	// Resolve buttons
+
+	ULONG numValues = valueCaps->Range.UsageMax - valueCaps->Range.UsageMin + 1;
+
+	auto thumbL = g.pos[+gamepad_axis::thumb_left];
+	auto thumbR = g.pos[+gamepad_axis::thumb_right];
+	auto triggs = g.pos[+gamepad_axis::triggers];
+
+	// Resolve valus (axis states)
+	for ( unsigned i = 0; i < caps.NumberInputValueCaps; ++i )
 	{
-		// TODO
-		// - buttonCaps->Range.UsageMin;
+		ULONG rawValue;
+		HidP_GetUsageValue(
+		    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue, preparsedData,
+		    ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
+
+		auto value = clamp( ( rawValue - 127 ) / 127.0f, -1.0f, 1.0f );
+
+		auto type = valueCaps[i].Range.UsageMin;
+		if ( type == 57 )
+		{
+			g.change_button_state( gamepad_button::up, rawValue == 0 || rawValue == 1 || rawValue == 7 );
+			g.change_button_state( gamepad_button::right, rawValue == 1 || rawValue == 2 || rawValue == 3 );
+			g.change_button_state( gamepad_button::down, rawValue == 3 || rawValue == 4 || rawValue == 5 );
+			g.change_button_state( gamepad_button::left, rawValue == 5 || rawValue == 6 || rawValue == 7 );
+			continue;
+		}
+
+		thumbL.x = ( type == 48 ) ? value : thumbL.x;
+		thumbL.y = ( type == 49 ) ? value : thumbL.y;
+		thumbR.x = ( type == 50 ) ? value : thumbR.x;
+		thumbR.y = ( type == 53 ) ? value : thumbR.y;
+		triggs.x = ( type == 51 ) ? value : triggs.x;
+		triggs.y = ( type == 52 ) ? value : triggs.y;
 	}
+
+	g.change_axis_state( gamepad_axis::thumb_left, thumbL );
+	g.change_axis_state( gamepad_axis::thumb_right, thumbR );
+	g.change_axis_state( gamepad_axis::triggers, triggs );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void process_raw_input( LPARAM lParam )
+{
+	thread_local std::vector<uint8_t> tl_rawInputBuffer;
+
+	UINT bufferSize;
+	GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, nullptr, &bufferSize, sizeof( RAWINPUTHEADER ) );
+
+	tl_rawInputBuffer.resize( bufferSize );
+	GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, tl_rawInputBuffer.data(), &bufferSize, sizeof( RAWINPUTHEADER ) );
+
+	parse_raw_input( reinterpret_cast<RAWINPUT *>( tl_rawInputBuffer.data() ) );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -451,14 +575,8 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 			switch ( message )
 			{
 				case WM_INPUT:
-				{
-					UINT bufferSize;
-					GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, nullptr, &bufferSize, sizeof( RAWINPUTHEADER ) );
-					g_raw_input_buffer.resize( bufferSize );
-					GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, g_raw_input_buffer.data(), &bufferSize, sizeof( RAWINPUTHEADER ) );
-					parse_raw_input( reinterpret_cast<RAWINPUT *>( g_raw_input_buffer.data() ) );
-				}
-				return 0;
+					process_raw_input( lParam );
+					return 0;
 
 				case WM_MOUSEMOVE:
 					mouse.change_position( { GET_X_LPARAM( lParam ), GET_Y_LPARAM( lParam ) }, w->id() );

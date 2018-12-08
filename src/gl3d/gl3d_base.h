@@ -325,7 +325,7 @@ enum class gamepad_axis
 {
 	unknown = 0,
 	thumb_left, thumb_right,
-	trigger_left, trigger_right,
+	triggers,
 
 	__count
 };
@@ -372,6 +372,7 @@ static constexpr unsigned max_gamepads = 8;
 struct gamepad_state
 {
 	unsigned port = UINT_MAX;
+	void *native_handle = nullptr;
 	bool button_down[+gamepad_button::__count];
 	vec2 pos[+gamepad_axis::__count];
 	bool operator[]( gamepad_button b ) const { return button_down[+b]; }

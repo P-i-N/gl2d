@@ -357,6 +357,17 @@ template <class T> void swap(T &a, T &b) { T temp = a; a = b; b = temp; }
 template <class T> T sign(T a) { return a ? (static_cast<T>((a > 0) ? 1 : -1)) : 0; }
 
 //---------------------------------------------------------------------------------------------------------------------
+template <class T> T clamp(T value, T minValue, T maxValue)
+{
+	if (value < minValue)
+		return minValue;
+	else if (value > maxValue)
+		return maxValue;
+
+	return value;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 template <class TA, class TB>
 auto dot(const detail::xvec2<TA> &a, const detail::xvec2<TB> &b) { return a.x*b.x + a.y*b.y; }
 

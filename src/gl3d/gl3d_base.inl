@@ -240,7 +240,7 @@ void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 unsigned gamepad_state::allocate_port()
 {
 	for ( unsigned i = 0; i < max_gamepads; ++i )
-		if ( gamepad[i].port < 0 )
+		if ( gamepad[i].port == UINT_MAX )
 			return gamepad[i].port = i;
 
 	return -1;
@@ -250,7 +250,7 @@ unsigned gamepad_state::allocate_port()
 void gamepad_state::release_port( unsigned port )
 {
 	if ( port >= 0 && port < max_gamepads && gamepad[port].port == port )
-		gamepad[port].port = -1;
+		gamepad[port].port = UINT_MAX;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
