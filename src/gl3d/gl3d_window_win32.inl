@@ -461,9 +461,6 @@ void parse_raw_input( RAWINPUT *raw )
 	thread_local std::vector<USAGE> tl_usages;
 
 	UINT bufferSize;
-
-	log::info( "%p", raw->header.hDevice );
-
 	if ( GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) )
 		return;
 
