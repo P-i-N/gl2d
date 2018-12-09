@@ -472,7 +472,6 @@ void update_raw_input_gamepad( RAWINPUT *raw, raw_gamepad_info &rgi )
 	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( tl_valueCapsBuffer.data() );
 	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, rgi.preparsed_data );
 
-	// Resolve valus (axis states)
 	for ( unsigned i = 0; i < caps.NumberInputValueCaps; ++i )
 	{
 		LONG rawValue;
