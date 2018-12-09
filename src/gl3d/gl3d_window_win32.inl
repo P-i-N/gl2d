@@ -475,16 +475,24 @@ void update_raw_input_gamepad( RAWINPUT *raw, raw_gamepad_info &rgi )
 	// Resolve valus (axis states)
 	for ( unsigned i = 0; i < caps.NumberInputValueCaps; ++i )
 	{
-		ULONG rawValue;
-		HidP_GetUsageValue(
-		    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue, rgi.preparsed_data,
-		    ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
+		LONG rawValue;
+		float value = 0.0f;
 
-		auto range = valueCaps[i].LogicalMax - valueCaps[i].LogicalMin;
-		auto middle = ( valueCaps[i].LogicalMin + valueCaps[i].LogicalMax ) / 2;
-		auto rawValueSigned = static_cast<LONG>( rawValue ) - middle;
+		if ( valueCaps[i].LogicalMin < 0 )
+		{
+			HidP_GetScaledUsageValue(
+			    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue,
+			    rgi.preparsed_data, ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
+		}
+		else
+		{
+			HidP_GetUsageValue(
+			    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, reinterpret_cast<ULONG *>( &rawValue ),
+			    rgi.preparsed_data, ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
+		}
 
-		auto value = 2.0f * rawValueSigned / range;
+		auto range = static_cast<float>( valueCaps[i].LogicalMax - valueCaps[i].LogicalMin );
+		value = ( 2.0f * ( rawValue - valueCaps[i].LogicalMin ) / range ) - 1.0f;
 		if ( abs( value ) < 0.05f )
 			value = 0;
 
