@@ -604,11 +604,6 @@ raw_gamepad_info *parse_gamepad_info( HANDLE hDevice )
 	if ( !caps.NumberInputValueCaps )
 		return nullptr;
 
-	log::info( "Device: %s", rgi->device_path.c_str() );
-	log::info( "- product name: %s", rgi->product_name.c_str() );
-	log::info( "- input button caps.: %d", caps.NumberInputButtonCaps );
-	log::info( "- input value caps.: %d", caps.NumberInputValueCaps );
-
 	if ( ( rgi->port = detail::gamepad_state::allocate_port() ) == UINT_MAX )
 		return nullptr;
 
