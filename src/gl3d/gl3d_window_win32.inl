@@ -518,9 +518,9 @@ void update_raw_input_gamepad( RAWINPUT *raw, raw_gamepad_info &rgi )
 	g.change_button_state( gamepad_button::thumb_left, ( buttonFlags & ( 1ull << 11 ) ) != 0 );
 	g.change_button_state( gamepad_button::thumb_right, ( buttonFlags & ( 1ull << 12 ) ) != 0 );
 
-	auto thumbL = g.pos[+gamepad_axis::thumb_left];
-	auto thumbR = g.pos[+gamepad_axis::thumb_right];
-	auto triggs = g.pos[+gamepad_axis::triggers];
+	auto thumbL = g.axis[+gamepad_axis::thumb_left].pos;
+	auto thumbR = g.axis[+gamepad_axis::thumb_right].pos;
+	auto triggs = g.axis[+gamepad_axis::triggers].pos;
 
 	tl_valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
 	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( tl_valueCapsBuffer.data() );

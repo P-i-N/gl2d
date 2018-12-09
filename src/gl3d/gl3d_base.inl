@@ -223,10 +223,10 @@ void gamepad_state::change_button_state( gamepad_button b, bool down )
 //---------------------------------------------------------------------------------------------------------------------
 void gamepad_state::change_axis_state( gamepad_axis axis, vec2 pos )
 {
-	auto oldPos = this->pos[+axis];
+	auto oldPos = this->axis[+axis].pos;
 	if ( oldPos != pos )
 	{
-		this->pos[+axis] = pos;
+		this->axis[+axis].pos = pos;
 		input_event e( input_event::type::gamepad_move, UINT_MAX );
 		e.gamepad.port = port;
 		e.gamepad.axis = axis;

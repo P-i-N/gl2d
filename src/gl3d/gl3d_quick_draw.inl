@@ -407,6 +407,21 @@ void quick_draw::bind_texture( texture::ptr tex )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void quick_draw::bind_font( font::ptr f )
+{
+	assert( !building_mesh() );
+
+	if ( f )
+	{
+
+	}
+	else
+	{
+
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void quick_draw::begin( gl_enum primitiveType )
 {
 	assert( !building_mesh() );

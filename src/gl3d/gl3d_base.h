@@ -368,12 +368,20 @@ struct mouse_state
 };
 
 //---------------------------------------------------------------------------------------------------------------------
+struct axis_state
+{
+	vec2 pos;
+	vec2 scale = { 1, 1 };
+	float dead_zone_coef = 0.05f;
+};
+
+//---------------------------------------------------------------------------------------------------------------------
 static constexpr unsigned max_gamepads = 8;
 struct gamepad_state
 {
 	unsigned port = UINT_MAX;
 	bool button_down[+gamepad_button::__count];
-	vec2 pos[+gamepad_axis::__count];
+	axis_state axis[+gamepad_axis::__count];
 	bool operator[]( gamepad_button b ) const { return button_down[+b]; }
 	bool connected() const { return port < max_gamepads; }
 

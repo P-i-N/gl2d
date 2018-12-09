@@ -203,9 +203,13 @@ int main()
 	// Mount folder with example data
 	vfs::mount( "../../data" );
 
+	fps_limit = 125;
+
+	/*
 	TrueTypeFont ttf;
 	ttf.LoadFromFile( "fonts/OpenSans-Regular.ttf" );
 	ttf.EmitVertices( 16.0f, 0, 0, "Hello, world!" );
+	*/
 
 	window::create( "Main Window", { 1280, 800 } );
 
@@ -291,10 +295,23 @@ int main()
 	}
 	qd3D->end();
 
+	vec2 rot = { 0, 0 };
+
 	on_tick += [&]()
 	{
 		auto w = window::from_id( 0 );
 		auto ctx = w->context();
+
+		rot.y = 0;
+
+		for ( auto &g : gamepad )
+		{
+			if ( !g.connected() )
+				continue;
+
+			rot.x = rot.x + g.axis[+gamepad_axis::thumb_right].pos.x * delta * 5.0f;
+			rot.y += g.axis[+gamepad_axis::thumb_right].pos.y;
+		}
 	};
 
 	on_window_event += [&]( window_event & e )->bool
@@ -309,9 +326,9 @@ int main()
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 				ctx->clear_depth( 1.0f );
 
-				float x = 3.0f * sin( gl3d::time );
-				float y = 3.0f * cos( gl3d::time );
-				float z = 3.0f * sin( gl3d::time * 0.37f );
+				float x = 3.0f * sin( rot.x );
+				float y = 3.0f * cos( rot.x );
+				float z = 2.0f * rot.y;
 
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),
