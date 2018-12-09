@@ -2,7 +2,7 @@
 
 - [x] multiple windows support
 - [ ] fullscreen support
-- [ ] toggle fullscreen with `Alt+Enter`
+- [x] toggle fullscreen with `Alt+Enter`
 - [x] frame limiter
 - [ ] shader hot reload
 - [ ] make `gl3d::shader_code` API better (constructors, `::valid()` method, etc.)

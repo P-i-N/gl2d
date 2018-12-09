@@ -554,7 +554,7 @@ public:
 
 	void bind_shader( shader::ptr sh );
 	void bind_vertex_buffer( buffer::ptr vertices, const detail::layout &layout, size_t offset = 0 );
-	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset = 0, size_t stride = 0 );
+	void bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, bool perInstance = false, size_t offset = 0, size_t stride = 0 );
 	void bind_index_buffer( buffer::ptr indices, bool use16bits = false, size_t offset = 0 );
 
 	void bind_texture( texture::ptr tex, unsigned slot );
@@ -711,7 +711,7 @@ protected:
 		clear_color, clear_depth,
 		update_texture, update_buffer, resize_buffer,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
-		bind_shader, bind_vertex_buffer, bind_vertex_atrribute, bind_index_buffer,
+		bind_shader, bind_vertex_buffer, bind_vertex_attribute, bind_index_buffer,
 		bind_texture, bind_render_target, bind_storage_buffer,
 		set_uniform_block, set_uniform,
 		draw, draw_indexed,

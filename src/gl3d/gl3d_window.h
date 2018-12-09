@@ -23,15 +23,13 @@ void run();
 //---------------------------------------------------------------------------------------------------------------------
 enum class window_flag
 {
-	none = 0,
-	resizable = 0b00000001,
+	none       = 0,
+	resizable  = 0b00000001,
 	fullscreen = 0b00000010,
-	title = 0b00000100,
+	borderless = 0b00000100,
 };
 
 GL3D_ENUM_PLUS( window_flag )
-
-static const unsigned default_window_flags = ( +window_flag::resizable ) | ( +window_flag::title );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -40,7 +38,9 @@ class window
 public:
 	using ptr = std::shared_ptr<window>;
 
-	static ptr create( std::string_view title, uvec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_window_flags );
+	static const unsigned default_flags = +window_flag::resizable;
+
+	static ptr create( std::string_view title, uvec2 size, ivec2 pos = { INT_MAX, INT_MAX }, unsigned flags = default_flags );
 	static ptr from_id( unsigned id );
 
 	virtual ~window();
@@ -68,6 +68,11 @@ public:
 	void close();
 	void present();
 
+	void fullscreen( bool set );
+	bool fullscreen() const { return _fullscreen; }
+
+	void toggle_fullscreen() { fullscreen( !_fullscreen ); }
+
 protected:
 	friend struct detail::window_impl;
 
@@ -79,6 +84,10 @@ protected:
 	std::string _title;
 	ivec2 _pos;
 	uvec2 _size;
+
+	bool _fullscreen = false;
+	ivec2 _prevPos;
+	uvec2 _prevSize;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

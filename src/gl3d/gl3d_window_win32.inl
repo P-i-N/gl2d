@@ -94,7 +94,10 @@ struct window_class
 //---------------------------------------------------------------------------------------------------------------------
 window::ptr window::create( std::string_view title, uvec2 size, ivec2 pos, unsigned flags )
 {
-	DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+	DWORD style = WS_VISIBLE;
+
+	if ( flags & +window_flag::resizable )
+		style |= WS_OVERLAPPEDWINDOW;
 
 	RECT adjustedRect;
 
@@ -117,6 +120,9 @@ window::ptr window::create( std::string_view title, uvec2 size, ivec2 pos, unsig
 	adjustedRect.right = adjustedRect.left + size.x;
 	adjustedRect.bottom = adjustedRect.top + size.y;
 	AdjustWindowRectEx( &adjustedRect, style & ~WS_OVERLAPPED, FALSE, 0 );
+
+	pos.x = adjustedRect.left;
+	pos.y = adjustedRect.top;
 
 	std::string title_str( title );
 	auto handle = CreateWindow( TEXT( GL3D_WINDOW_CLASS ), title_str.c_str(), style,
@@ -222,11 +228,11 @@ void window::adjust( uvec2 size, ivec2 pos )
 		_pos = pos;
 		_size = size;
 
-		RECT rect;
-		rect.left = _pos.x;
-		rect.top = _pos.y;
-		rect.right = rect.left + _size.x;
-		rect.bottom = rect.top + _size.y;
+		RECT rect
+		{
+			_pos.x, _pos.y,
+			_pos.x + static_cast<int>( _size.x ), _pos.y + static_cast<int>( _size.y )
+		};
 
 		DWORD style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
 		AdjustWindowRectEx( &rect, style & ~WS_OVERLAPPED, FALSE, 0 );
@@ -267,6 +273,54 @@ void window::close()
 void window::present()
 {
 	SwapBuffers( GetDC( HWND( _native_handle ) ) );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void window::fullscreen( bool set )
+{
+	if ( _fullscreen == set || closed() )
+		return;
+
+	auto h = HWND( _native_handle );
+	DWORD fullscreenStyle = WS_SYSMENU | WS_POPUP | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE;
+
+	if ( set )
+	{
+		auto hMonitor = MonitorFromWindow( h, MONITOR_DEFAULTTONEAREST );
+		if ( !hMonitor )
+			return;
+
+		MONITORINFO mi;
+		mi.cbSize = sizeof( MONITORINFO );
+		if ( !GetMonitorInfo( hMonitor, &mi ) )
+			return;
+
+		_prevPos = _pos;
+		_prevSize = _size;
+
+		SetWindowLongPtr( h, GWL_STYLE, fullscreenStyle );
+		MoveWindow(
+		    h, mi.rcWork.left, mi.rcWork.top,
+		    mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top, TRUE );
+	}
+	else
+	{
+		if ( _flags & +window_flag::resizable )
+			fullscreenStyle |= WS_OVERLAPPEDWINDOW;
+
+		SetWindowLongPtr( h, GWL_STYLE, fullscreenStyle );
+
+		RECT rect
+		{
+			_prevPos.x, _prevPos.y,
+			_prevPos.x + static_cast<int>( _prevSize.x ), _prevPos.y + static_cast<int>( _prevSize.y )
+		};
+
+		AdjustWindowRect( &rect, fullscreenStyle, FALSE );
+		MoveWindow( h, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, TRUE );
+	}
+
+	_fullscreen = set;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -742,14 +796,25 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				}
 				return 0;
 
+				case WM_SYSKEYDOWN:
 				case WM_KEYDOWN:
 				{
 					bool isKeyPress = ( lParam & ( 1 << 30 ) ) != 0;
 					if ( !isKeyPress )
-						keyboard.change_key_state( vk_to_key( wParam ), true, w->id() );
+					{
+						auto k = vk_to_key( wParam );
+						keyboard.change_key_state( k, true, w->id() );
+
+						if ( k == key::enter && keyboard.key_down[+key::alt] )
+						{
+							w->toggle_fullscreen();
+							return 1;
+						}
+					}
 				}
 				return 0;
 
+				case WM_SYSKEYUP:
 				case WM_KEYUP:
 					keyboard.change_key_state( vk_to_key( wParam ), false, w->id() );
 					return 0;
@@ -763,12 +828,19 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 				}
 				return 0;
 
+				case WM_MENUCHAR:
+					// This stops producing the "beep" sound when toggling fullscreen with Alt+Enter
+					if ( LOWORD( wParam ) & VK_RETURN ) return MAKELRESULT( 0, MNC_CLOSE );
+					break;
+
 				case WM_SIZE:
 				{
 					window_event e( window_event::type::resize, w->id() );
 					e.resize = { LOWORD( lParam ), HIWORD( lParam ) };
 					on_window_event( e );
 					w->_size = e.resize;
+
+					log::info( "size: %d %d", w->_size.x, w->_size.y );
 				}
 				break;
 
@@ -794,6 +866,8 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 					e.move = { LOWORD( lParam ), HIWORD( lParam ) };
 					on_window_event( e );
 					w->_pos = e.move;
+
+					log::info( "pos: %d %d", w->_pos.x, w->_pos.y );
 				}
 				return 0;
 

@@ -754,11 +754,11 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, size_t offset, size_t stride )
+void cmd_queue::bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_enum glType, bool perInstance, size_t offset, size_t stride )
 {
 	if ( _deferred )
 	{
-		write( cmd_type::bind_vertex_atrribute, slot, glType, offset, stride );
+		write( cmd_type::bind_vertex_attribute, slot, glType, perInstance, offset, stride );
 		_resources.push_back( attribs );
 	}
 	else
@@ -1241,14 +1241,15 @@ void cmd_queue::execute( gl_state *state )
 			}
 			break;
 
-			case cmd_type::bind_vertex_atrribute:
+			case cmd_type::bind_vertex_attribute:
 			{
 				auto attribs = std::static_pointer_cast<buffer>( _resources[resIndex++] );
 				auto slot = read<unsigned>();
 				auto glType = read<gl_enum>();
+				auto perInstance = read<bool>();
 				auto offset = read<size_t>();
 				auto stride = read<size_t>();
-				bind_vertex_attribute( attribs, slot, glType, offset, stride );
+				bind_vertex_attribute( attribs, slot, glType, perInstance, offset, stride );
 			}
 			break;
 
