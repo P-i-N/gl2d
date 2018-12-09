@@ -638,6 +638,7 @@ void raw_input_device_change( HANDLE hDevice, bool added )
 			input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
 			e.gamepad.port = rgi.port;
 			on_input_event( e );
+			detail::gamepad_state::release_port( rgi.port );
 		}
 
 		g_rawGamepadInfoMap.erase( iter );
