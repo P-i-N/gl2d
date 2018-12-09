@@ -19,6 +19,8 @@
 #include <shellapi.h>
 
 #include <chrono>
+#include <codecvt>
+#include <locale>
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "xinput.lib")
@@ -45,7 +47,18 @@ float g_delta = 0.0f;
 
 std::vector<window::ptr> g_windows;
 std::map<int, unsigned> g_xinputPortMap;
-std::map<void *, unsigned> g_rawInputPortMap;
+
+struct raw_gamepad_info
+{
+	HANDLE hDevice = nullptr;
+	std::vector<uint8_t> raw_input_buffer;
+	PHIDP_PREPARSED_DATA preparsed_data;
+	std::string device_path = "";
+	std::string product_name = "";
+	unsigned port = UINT_MAX;
+};
+
+std::map<HANDLE, std::unique_ptr<raw_gamepad_info>> g_rawGamepadInfoMap;
 
 //---------------------------------------------------------------------------------------------------------------------
 struct window_impl
@@ -284,8 +297,6 @@ void update_xinput()
 				port = iter->second;
 
 			auto &g = gamepad[port];
-			g.native_handle = nullptr; // nullptr means this is XInput controller
-
 			g.change_button_state( gamepad_button::a, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_A ) != 0 );
 			g.change_button_state( gamepad_button::b, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_B ) != 0 );
 			g.change_button_state( gamepad_button::x, ( state.Gamepad.wButtons & XINPUT_GAMEPAD_X ) != 0 );
@@ -315,51 +326,6 @@ void update_xinput()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void update_raw_input()
-{
-	UINT numDevices;
-	if ( GetRawInputDeviceList( nullptr, &numDevices, sizeof( RAWINPUTDEVICELIST ) ) )
-		return;
-
-	thread_local std::vector<RAWINPUTDEVICELIST> tl_deviceList;
-	tl_deviceList.resize( numDevices );
-
-	if ( GetRawInputDeviceList( tl_deviceList.data(), &numDevices, sizeof( RAWINPUTDEVICELIST ) ) == UINT_MAX )
-		return;
-
-	for ( auto &g : gamepad )
-	{
-		if ( !g.connected() )
-			continue;
-
-		bool found = false;
-		for ( auto &device : tl_deviceList )
-		{
-			if ( device.hDevice == g.native_handle )
-			{
-				found = true;
-				break;
-			}
-		}
-
-		if ( found )
-			continue;
-
-		auto iter = g_rawInputPortMap.find( g.native_handle );
-		if ( iter == g_rawInputPortMap.end() )
-			continue;
-
-		assert( iter->second == g.port );
-		input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
-		e.gamepad.port = g.port;
-		on_input_event( e );
-		detail::gamepad_state::release_port( g.port );
-		g_rawInputPortMap.erase( iter );
-		g.native_handle = nullptr;
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
 void update()
 {
 	LARGE_INTEGER li;
@@ -372,7 +338,6 @@ void update()
 	g_last_timer_counter = li.QuadPart;
 
 	update_xinput();
-	update_raw_input();
 
 	if ( auto w = window::from_id( 0 ); w != nullptr )
 	{
@@ -455,64 +420,29 @@ mouse_button xbutton_to_mouse_button( WPARAM xb )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void parse_raw_input( RAWINPUT *raw )
+void update_raw_input_gamepad( RAWINPUT *raw, raw_gamepad_info &rgi )
 {
-	thread_local std::vector<uint8_t> tl_preparsedDataBuffer;
 	thread_local std::vector<uint8_t> tl_buttonCapsBuffer;
 	thread_local std::vector<uint8_t> tl_valueCapsBuffer;
 	thread_local std::vector<USAGE> tl_usages;
 
 	UINT bufferSize = 0;
-	if ( GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) )
-		return;
-
-	if ( !bufferSize )
-		return;
-
-	unsigned port = UINT_MAX;
-	auto iter = g_rawInputPortMap.find( raw->header.hDevice );
-	if ( iter == g_rawInputPortMap.end() )
-	{
-		UINT nameLength = 0;
-		GetRawInputDeviceInfoA( raw->header.hDevice, RIDI_DEVICENAME, nullptr, &nameLength );
-		std::unique_ptr<char[]> name( new char[nameLength + 1] );
-		GetRawInputDeviceInfoA( raw->header.hDevice, RIDI_DEVICENAME, name.get(), &nameLength );
-		name[nameLength] = 0;
-
-		log::info( "Connected device: %s", name.get() );
-
-		port = detail::gamepad_state::allocate_port();
-		g_rawInputPortMap[raw->header.hDevice] = port;
-		input_event e( input_event::type::gamepad_connect, UINT_MAX );
-		e.gamepad.port = port;
-		on_input_event( e );
-	}
-	else
-		port = iter->second;
-
-	if ( port == UINT_MAX )
-		return;
-
-	tl_preparsedDataBuffer.resize( bufferSize );
-	GetRawInputDeviceInfo( raw->header.hDevice, RIDI_PREPARSEDDATA, tl_preparsedDataBuffer.data(), &bufferSize );
-	auto preparsedData = reinterpret_cast<PHIDP_PREPARSED_DATA>( tl_preparsedDataBuffer.data() );
+	GetRawInputDeviceInfo( rgi.hDevice, RIDI_PREPARSEDDATA, rgi.raw_input_buffer.data(), &bufferSize );
 
 	HIDP_CAPS caps;
-	HidP_GetCaps( preparsedData, &caps );
+	HidP_GetCaps( rgi.preparsed_data, &caps );
 
 	tl_buttonCapsBuffer.resize( sizeof( HIDP_BUTTON_CAPS ) * caps.NumberInputButtonCaps );
 	auto buttonCaps = reinterpret_cast<PHIDP_BUTTON_CAPS>( tl_buttonCapsBuffer.data() );
-	HidP_GetButtonCaps( HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, preparsedData );
+	HidP_GetButtonCaps( HidP_Input, buttonCaps, &caps.NumberInputButtonCaps, rgi.preparsed_data );
 
 	ULONG numPressedButtons = buttonCaps->Range.UsageMax - buttonCaps->Range.UsageMin + 1;
 	tl_usages.resize( numPressedButtons );
 	HidP_GetUsages( HidP_Input,
-	                buttonCaps->UsagePage, 0, tl_usages.data(), &numPressedButtons, preparsedData,
+	                buttonCaps->UsagePage, 0, tl_usages.data(), &numPressedButtons, rgi.preparsed_data,
 	                reinterpret_cast<PCHAR>( raw->data.hid.bRawData ), raw->data.hid.dwSizeHid );
 
-	auto &g = gamepad[port];
-	g.native_handle = raw->header.hDevice;
-
+	auto &g = gamepad[rgi.port];
 	uint64_t buttonFlags = 0;
 
 	// Resolve buttons
@@ -540,14 +470,14 @@ void parse_raw_input( RAWINPUT *raw )
 
 	tl_valueCapsBuffer.resize( sizeof( HIDP_VALUE_CAPS ) * caps.NumberInputValueCaps );
 	auto valueCaps = reinterpret_cast<PHIDP_VALUE_CAPS>( tl_valueCapsBuffer.data() );
-	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, preparsedData );
+	HidP_GetValueCaps( HidP_Input, valueCaps, &caps.NumberInputValueCaps, rgi.preparsed_data );
 
 	// Resolve valus (axis states)
 	for ( unsigned i = 0; i < caps.NumberInputValueCaps; ++i )
 	{
 		ULONG rawValue;
 		HidP_GetUsageValue(
-		    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue, preparsedData,
+		    HidP_Input, valueCaps[i].UsagePage, 0, valueCaps[i].Range.UsageMin, &rawValue, rgi.preparsed_data,
 		    ( PCHAR )raw->data.hid.bRawData, raw->data.hid.dwSizeHid );
 
 		auto range = valueCaps[i].LogicalMax - valueCaps[i].LogicalMin;
@@ -582,17 +512,159 @@ void parse_raw_input( RAWINPUT *raw )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void process_raw_input( LPARAM lParam )
+void process_raw_input( HRAWINPUT hRawInput )
 {
 	thread_local std::vector<uint8_t> tl_rawInputBuffer;
 
 	UINT bufferSize;
-	GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, nullptr, &bufferSize, sizeof( RAWINPUTHEADER ) );
+	GetRawInputData( hRawInput, RID_INPUT, nullptr, &bufferSize, sizeof( RAWINPUTHEADER ) );
 
 	tl_rawInputBuffer.resize( bufferSize );
-	GetRawInputData( reinterpret_cast<HRAWINPUT>( lParam ), RID_INPUT, tl_rawInputBuffer.data(), &bufferSize, sizeof( RAWINPUTHEADER ) );
+	GetRawInputData( hRawInput, RID_INPUT, tl_rawInputBuffer.data(), &bufferSize, sizeof( RAWINPUTHEADER ) );
 
-	parse_raw_input( reinterpret_cast<RAWINPUT *>( tl_rawInputBuffer.data() ) );
+	auto *rawInput = reinterpret_cast<RAWINPUT *>( tl_rawInputBuffer.data() );
+
+	auto iter = g_rawGamepadInfoMap.find( rawInput->header.hDevice );
+	if ( iter == g_rawGamepadInfoMap.end() )
+		return;
+
+	update_raw_input_gamepad( rawInput, *iter->second );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+raw_gamepad_info *parse_gamepad_info( HANDLE hDevice )
+{
+	auto iter = g_rawGamepadInfoMap.find( hDevice );
+	if ( iter != g_rawGamepadInfoMap.end() )
+		return nullptr;
+
+	UINT bufferSize = 0;
+	if ( GetRawInputDeviceInfo( hDevice, RIDI_DEVICEINFO, nullptr, &bufferSize ) == UINT_MAX )
+		return nullptr;
+
+	std::unique_ptr<uint8_t[]> deviceInfoBuffer( new uint8_t[bufferSize] );
+	if ( GetRawInputDeviceInfo( hDevice, RIDI_DEVICEINFO, deviceInfoBuffer.get(), &bufferSize ) == UINT_MAX )
+		return nullptr;
+
+	auto *deviceInfo = reinterpret_cast<RID_DEVICE_INFO *>( deviceInfoBuffer.get() );
+
+	// Only interested in joysticks and gamepads
+	// TODO: add support for multiaxis devices? (usUsage == 8)
+	if ( deviceInfo->hid.usUsage != 4 && deviceInfo->hid.usUsage != 5 )
+		return nullptr;
+
+	if ( GetRawInputDeviceInfoW( hDevice, RIDI_DEVICENAME, nullptr, &bufferSize ) == UINT_MAX )
+		return nullptr;
+
+	std::unique_ptr<wchar_t[]> nameBuffer( new wchar_t[bufferSize] );
+	if ( GetRawInputDeviceInfoW( hDevice, RIDI_DEVICENAME, nameBuffer.get(), &bufferSize ) == UINT_MAX )
+		return nullptr;
+
+	// Skip anything with "IG_" in it's device name - that indicates XInput gamepads
+	// // http://msdn.microsoft.com/en-us/library/windows/desktop/ee417014.aspx
+	if ( wcsstr( nameBuffer.get(), L"IG_" ) )
+		return nullptr;
+
+	// Skip 3Dx Space Navigator emulator for now
+	if ( wcsstr( nameBuffer.get(), L"3DXKMJ_" ) )
+		return nullptr;
+
+	std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8Conv;
+	std::unique_ptr<raw_gamepad_info> rgi( new raw_gamepad_info() );
+	rgi->hDevice = hDevice;
+	rgi->device_path = utf8Conv.to_bytes( nameBuffer.get() );
+
+	// Get device product name
+	if ( auto hidHandle = CreateFileW(
+	                          nameBuffer.get(),
+	                          GENERIC_READ | GENERIC_WRITE,
+	                          FILE_SHARE_READ | FILE_SHARE_WRITE,
+	                          nullptr, OPEN_EXISTING, 0, nullptr ) )
+	{
+		wchar_t productName[256];
+		if ( HidD_GetProductString( hidHandle, productName, sizeof( wchar_t ) * 256 ) )
+			rgi->product_name = utf8Conv.to_bytes( productName );
+
+		CloseHandle( hidHandle );
+	}
+
+	if ( GetRawInputDeviceInfo( hDevice, RIDI_PREPARSEDDATA, nullptr, &bufferSize ) == UINT_MAX )
+		return nullptr;
+
+	rgi->raw_input_buffer.resize( bufferSize );
+	rgi->preparsed_data = reinterpret_cast<PHIDP_PREPARSED_DATA>( rgi->raw_input_buffer.data() );
+	if ( GetRawInputDeviceInfo( hDevice, RIDI_PREPARSEDDATA, rgi->raw_input_buffer.data(), &bufferSize ) == UINT_MAX )
+		return nullptr;
+
+	HIDP_CAPS caps;
+	if ( HidP_GetCaps( rgi->preparsed_data, &caps ) != HIDP_STATUS_SUCCESS )
+		return nullptr;
+
+	// No axes?
+	if ( !caps.NumberInputValueCaps )
+		return nullptr;
+
+	log::info( "Device: %s", rgi->device_path.c_str() );
+	log::info( "- product name: %s", rgi->product_name.c_str() );
+	log::info( "- input button caps.: %d", caps.NumberInputButtonCaps );
+	log::info( "- input value caps.: %d", caps.NumberInputValueCaps );
+
+	if ( ( rgi->port = detail::gamepad_state::allocate_port() ) == UINT_MAX )
+		return nullptr;
+
+	input_event e( input_event::type::gamepad_connect, UINT_MAX );
+	e.gamepad.port = rgi->port;
+	on_input_event( e );
+
+	auto *result = rgi.get();
+	g_rawGamepadInfoMap.insert( { hDevice, std::move( rgi ) } );
+	return result;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void raw_input_device_change( HANDLE hDevice, bool added )
+{
+	if ( added )
+	{
+		parse_gamepad_info( hDevice );
+	}
+	else if ( auto iter = g_rawGamepadInfoMap.find( hDevice ); iter != g_rawGamepadInfoMap.end() )
+	{
+		auto &rgi = *iter->second;
+		if ( rgi.port != UINT_MAX )
+		{
+			input_event e( input_event::type::gamepad_disconnect, UINT_MAX );
+			e.gamepad.port = rgi.port;
+			on_input_event( e );
+		}
+
+		g_rawGamepadInfoMap.erase( iter );
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void init_raw_input_devices()
+{
+	UINT numDevices;
+	if ( GetRawInputDeviceList( nullptr, &numDevices, sizeof( RAWINPUTDEVICELIST ) ) )
+		return;
+
+	std::vector<RAWINPUTDEVICELIST> deviceList;
+	deviceList.resize( numDevices );
+
+	if ( GetRawInputDeviceList( deviceList.data(), &numDevices, sizeof( RAWINPUTDEVICELIST ) ) == UINT_MAX )
+		return;
+
+	// Look for joysticks and gamepads
+	for ( auto &d : deviceList )
+	{
+		if ( d.dwType != RIM_TYPEHID )
+			continue;
+
+		auto *rgi = parse_gamepad_info( d.hDevice );
+		if ( !rgi )
+			continue;
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -605,7 +677,11 @@ LRESULT CALLBACK window_impl::wnd_proc( HWND hWnd, UINT message, WPARAM wParam, 
 			switch ( message )
 			{
 				case WM_INPUT:
-					process_raw_input( lParam );
+					process_raw_input( HRAWINPUT( lParam ) );
+					return 0;
+
+				case WM_INPUT_DEVICE_CHANGE:
+					raw_input_device_change( HANDLE( lParam ), wParam == GIDC_ARRIVAL );
 					return 0;
 
 				case WM_MOUSEMOVE:
@@ -769,6 +845,8 @@ void run()
 
 	QueryPerformanceFrequency( &li );
 	detail::g_timer_frequency = li.QuadPart;
+
+	detail::init_raw_input_devices();
 
 	while ( true )
 	{
