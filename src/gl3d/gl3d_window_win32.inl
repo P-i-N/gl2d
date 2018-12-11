@@ -546,8 +546,6 @@ void update_raw_input_gamepad( RAWINPUT *raw, raw_gamepad_info &rgi )
 
 		auto range = static_cast<float>( valueCaps[i].LogicalMax - valueCaps[i].LogicalMin );
 		value = ( 2.0f * ( rawValue - valueCaps[i].LogicalMin ) / range ) - 1.0f;
-		if ( abs( value ) < 0.05f )
-			value = 0;
 
 		auto type = valueCaps[i].Range.UsageMin;
 		if ( type == 57 )
