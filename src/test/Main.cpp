@@ -328,7 +328,7 @@ int main()
 
 				float x = 3.0f * sin( rot.x );
 				float y = 3.0f * cos( rot.x );
-				float z = 2.0f * rot.y;
+				float z = 3.0f + 2.0f * rot.y;
 
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),

@@ -323,6 +323,18 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 				queue->update_buffer( _indexBuffer, _indices.data(), indicesSize );
 		}
 
+		if ( !_instanceDataBuffer )
+			_instanceDataBuffer = buffer::create( buffer_usage::dynamic_resizable, _instanceData );
+		else
+		{
+			auto instanceDataSize = _instanceData.size() * sizeof( uvec3 );
+
+			if ( instanceDataSize > _instanceDataBuffer->size() )
+				queue->resize_buffer( _instanceDataBuffer, _instanceData.data(), instanceDataSize );
+			else
+				queue->update_buffer( _instanceDataBuffer, _instanceData.data(), instanceDataSize );
+		}
+
 		for ( auto &kvp : _textureIndexMap )
 		{
 			auto tex = kvp.first;
@@ -348,6 +360,7 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 	queue->bind_shader( _shader );
 	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::layout() );
 	queue->bind_index_buffer( _indexBuffer );
+	queue->bind_vertex_attribute( _instanceDataBuffer, 3, gl_enum::UNSIGNED_INT_VEC3, true );
 	queue->bind_storage_buffer( _texturesBuffer, 2 );
 	queue->set_uniform( "u_ProjectionMatrix", proj );
 	queue->set_uniform( "u_ViewMatrix", view );

@@ -126,6 +126,7 @@ protected:
 
 	std::vector<gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;
+	std::vector<uvec3> _instanceData;
 	decltype( _vertices )::iterator _currentVertex;
 	unsigned _startVertex = UINT_MAX;
 
@@ -134,6 +135,7 @@ protected:
 
 	buffer::ptr _vertexBuffer;
 	buffer::ptr _indexBuffer;
+	buffer::ptr _instanceDataBuffer;
 	buffer::ptr _texturesBuffer;
 	shader::ptr _shader;
 };
