@@ -5,6 +5,31 @@
 
 namespace gl3d {
 
+struct centered_box
+{
+	vec3 center;
+	vec3 extent;
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class bvh
+{
+public:
+	struct node
+	{
+		unsigned children[2];
+		unsigned first_leaf;
+		unsigned leaf_count;
+	};
+
+	struct leaf
+	{
+
+	};
+
+protected:
+};
 
 } // namespace gl3d
 
