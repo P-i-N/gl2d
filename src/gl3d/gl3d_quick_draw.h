@@ -105,6 +105,11 @@ protected:
 			indexCount += dc.indexCount;
 			return true;
 		}
+
+		bool can_be_instanced_with( const draw_call &dc ) const
+		{
+			return stateIndex == dc.stateIndex && primitive == dc.primitive;
+		}
 	};
 
 	std::vector<draw_call> _drawCalls;
@@ -126,7 +131,10 @@ protected:
 
 	std::vector<gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;
+	std::vector<mat4> _transforms;
+	std::vector<ivec4> _scissors;
 	std::vector<uvec3> _instanceData;
+
 	decltype( _vertices )::iterator _currentVertex;
 	unsigned _startVertex = UINT_MAX;
 
@@ -135,8 +143,6 @@ protected:
 
 	buffer::ptr _vertexBuffer;
 	buffer::ptr _indexBuffer;
-	buffer::ptr _instanceDataBuffer;
-	buffer::ptr _texturesBuffer;
 	shader::ptr _shader;
 };
 
