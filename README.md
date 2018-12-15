@@ -1,6 +1,7 @@
 # **WORK IN PROGRESS**, use at your own risk or rather don't...
 
 - [x] multiple windows support
+- [ ] correct cleanup of OpenGL resources
 - [ ] fullscreen support
 - [x] toggle fullscreen with `Alt+Enter`
 - [x] frame limiter
@@ -29,6 +30,7 @@
   - [ ] erase unused VAOs after while (300 frames/5 seconds?)
   - [ ] using custom vertex attributes
   - [ ] support (multiple) render targets
+  - [ ] multi draw indirect
 - [ ] asynchronous upload context: `gl3d::detail::async_upload_context`
   - [ ] buffer updates
   - [ ] texture updates
@@ -40,7 +42,7 @@
   - [ ] OMG...
 - [ ] simple scene API
   - [ ] node system/hierarchy
-  - [ ] fast BVH partitioning
+  - [ ] BVH partitioning
   - [ ] frustum culling
   - [ ] shadow mapping
   - [ ] hybrid clustered forward pipeline?
