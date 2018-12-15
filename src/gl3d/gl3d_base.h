@@ -223,14 +223,14 @@ template <typename T> struct type_range
 
 	type_range( const T &item ) : data( &item ), size( 1 ) { }
 
-	template <typename U, typename A>
-	type_range( const std::vector<U, A> &v ) : data( v.data() ), size( v.size() ) { }
+	template <typename A>
+	type_range( const std::vector<T, A> &v ) : data( v.data() ), size( v.size() ) { }
 
-	template <typename U, size_t N>
-	type_range( const std::array<U, N> &arr ) : data( arr.data() ), size( arr.size() ) { }
+	template <size_t N>
+	type_range( const std::array<T, N> &arr ) : data( arr.data() ), size( arr.size() ) { }
 
-	template <typename U, size_t N>
-	type_range( const U( &arr )[N] ) : data( &arr[0] ), size( N ) { }
+	template <size_t N>
+	type_range( const T( &arr )[N] ) : data( &arr[0] ), size( N ) { }
 };
 
 } // namespace gl3d::detail
