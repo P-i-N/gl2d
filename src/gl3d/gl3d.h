@@ -54,11 +54,15 @@ struct gl_api
 	GL_PROC( int, GetUniformLocation, unsigned, const char *)
 	GL_PROC(void, Uniform1i, int, int)
 	GL_PROC(void, Uniform1f, int, float)
-	GL_PROC(void, Uniform2fv, int, int, const float *)
-	GL_PROC(void, Uniform3fv, int, int, const float *)
-	GL_PROC(void, Uniform4fv, int, int, const float *)
-	GL_PROC(void, UniformMatrix3fv, int, int, unsigned char, const float *)
-	GL_PROC(void, UniformMatrix4fv, int, int, unsigned char, const float *)
+	GL_PROC(void, Uniform2fv, int, unsigned, const float *)
+	GL_PROC(void, Uniform3fv, int, unsigned, const float *)
+	GL_PROC(void, Uniform3uiv, int, unsigned, const unsigned *)
+	GL_PROC(void, Uniform4iv, int, unsigned, const int *)
+	GL_PROC(void, Uniform4fv, int, unsigned, const float *)
+	GL_PROC(void, UniformMatrix3fv, int, unsigned, unsigned char, const float *)
+	GL_PROC(void, UniformMatrix4fv, int, unsigned, unsigned char, const float *)
+	GL_PROC(void, UniformHandleui64ARB, int, uint64_t)
+	GL_PROC(void, UniformHandleui64vARB, int, unsigned, const uint64_t *)
 
 	/// Buffers
 	GL_PROC(   void, CreateBuffers, int, unsigned *)
@@ -111,6 +115,8 @@ enum class gl_enum : unsigned
 	POINTS = 0x0000, LINES,
 	LINE_STRIP = 0x0003, TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN, QUADS,
 
+	TEXTURE = 0x1702,
+
 	TEXTURE_1D = 0x0DE0, TEXTURE_2D,
 	TEXTURE_3D = 0x806F,
 	TEXTURE_2D_ARRAY = 0x8C1A,
@@ -122,9 +128,20 @@ enum class gl_enum : unsigned
 
 	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
 	DOUBLE = 0x140A,
+	UNSIGNED_INT64 = 0x140F,
 
 	RED = 0x1903,
 	RG = 0x8227, RGB = 0x1907, BGR = 0x80E0, BGRA, RGBA = 0x1908, STENCIL_INDEX = 0x1901, DEPTH_COMPONENT,
+
+	CLAMP = 0x2900, REPEAT,
+	CLAMP_TO_EDGE = 0x812F,
+	MIRRORED_REPEAT = 0x8370,
+
+	NEAREST = 0x2600, LINEAR,
+	NEAREST_MIPMAP_NEAREST = 0x2700, LINEAR_MIPMAP_NEAREST, NEAREST_MIPMAP_LINEAR, LINEAR_MIPMAP_LINEAR,
+
+	TEXTURE_MAG_FILTER = 0x2800, TEXTURE_MIN_FILTER, TEXTURE_WRAP_S, TEXTURE_WRAP_T,
+	TEXTURE_WRAP_R = 0x8072,
 
 	NEVER = 0x0200, LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS,
 
@@ -453,12 +470,25 @@ public:
 		return 1;
 	}
 
-	void resident( bool set );
-	bool resident() const { return _resident; }
+	void wrap( gl_enum u, gl_enum v, gl_enum w );
+	void filter( gl_enum minFilter, gl_enum magFilter );
 
-	uint64_t bindless_handle() const { return _bindlessHandle; }
+	void wrap_u( gl_enum value ) { wrap( value, _wrap[1], _wrap[2] ); }
+	gl_enum wrap_u() const { return _wrap[0]; }
 
-	void synchronize();
+	void wrap_v( gl_enum value ) { wrap( _wrap[0], value, _wrap[2] ); }
+	gl_enum wrap_v() const { return _wrap[1]; }
+
+	void wrap_w( gl_enum value ) { wrap( _wrap[0], _wrap[1], value ); }
+	gl_enum wrap_w() const { return _wrap[2]; }
+
+	void filter_min( gl_enum value ) { filter( value, _filter[1] ); }
+	gl_enum filter_min() const { return _filter[0]; }
+
+	void filter_mag( gl_enum value ) { filter( _filter[0], value ); }
+	gl_enum filter_mag() const { return _filter[1]; }
+
+	uint64_t synchronize();
 
 protected:
 	void clear();
@@ -472,10 +502,11 @@ protected:
 	bool _owner = false;
 	bool _buildMips = false;
 
-	buffer::ptr _buffer;
+	gl_enum _wrap[3] = { gl_enum::REPEAT, gl_enum::REPEAT, gl_enum::REPEAT };
+	gl_enum _filter[2] = { gl_enum::NEAREST_MIPMAP_LINEAR, gl_enum::LINEAR };
+	bool _dirtySampler = true;
 
 	uint64_t _bindlessHandle = 0;
-	bool _resident = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -579,6 +610,32 @@ public:
 	void set_uniform( const detail::location_variant &location, const vec4 &value );
 	void set_uniform( const detail::location_variant &location, const mat3 &value, bool transpose = false );
 	void set_uniform( const detail::location_variant &location, const mat4 &value, bool transpose = false );
+	void set_uniform( const detail::location_variant &location, texture::ptr tex );
+
+	void set_uniform( const detail::location_variant &location, const uint64_t *values, size_t count );
+	void set_uniform( const detail::location_variant &location, const uvec3 *values, size_t count );
+	void set_uniform( const detail::location_variant &location, const ivec4 *values, size_t count );
+	void set_uniform( const detail::location_variant &location, const mat4 *values, size_t count, bool transpose = false );
+
+	void set_uniform( const detail::location_variant &location, const detail::type_range<uint64_t> &values )
+	{
+		set_uniform( location, values.data, values.size );
+	}
+
+	void set_uniform( const detail::location_variant &location, const detail::type_range<uvec3> &values )
+	{
+		set_uniform( location, values.data, values.size );
+	}
+
+	void set_uniform( const detail::location_variant &location, const detail::type_range<ivec4> &values )
+	{
+		set_uniform( location, values.data, values.size );
+	}
+
+	void set_uniform( const detail::location_variant &location, const detail::type_range<mat4> &values, bool transpose = false )
+	{
+		set_uniform( location, values.data, values.size, transpose );
+	}
 
 	void set_state( const blend_state &bs );
 	void set_state( const depth_stencil_state &ds );
@@ -715,7 +772,7 @@ protected:
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_attribute, bind_index_buffer,
 		bind_texture, bind_render_target, bind_storage_buffer,
-		set_uniform_block, set_uniform,
+		set_uniform_block, set_uniform, set_uniform_array,
 		draw, draw_indexed,
 		execute,
 	};

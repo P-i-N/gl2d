@@ -414,6 +414,7 @@ texture::ptr texture::checkerboard()
 #undef B
 
 	static auto result = texture::create( gl_format::RGBA8, uvec2{ 8, 8 }, checkerboardRGBA );
+	result->filter_mag( gl_enum::NEAREST );
 	return result;
 }
 
@@ -499,25 +500,30 @@ void texture::clear()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void texture::resident( bool set )
+void texture::wrap( gl_enum u, gl_enum v, gl_enum w )
 {
-	if ( _resident == set )
+	if ( _wrap[0] == u && _wrap[1] == v && _wrap[2] == w )
 		return;
 
-	if ( _resident = set )
-	{
-		_bindlessHandle = gl.GetTextureHandleARB( _id );
-		gl.MakeTextureHandleResidentARB( _bindlessHandle );
-	}
-	else
-	{
-		_bindlessHandle = gl.GetTextureHandleARB( _id );
-		gl.MakeTextureHandleNonResidentARB( _bindlessHandle );
-	}
+	_wrap[0] = u;
+	_wrap[1] = v;
+	_wrap[2] = w;
+	_dirtySampler = true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void texture::synchronize()
+void texture::filter( gl_enum minFilter, gl_enum magFilter )
+{
+	if ( _filter[0] == minFilter && _filter[1] == magFilter )
+		return;
+
+	_filter[0] = minFilter;
+	_filter[1] = magFilter;
+	_dirtySampler = true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+uint64_t texture::synchronize()
 {
 	if ( !_id )
 	{
@@ -581,10 +587,27 @@ void texture::synchronize()
 		}
 
 		clear();
+		_dirtySampler = true;
+	}
+
+	if ( _dirtySampler && _id )
+	{
+		if ( _bindlessHandle )
+			gl.MakeTextureHandleNonResidentARB( _bindlessHandle );
+
+		gl.TextureParameteri( _id, gl_enum::TEXTURE_WRAP_S, static_cast<int>( _wrap[0] ) );
+		gl.TextureParameteri( _id, gl_enum::TEXTURE_WRAP_T, static_cast<int>( _wrap[1] ) );
+		gl.TextureParameteri( _id, gl_enum::TEXTURE_WRAP_R, static_cast<int>( _wrap[2] ) );
+		gl.TextureParameteri( _id, gl_enum::TEXTURE_MIN_FILTER, static_cast<int>( _filter[0] ) );
+		gl.TextureParameteri( _id, gl_enum::TEXTURE_MAG_FILTER, static_cast<int>( _filter[1] ) );
 
 		_bindlessHandle = gl.GetTextureHandleARB( _id );
 		gl.MakeTextureHandleResidentARB( _bindlessHandle );
+
+		_dirtySampler = false;
 	}
+
+	return _bindlessHandle;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -597,7 +620,7 @@ cmd_queue::cmd_queue( gl_state *state )
 	if ( _deferred )
 	{
 		_recordedData.reserve( 65536 );
-		_resources.reserve( 1024 );
+		_resources.reserve( 64 );
 	}
 }
 
@@ -740,7 +763,8 @@ void cmd_queue::bind_vertex_buffer( buffer::ptr vb, const detail::layout &layout
 	}
 	else
 	{
-		if ( vb ) vb->synchronize();
+		if ( vb )
+			vb->synchronize();
 
 		if ( _state->current_vb != vb || _state->current_vb_layout != &layout || _state->current_vb_offset != offset )
 		{
@@ -763,6 +787,8 @@ void cmd_queue::bind_vertex_attribute( buffer::ptr attribs, unsigned slot, gl_en
 	}
 	else
 	{
+		if ( attribs )
+			attribs->synchronize();
 
 	}
 }
@@ -777,7 +803,8 @@ void cmd_queue::bind_index_buffer( buffer::ptr ib, bool use16bits, size_t offset
 	}
 	else
 	{
-		if ( ib ) ib->synchronize();
+		if ( ib )
+			ib->synchronize();
 
 		if ( _state->current_ib != ib )
 		{
@@ -978,6 +1005,72 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const mat
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
 		gl.UniformMatrix4fv( id, 1, transpose ? 1 : 0, value.data );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, texture::ptr tex )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform, gl_enum::TEXTURE );
+		_resources.push_back( tex );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+	{
+		assert( 0 ); // TODO
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const uint64_t *values, size_t count )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform_array, gl_enum::UNSIGNED_INT64 );
+		write_data( values, sizeof( decltype( *values ) ) * count );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.UniformHandleui64vARB( id, static_cast<unsigned>( count ), values );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const uvec3 *values, size_t count )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform_array, gl_enum::UNSIGNED_INT_VEC3 );
+		write_data( values, sizeof( decltype( *values ) ) * count );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.Uniform3uiv( id, static_cast<unsigned>( count ), reinterpret_cast<const unsigned *>( values ) );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const ivec4 *values, size_t count )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform_array, gl_enum::INT_VEC4 );
+		write_data( values, sizeof( decltype( *values ) ) * count );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.Uniform4iv( id, static_cast<unsigned>( count ), reinterpret_cast<const int *>( values ) );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::set_uniform( const detail::location_variant &location, const mat4 *values, size_t count, bool transpose )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::set_uniform_array, gl_enum::FLOAT_MAT4, transpose );
+		write_data( values, sizeof( decltype( *values ) ) * count );
+		write_location_variant( location );
+	}
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
+		gl.UniformMatrix4fv( id, static_cast<unsigned>( count ), transpose ? 1 : 0, reinterpret_cast<const float *>( values ) );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1354,6 +1447,40 @@ void cmd_queue::execute( gl_state *state )
 						set_uniform( read_location_variant(), value, transpose );
 					}
 					break;
+
+					default:
+						assert( 0 );
+						break;
+				}
+			}
+			break;
+
+			case cmd_type::set_uniform_array:
+			{
+				auto type = read<gl_enum>();
+				auto data = read_data();
+
+				switch ( type )
+				{
+					case gl_enum::UNSIGNED_INT64:
+						set_uniform( read_location_variant(), reinterpret_cast<const uint64_t *>( data.first ), data.second / sizeof( uint64_t ) );
+						break;
+
+					case gl_enum::UNSIGNED_INT_VEC3:
+						set_uniform( read_location_variant(), reinterpret_cast<const uvec3 *>( data.first ), data.second / sizeof( uvec3 ) );
+						break;
+
+					case gl_enum::INT_VEC4:
+						set_uniform( read_location_variant(), reinterpret_cast<const ivec4 *>( data.first ), data.second / sizeof( ivec4 ) );
+						break;
+
+					case gl_enum::FLOAT_MAT4:
+						set_uniform( read_location_variant(), reinterpret_cast<const mat4 *>( data.first ), data.second / sizeof( mat4 ) );
+						break;
+
+					default:
+						assert( 0 );
+						break;
 				}
 			}
 			break;
