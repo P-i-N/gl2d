@@ -239,7 +239,7 @@ int main()
 
 	auto qd3D = std::make_shared<quick_draw>();
 
-	qd3D->bind_texture( texture::checkerboard() );
+	qd3D->bind_texture( texture::debug_grid() );
 	qd3D->begin( gl_enum::QUADS );
 	{
 		// Top
@@ -333,6 +333,14 @@ int main()
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),
 				              mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
+
+				auto qd = w->quick_draw();
+				qd->begin( gl_enum::LINES );
+				{
+					qd->vertex( { 50, 50 } );
+					qd->vertex( { 500, 400 } );
+				}
+				qd->end();
 			}
 			break;
 		}

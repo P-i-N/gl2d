@@ -393,38 +393,101 @@ bool shader_code::load( const std::filesystem::path &path )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+namespace detail {
+
+std::mutex g_builtInTextureMutex;
+texture::ptr g_whitePixel;
+texture::ptr g_checkerboard;
+texture::ptr g_debugGrid;
+
+}
+
 //---------------------------------------------------------------------------------------------------------------------
 texture::ptr texture::white_pixel()
 {
-	static uint32_t whiteRGBA = 0xFFFFFFFFu;
-	static auto result = texture::create( gl_format::RGBA8, uvec2{ 1, 1 }, &whiteRGBA );
-	return result;
+	std::scoped_lock lock( detail::g_builtInTextureMutex );
+	if ( !detail::g_whitePixel )
+	{
+		uint32_t whiteRGBA = 0xFFFFFFFFu;
+		detail::g_whitePixel = texture::create( gl_format::RGBA8, uvec2{ 1, 1 }, &whiteRGBA );
+	}
+
+	return detail::g_whitePixel;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 texture::ptr texture::checkerboard()
 {
+	std::scoped_lock lock( detail::g_builtInTextureMutex );
+	if ( !detail::g_checkerboard )
+	{
 #define B 0xFF000000u
 #define W 0xFFFFFFFFu
-
-	static uint32_t checkerboardRGBA[] =
-	{
-		B, W, B, W, B, W, B, W,
-		W, B, W, B, W, B, W, B,
-		B, W, B, W, B, W, B, W,
-		W, B, W, B, W, B, W, B,
-		B, W, B, W, B, W, B, W,
-		W, B, W, B, W, B, W, B,
-		B, W, B, W, B, W, B, W,
-		W, B, W, B, W, B, W, B,
-	};
-
+		uint32_t checkerboardRGBA[] =
+		{
+			B, W, B, W, B, W, B, W,
+			W, B, W, B, W, B, W, B,
+			B, W, B, W, B, W, B, W,
+			W, B, W, B, W, B, W, B,
+			B, W, B, W, B, W, B, W,
+			W, B, W, B, W, B, W, B,
+			B, W, B, W, B, W, B, W,
+			W, B, W, B, W, B, W, B,
+		};
 #undef W
 #undef B
+		detail::g_checkerboard = texture::create( gl_format::RGBA8, uvec2 { 8, 8 }, checkerboardRGBA );
+		detail::g_checkerboard->filter_mag( gl_enum::NEAREST );
+	}
 
-	static auto result = texture::create( gl_format::RGBA8, uvec2{ 8, 8 }, checkerboardRGBA );
-	result->filter_mag( gl_enum::NEAREST );
-	return result;
+	return detail::g_checkerboard;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+texture::ptr texture::debug_grid()
+{
+	std::scoped_lock lock( detail::g_builtInTextureMutex );
+	if ( !detail::g_debugGrid )
+	{
+		const uint32_t crossColors[] =
+		{ 0xFFB116E5u, 0xFF5E167Eu, 0xFFE54A16u, 0xFFE5E516u, 0xFF4AE516u, 0xFF16E57Eu, 0xFF16B1E5u, 0xFF1616E5u };
+
+		constexpr unsigned crossSize = 8;
+		constexpr unsigned textureSize = 1024;
+		constexpr unsigned gridSize = 128;
+		constexpr unsigned miniGridSize = 32;
+
+		auto pixels = std::make_unique<uint32_t[]>( textureSize * textureSize );
+
+		for ( unsigned y = 0; y < textureSize; ++y )
+		{
+			for ( unsigned x = 0; x < textureSize; ++x )
+			{
+				unsigned i = ( y * textureSize + x ), gx = x / gridSize, gy = y / gridSize, mx = x % gridSize, my = y % gridSize;
+				bool isMiniGrid = !( x % miniGridSize ) || !( y % miniGridSize );
+
+				if ( ( gx + gy ) % 2 )
+					pixels[i] = isMiniGrid ? 0xFF404040u : 0xFF303030u;
+				else
+					pixels[i] = isMiniGrid ? 0xFF969696u : 0xFF868686u;
+
+				unsigned color = gx + gy;
+				if ( color >= 8 ) color = 14 - color;
+				color = crossColors[color];
+
+				constexpr unsigned mid = gridSize / 2;
+
+				if ( ( my == mid - 1 || my == mid ) && ( mx >= mid - crossSize && mx < mid + crossSize ) )
+					pixels[i] = color;
+				else if ( ( mx == mid - 1 || mx == mid ) && ( my >= mid - crossSize && my < mid + crossSize ) )
+					pixels[i] = color;
+			}
+		}
+
+		detail::g_debugGrid = texture::create( gl_format::RGBA8, uvec2{ textureSize, textureSize }, pixels.get() );
+	}
+
+	return detail::g_debugGrid;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -597,6 +660,9 @@ uint64_t texture::synchronize()
 
 		clear();
 		_dirtySampler = true;
+
+		if ( _buildMips )
+			gl.GenerateTextureMipmap( _id );
 	}
 
 	if ( _dirtySampler && _id )
@@ -609,6 +675,7 @@ uint64_t texture::synchronize()
 		gl.TextureParameteri( _id, gl_enum::TEXTURE_WRAP_R, static_cast<int>( _wrap[2] ) );
 		gl.TextureParameteri( _id, gl_enum::TEXTURE_MIN_FILTER, static_cast<int>( _filter[0] ) );
 		gl.TextureParameteri( _id, gl_enum::TEXTURE_MAG_FILTER, static_cast<int>( _filter[1] ) );
+		gl.TextureParameterf( _id, gl_enum::TEXTURE_MAX_ANISOTROPY, 4.0f );
 
 		_bindlessHandle = gl.GetTextureHandleARB( _id );
 		gl.MakeTextureHandleResidentARB( _bindlessHandle );

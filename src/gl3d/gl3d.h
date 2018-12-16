@@ -91,12 +91,14 @@ struct gl_api
 	/// Textures
 	GL_PROC(    void, CreateTextures, gl_enum, unsigned, unsigned *)
 	GL_PROC(    void, TextureParameteri, unsigned, gl_enum, int)
+	GL_PROC(    void, TextureParameterf, unsigned, gl_enum, float)
 	GL_PROC(    void, TextureStorage2D, unsigned, unsigned, gl_format, unsigned, unsigned)
 	GL_PROC(    void, TextureSubImage2D, unsigned, int, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
 	GL_PROC(    void, BindTextureUnit, unsigned, unsigned)
 	GL_PROC(uint64_t, GetTextureHandleARB, unsigned)
 	GL_PROC(    void, MakeTextureHandleResidentARB, uint64_t)
 	GL_PROC(    void, MakeTextureHandleNonResidentARB, uint64_t)
+	GL_PROC(    void, GenerateTextureMipmap, unsigned)
 
 	/// Draw calls
 	GL_PROC(void, DrawArraysInstancedBaseInstance, gl_enum, int, unsigned, unsigned, unsigned)
@@ -171,6 +173,7 @@ enum class gl_enum : unsigned
 	GEOMETRY_SHADER = 0x8DD9,
 	COMPUTE_SHADER = 0x91B9,
 
+	TEXTURE_MAX_ANISOTROPY = 0x84FE,
 	VERTEX_ARRAY_BINDING = 0x85B5,
 
 	DEPTH_CLAMP = 0x864F,
@@ -411,8 +414,8 @@ public:
 	static ptr create( Args &&... args ) { return std::make_shared<texture>( args... ); }
 
 	static ptr white_pixel();
-
 	static ptr checkerboard();
+	static ptr debug_grid();
 
 	texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips = false );
 
@@ -512,7 +515,7 @@ protected:
 	bool _buildMips = false;
 
 	gl_enum _wrap[3] = { gl_enum::REPEAT, gl_enum::REPEAT, gl_enum::REPEAT };
-	gl_enum _filter[2] = { gl_enum::NEAREST_MIPMAP_LINEAR, gl_enum::LINEAR };
+	gl_enum _filter[2] = { gl_enum::LINEAR_MIPMAP_LINEAR, gl_enum::LINEAR };
 	bool _dirtySampler = true;
 
 	uint64_t _bindlessHandle = 0;
