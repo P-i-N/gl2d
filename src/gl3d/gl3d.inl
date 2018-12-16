@@ -1195,12 +1195,12 @@ void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t inst
 		if ( _state->dirty_input_assembly )
 			synchronize_input_assembly();
 
-		if ( instanceCount > 1 || instanceBase )
-		{
-
-		}
-		else
-			glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
+		gl.DrawArraysInstancedBaseInstance(
+		    primitive,
+		    static_cast<int>( first ),
+		    static_cast<unsigned>( count ),
+		    static_cast<unsigned>( instanceCount ),
+		    static_cast<unsigned>( instanceBase ) );
 	}
 }
 
