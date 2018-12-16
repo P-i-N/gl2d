@@ -1460,31 +1460,27 @@ void cmd_queue::execute( gl_state *state )
 
 			case cmd_type::set_uniform_array:
 			{
+#define CASE_TYPE(_GLEnum, _Type) _GLEnum: \
+					set_uniform( read_location_variant(), \
+					             reinterpret_cast<const _Type *>( data.first ), \
+					             data.second / sizeof( _Type ) ); break
+
 				auto type = read<gl_enum>();
 				auto data = read_data();
 
 				switch ( type )
 				{
-					case gl_enum::UNSIGNED_INT64:
-						set_uniform( read_location_variant(), reinterpret_cast<const uint64_t *>( data.first ), data.second / sizeof( uint64_t ) );
-						break;
-
-					case gl_enum::UNSIGNED_INT_VEC3:
-						set_uniform( read_location_variant(), reinterpret_cast<const uvec3 *>( data.first ), data.second / sizeof( uvec3 ) );
-						break;
-
-					case gl_enum::INT_VEC4:
-						set_uniform( read_location_variant(), reinterpret_cast<const ivec4 *>( data.first ), data.second / sizeof( ivec4 ) );
-						break;
-
-					case gl_enum::FLOAT_MAT4:
-						set_uniform( read_location_variant(), reinterpret_cast<const mat4 *>( data.first ), data.second / sizeof( mat4 ) );
-						break;
+					case CASE_TYPE( gl_enum::UNSIGNED_INT64, uint64_t );
+					case CASE_TYPE( gl_enum::UNSIGNED_INT_VEC3, uvec3 );
+					case CASE_TYPE( gl_enum::INT_VEC4, ivec4 );
+					case CASE_TYPE( gl_enum::FLOAT_MAT4, mat4 );
 
 					default:
 						assert( 0 );
 						break;
 				}
+
+#undef CASE_TYPE
 			}
 			break;
 
