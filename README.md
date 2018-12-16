@@ -40,8 +40,8 @@
 - [ ] simple renderer with emulated immediate mode: `gl3d::quick_draw`
   - [ ] emulate good old `glBegin` / `glEnd` as efficiently as possible
   - [ ] combining 2D with 3D (text + meshes)
+  - [ ] blending modes
   - [ ] sorting modes
-  - [ ] OMG...
 - [ ] simple scene API
   - [ ] node system/hierarchy
   - [ ] BVH partitioning
