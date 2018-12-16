@@ -1426,70 +1426,35 @@ void cmd_queue::execute( gl_state *state )
 
 			case cmd_type::set_uniform:
 			{
+#define CASE_TYPE(_GLEnum, _Type) _GLEnum: { \
+						auto value = read<_Type>(); \
+						set_uniform(read_location_variant(), value); \
+					} break
+
+#define CASE_TYPE_MATRIX(_GLEnum, _Type) _GLEnum: { \
+						auto value = read<_Type>(); \
+						auto transpose = read<bool>(); \
+						set_uniform( read_location_variant(), value, transpose ); \
+					} break
+
 				switch ( read<gl_enum>() )
 				{
-					case gl_enum::BOOL:
-					{
-						auto value = read<bool>();
-						set_uniform( read_location_variant(), value );
-					}
-					break;
-
-					case gl_enum::INT:
-					{
-						auto value = read<int>();
-						set_uniform( read_location_variant(), value );
-					}
-					break;
-
-					case gl_enum::FLOAT:
-					{
-						auto value = read<float>();
-						set_uniform( read_location_variant(), value );
-					}
-					break;
-
-					case gl_enum::FLOAT_VEC2:
-					{
-						auto value = read<vec2>();
-						set_uniform( read_location_variant(), value );
-					}
-					break;
-
-					case gl_enum::FLOAT_VEC3:
-					{
-						auto value = read<vec3>();
-						set_uniform( read_location_variant(), value );
-					}
-					break;
-
-					case gl_enum::FLOAT_VEC4:
-					{
-						auto value = read<vec4>();
-						set_uniform( read_location_variant(), value );
-					}
-					break;
-
-					case gl_enum::FLOAT_MAT3:
-					{
-						auto value = read<mat3>();
-						auto transpose = read<bool>();
-						set_uniform( read_location_variant(), value, transpose );
-					}
-					break;
-
-					case gl_enum::FLOAT_MAT4:
-					{
-						auto value = read<mat4>();
-						auto transpose = read<bool>();
-						set_uniform( read_location_variant(), value, transpose );
-					}
-					break;
+					case CASE_TYPE( gl_enum::BOOL, bool );
+					case CASE_TYPE( gl_enum::INT, int );
+					case CASE_TYPE( gl_enum::FLOAT, float );
+					case CASE_TYPE( gl_enum::FLOAT_VEC2, vec2 );
+					case CASE_TYPE( gl_enum::FLOAT_VEC3, vec3 );
+					case CASE_TYPE( gl_enum::FLOAT_VEC4, vec4 );
+					case CASE_TYPE_MATRIX( gl_enum::FLOAT_MAT3, mat3 );
+					case CASE_TYPE_MATRIX( gl_enum::FLOAT_MAT4, mat4 );
 
 					default:
 						assert( 0 );
 						break;
 				}
+
+#undef CASE_TYPE
+#undef CASE_TYPE_MATRIX
 			}
 			break;
 
