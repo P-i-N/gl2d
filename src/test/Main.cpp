@@ -213,29 +213,8 @@ int main()
 
 	window::create( "Main Window", { 1280, 800 } );
 
-	Vertex vertices[] =
-	{
-		{ {  0, -1, 0 }, vec4::red() },
-		{ {  1,  1, 0 }, vec4::green() },
-		{ { -1,  1, 0 }, vec4::blue() }
-	};
-
-	FrameData fd;
-	fd.ProjectionMatrix = gl3d::mat4();
-	fd.ViewMatrix = gl3d::mat4();
-
-	auto sc = std::make_shared<shader_code>();
-	sc->load( "shaders/Test.shader" );
-
-	auto q = cmd_queue::create();
-	q->bind_shader( shader::create( sc ) );
-	q->bind_texture( texture::checkerboard(), 0 );
-
-	q->set_uniform_block( 0, fd );
-	q->set_uniform( "u_Diffuse", 0 );
-
-	q->bind_vertex_buffer( buffer::create( buffer_usage::immutable, vertices ), Vertex::layout() );
-	q->draw( gl_enum::TRIANGLES, 0, 3 );
+	auto rt = texture::create( gl_format::RGBA8, uvec2{ 256, 256 } );
+	auto dt = texture::create( gl_format::DEPTH_COMPONENT32F, uvec2{ 256, 256 } );
 
 	auto qd3D = std::make_shared<quick_draw>();
 
@@ -333,14 +312,6 @@ int main()
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),
 				              mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
-
-				auto qd = w->quick_draw();
-				qd->begin( gl_enum::LINES );
-				{
-					qd->vertex( { 50, 50 } );
-					qd->vertex( { 500, 400 } );
-				}
-				qd->end();
 			}
 			break;
 		}
