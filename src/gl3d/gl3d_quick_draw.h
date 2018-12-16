@@ -96,10 +96,15 @@ protected:
 		unsigned firstIndex = UINT_MAX;
 		unsigned indexCount = 0;
 		unsigned stateIndex = UINT_MAX;
+		uvec3 instanceData = { 0, 0, 0 };
 
 		bool try_merging_with( const draw_call &dc )
 		{
-			if ( stateIndex != dc.stateIndex || primitive != dc.primitive || ( firstIndex + indexCount ) != dc.firstIndex )
+			if (
+			    stateIndex != dc.stateIndex ||
+			    instanceData != dc.instanceData ||
+			    primitive != dc.primitive ||
+			    ( firstIndex + indexCount ) != dc.firstIndex )
 				return false;
 
 			indexCount += dc.indexCount;
@@ -108,7 +113,7 @@ protected:
 
 		bool can_be_instanced_with( const draw_call &dc ) const
 		{
-			return stateIndex == dc.stateIndex && primitive == dc.primitive;
+			return stateIndex == dc.stateIndex && primitive == dc.primitive && instanceData == dc.instanceData;
 		}
 	};
 
@@ -127,7 +132,6 @@ protected:
 
 	vec4 _currentColor;
 	vec2 _currentUV;
-	uvec3 _currentInstanceData;
 
 	std::vector<gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;

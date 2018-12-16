@@ -298,6 +298,14 @@ bool shader::compile()
 	gl.GetProgramiv( _id, gl_enum::LINK_STATUS, &linkStatus );
 	if ( !linkStatus )
 	{
+		int logLength;
+		gl.GetProgramiv( _id, gl_enum::INFO_LOG_LENGTH, &logLength );
+
+		std::unique_ptr<char[]> text = std::make_unique<char[]>( logLength + 1 );
+		gl.GetProgramInfoLog( _id, logLength, nullptr, text.get() );
+		text[logLength] = 0;
+
+		log::error( "%s", text.get() );
 		clear();
 		return false;
 	}
@@ -319,7 +327,8 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 
 	std::string sharedSource =
 	    "#version 460 core\n"
-	    "#extension GL_ARB_gpu_shader_int64 : enable\n";
+	    "#extension GL_ARB_gpu_shader_int64 : enable\n"
+	    "#extension GL_ARB_shader_draw_parameters : enable\n";
 
 	std::string *currentStage = &sharedSource;
 
@@ -613,6 +622,39 @@ uint64_t texture::synchronize()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::gl_state::reset()
+{
+	current_vb = nullptr;
+	current_vb_layout = nullptr;
+	current_ib = nullptr;
+	dirty_input_assembly = true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+size_t cmd_queue::gl_state::write_temp_data( const void *data, size_t size )
+{
+	if ( !temp_buffer )
+	{
+		temp_buffer = buffer::create( buffer_usage::persistent_coherent, nullptr, 1024 * 1024 );
+		temp_buffer->synchronize();
+		mapped_temp_buffer = static_cast<uint8_t *>( temp_buffer->map() );
+
+		glGetIntegerv( +gl_enum::UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniform_block_alignment );
+	}
+
+	auto offset = temp_buffer_cursor;
+	memcpy( mapped_temp_buffer + offset, data, size );
+
+	temp_buffer_cursor = align_up( temp_buffer_cursor + size, static_cast<size_t>( uniform_block_alignment ) );
+	if ( temp_buffer_cursor >= temp_buffer->size() )
+		temp_buffer_cursor = 0;
+
+	return offset;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------------------------------------------------
 cmd_queue::cmd_queue( gl_state *state )
 	: _deferred( state == nullptr )
 	, _state( state )
@@ -891,23 +933,10 @@ void cmd_queue::set_uniform_block( const detail::location_variant &location, con
 		write_location_variant( location );
 		write_data( data, size );
 	}
-	else
+	else if ( auto id = find_uniform_id( location ); id >= 0 )
 	{
-		auto &ubb = _state->uniform_block_buffer;
-		if ( !ubb )
-		{
-			ubb = buffer::create( buffer_usage::persistent_coherent, nullptr, 1024 * 1024 );
-			ubb->synchronize();
-			glGetIntegerv( +gl_enum::UNIFORM_BUFFER_OFFSET_ALIGNMENT, &_state->uniform_block_alignment );
-		}
-
-		auto *mappedData = static_cast<uint8_t *>( ubb->map() );
-		memcpy( mappedData + _state->uniform_block_cursor, data, size );
-		gl.BindBufferRange( gl_enum::UNIFORM_BUFFER, 0, ubb->id(), _state->uniform_block_cursor, size );
-
-		_state->uniform_block_cursor = align_up( _state->uniform_block_cursor + size, static_cast<size_t>( _state->uniform_block_alignment ) );
-		if ( _state->uniform_block_cursor >= ubb->size() )
-			_state->uniform_block_cursor = 0;
+		auto offset = _state->write_temp_data( data, size );
+		gl.BindBufferRange( gl_enum::UNIFORM_BUFFER, id, _state->temp_buffer->id(), offset, size );
 	}
 }
 
@@ -1166,7 +1195,12 @@ void cmd_queue::draw( gl_enum primitive, size_t first, size_t count, size_t inst
 		if ( _state->dirty_input_assembly )
 			synchronize_input_assembly();
 
-		glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
+		if ( instanceCount > 1 || instanceBase )
+		{
+
+		}
+		else
+			glDrawArrays( +primitive, static_cast<int>( first ), static_cast<int>( count ) );
 	}
 }
 
@@ -1182,21 +1216,41 @@ void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, siz
 		if ( _state->dirty_input_assembly )
 			synchronize_input_assembly();
 
-		if ( _state->current_ib_16bits )
+		if ( instanceCount > 1 || instanceBase )
 		{
-			glDrawElements(
-			    +primitive,
-			    static_cast<int>( count ),
-			    +gl_enum::UNSIGNED_SHORT,
-			    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ) );
+			if ( _state->current_ib_16bits )
+			{
+
+			}
+			else
+			{
+				gl.DrawElementsInstancedBaseInstance(
+				    primitive,
+				    static_cast<int>( count ),
+				    gl_enum::UNSIGNED_INT,
+				    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ),
+				    static_cast<unsigned>( instanceCount ),
+				    static_cast<unsigned>( instanceBase ) );
+			}
 		}
 		else
 		{
-			glDrawElements(
-			    +primitive,
-			    static_cast<int>( count ),
-			    +gl_enum::UNSIGNED_INT,
-			    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ) );
+			if ( _state->current_ib_16bits )
+			{
+				glDrawElements(
+				    +primitive,
+				    static_cast<int>( count ),
+				    +gl_enum::UNSIGNED_SHORT,
+				    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ) );
+			}
+			else
+			{
+				glDrawElements(
+				    +primitive,
+				    static_cast<int>( count ),
+				    +gl_enum::UNSIGNED_INT,
+				    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ) );
+			}
 		}
 	}
 }

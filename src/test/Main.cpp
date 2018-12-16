@@ -326,9 +326,9 @@ int main()
 				ctx->clear_color( { 0.1f, 0.2f, 0.4f, 1.0f } );
 				ctx->clear_depth( 1.0f );
 
-				float x = 3.0f * sin( rot.x );
-				float y = 3.0f * cos( rot.x );
-				float z = 3.0f + 2.0f * rot.y;
+				float x = 2.0f * sin( rot.x );
+				float y = 2.0f * cos( rot.x );
+				float z = 2.0f + 2.0f * rot.y;
 
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),

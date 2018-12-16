@@ -8,7 +8,8 @@ namespace gl3d {
 
 namespace detail {
 
-static constexpr size_t k_vertexBatchAllocation = 256;
+constexpr size_t k_vertexBatchAllocation = 256;
+constexpr size_t k_renderBatchSize = 64;
 
 //---------------------------------------------------------------------------------------------------------------------
 bool is_base64( uint8_t c ) { return ( isalnum( c ) || ( c == '+' ) || ( c == '/' ) ); }
@@ -220,42 +221,40 @@ quick_draw::quick_draw()
 	layout (location = 1) in vec4 vertex_Color;
 	layout (location = 2) in vec2 vertex_UV;
 
+	in int gl_BaseInstanceARB;
+
 	uniform mat4 u_ProjectionMatrix;
 	uniform mat4 u_ViewMatrix;
-	uniform mat4 u_Transforms[256];
-	uniform uvec3 u_InstanceData[256];
+	uniform mat4 u_Transforms[64];
 
 	out vec4 Color;
 	out vec2 UV;
-	flat out uint ScissorsIndex;
-	flat out uint TextureIndex;
+	flat out int DataIndex;
 
 	void main()
 	{
-		mat4 transform = u_Transforms[u_InstanceData[gl_InstanceID].x];
+		DataIndex = gl_BaseInstanceARB + gl_InstanceID;
+		mat4 transform = u_Transforms[DataIndex];
 		gl_Position = u_ProjectionMatrix * u_ViewMatrix * transform * vec4(vertex_Position, 1);
 		Color = vertex_Color;
 		UV = vertex_UV;
-		ScissorsIndex = u_InstanceData[gl_InstanceID].y;
-		TextureIndex = u_InstanceData[gl_InstanceID].z;
 	}
 
 	#fragment
 
-	uniform ivec4 u_Scissors[256];
-	uniform uint64_t u_Textures[256];
+	uniform ivec4 u_Scissors[64];
+	uniform uint64_t u_Textures[64];
 
 	layout(origin_upper_left) in vec4 gl_FragCoord;
 	in vec4 Color;
 	in vec2 UV;
-	flat in uint ScissorsIndex;
-	flat in uint TextureIndex;
+	flat in int DataIndex;
 
 	out vec4 out_Color;
 
 	void main()
 	{
-		out_Color = Color * texture(sampler2D(u_Textures[TextureIndex]), UV);
+		out_Color = Color * texture(sampler2D(u_Textures[DataIndex]), UV);
 	}
 	)SHADER_SOURCE";
 
@@ -344,37 +343,45 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 	queue->set_uniform( "u_ProjectionMatrix", proj );
 	queue->set_uniform( "u_ViewMatrix", view );
 
-	/*
-	queue->set_uniform( "u_Transforms", _transforms );
-	queue->set_uniform( "u_Scissors", _scissors );
-	queue->set_uniform( "u_Textures", _textureHandles );
-	*/
+	unsigned currentStateIndex = UINT_MAX;
 
-	const auto *firstDC = _drawCalls.data();
-	for ( size_t i = 0, first = 0, count = 0, S = _drawCalls.size(); i <= S; ++i, ++count )
+	mat4 transforms[detail::k_renderBatchSize];
+	ivec4 scissors[detail::k_renderBatchSize];
+	uint64_t textures[detail::k_renderBatchSize];
+
+	size_t start = 0;
+	while ( start < _drawCalls.size() )
 	{
-		// Flush instanced range with every state change or after last draw call
-		if ( i == S || !firstDC->can_be_instanced_with( _drawCalls[i] ) )
+		size_t end = minimum( start + detail::k_renderBatchSize, _drawCalls.size() );
+		auto count = end - start;
+
+		for ( size_t i = 0; i < count; ++i )
 		{
-			// Flush
-			if ( count )
-			{
+			auto id = _drawCalls[start + i].instanceData;
+			transforms[i] = _transforms[id.x];
+			scissors[i] = _scissors[id.y];
+			textures[i] = _textureHandles[id.z];
+		}
 
-			}
+		queue->set_uniform( "u_Transforms", transforms, count );
+		queue->set_uniform( "u_Scissors", scissors, count );
+		queue->set_uniform( "u_Textures", textures, count );
 
-			// Change state
-			if ( i < S )
+		for ( size_t i = start, instanceID = 0; i < end; ++i, ++instanceID )
+		{
+			const auto &dc = _drawCalls[i];
+			if ( dc.stateIndex != currentStateIndex )
 			{
-				const auto &dc = _drawCalls[i];
-				const auto &state = _states[dc.stateIndex];
+				currentStateIndex = dc.stateIndex;
+				const auto &state = _states[currentStateIndex];
 				queue->set_state( state.ds );
 				queue->set_state( state.rs );
 			}
 
-			firstDC = _drawCalls.data() + i;
-			first = i;
-			count = 0;
+			queue->draw_indexed( dc.primitive, dc.firstIndex, dc.indexCount, 1, instanceID );
 		}
+
+		start += detail::k_renderBatchSize;
 	}
 }
 
@@ -400,19 +407,18 @@ void quick_draw::bind_texture( texture::ptr tex )
 		auto iter = _textureIndexMap.find( tex );
 		if ( iter != _textureIndexMap.end() )
 		{
-			_currentInstanceData.x = iter->second;
+			_currentDrawCall.instanceData.z = iter->second;
 			return;
 		}
 
-		_currentInstanceData.x = static_cast<unsigned>( _textureHandles.size() );
-		_textureIndexMap.insert( { tex, _currentInstanceData.x } );
+		auto index = static_cast<unsigned>( _textureHandles.size() );
+		_currentDrawCall.instanceData.z = index;
+		_textureIndexMap.insert( { tex, index } );
 		_textureHandles.push_back( 0 );
 		_dirtyBuffers = true;
 	}
 	else
-	{
-
-	}
+		_currentDrawCall.instanceData.z = 0;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

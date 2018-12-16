@@ -42,6 +42,7 @@ struct gl_api
 	GL_PROC(    void, CompileShader, unsigned)
 	GL_PROC(    void, GetShaderiv, unsigned, gl_enum, int *)
 	GL_PROC(    void, GetShaderInfoLog, unsigned, int, int *, char *)
+	GL_PROC(    void, GetProgramInfoLog, unsigned, int, int *, char *)
 	GL_PROC(    void, AttachShader, unsigned, unsigned)
 	GL_PROC(    void, DetachShader, unsigned, unsigned)
 	GL_PROC(unsigned, CreateProgram)
@@ -73,6 +74,7 @@ struct gl_api
 	GL_PROC( void *, MapNamedBufferRange, unsigned, ptrdiff_t, unsigned, unsigned)
 	GL_PROC(uint8_t, UnmapNamedBuffer, unsigned)
 	GL_PROC(   void, FlushMappedNamedBufferRange, unsigned, ptrdiff_t, unsigned)
+	GL_PROC(   void, BindBuffer, gl_enum, unsigned)
 	GL_PROC(   void, BindBufferRange, gl_enum, unsigned, unsigned, ptrdiff_t, size_t)
 
 	/// Vertex array objects
@@ -95,6 +97,12 @@ struct gl_api
 	GL_PROC(uint64_t, GetTextureHandleARB, unsigned)
 	GL_PROC(    void, MakeTextureHandleResidentARB, uint64_t)
 	GL_PROC(    void, MakeTextureHandleNonResidentARB, uint64_t)
+
+	/// Draw calls
+	GL_PROC(void, DrawArraysInstancedBaseInstance, gl_enum, int, unsigned, unsigned, unsigned)
+	GL_PROC(void, DrawElementsInstancedBaseInstance, gl_enum, unsigned, gl_enum, const void *, unsigned, unsigned)
+	GL_PROC(void, MultiDrawArraysIndirect, gl_enum, const void *, unsigned, unsigned)
+	GL_PROC(void, MultiDrawElementsIndirect, gl_enum, gl_enum, const void *, unsigned, unsigned)
 
 	// *INDENT-ON*
 };
@@ -180,6 +188,7 @@ enum class gl_enum : unsigned
 	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
 	CURRENT_PROGRAM = 0x8B8D,
 
+	DRAW_INDIRECT_BUFFER = 0x8F3F,
 	SHADER_STORAGE_BUFFER = 0x90D2,
 
 	MAP_READ_BIT = 0x0001,
@@ -649,8 +658,9 @@ public:
 protected:
 	struct gl_state
 	{
-		buffer::ptr uniform_block_buffer;
-		size_t uniform_block_cursor = 0;
+		buffer::ptr temp_buffer;
+		uint8_t *mapped_temp_buffer = nullptr;
+		size_t temp_buffer_cursor = 0;
 		int uniform_block_alignment = 0;
 
 		buffer::ptr current_vb;
@@ -663,13 +673,8 @@ protected:
 
 		bool dirty_input_assembly = true;
 
-		void reset()
-		{
-			current_vb = nullptr;
-			current_vb_layout = nullptr;
-			current_ib = nullptr;
-			dirty_input_assembly = true;
-		}
+		void reset();
+		size_t write_temp_data( const void *data, size_t size );
 	};
 
 	cmd_queue( gl_state *state );
