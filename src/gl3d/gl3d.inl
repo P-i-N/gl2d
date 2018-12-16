@@ -1216,41 +1216,25 @@ void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, siz
 		if ( _state->dirty_input_assembly )
 			synchronize_input_assembly();
 
-		if ( instanceCount > 1 || instanceBase )
+		if ( _state->current_ib_16bits )
 		{
-			if ( _state->current_ib_16bits )
-			{
-
-			}
-			else
-			{
-				gl.DrawElementsInstancedBaseInstance(
-				    primitive,
-				    static_cast<int>( count ),
-				    gl_enum::UNSIGNED_INT,
-				    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ),
-				    static_cast<unsigned>( instanceCount ),
-				    static_cast<unsigned>( instanceBase ) );
-			}
+			gl.DrawElementsInstancedBaseInstance(
+			    primitive,
+			    static_cast<int>( count ),
+			    gl_enum::UNSIGNED_SHORT,
+			    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ),
+			    static_cast<unsigned>( instanceCount ),
+			    static_cast<unsigned>( instanceBase ) );
 		}
 		else
 		{
-			if ( _state->current_ib_16bits )
-			{
-				glDrawElements(
-				    +primitive,
-				    static_cast<int>( count ),
-				    +gl_enum::UNSIGNED_SHORT,
-				    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ) );
-			}
-			else
-			{
-				glDrawElements(
-				    +primitive,
-				    static_cast<int>( count ),
-				    +gl_enum::UNSIGNED_INT,
-				    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ) );
-			}
+			gl.DrawElementsInstancedBaseInstance(
+			    primitive,
+			    static_cast<int>( count ),
+			    gl_enum::UNSIGNED_INT,
+			    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ),
+			    static_cast<unsigned>( instanceCount ),
+			    static_cast<unsigned>( instanceBase ) );
 		}
 	}
 }
