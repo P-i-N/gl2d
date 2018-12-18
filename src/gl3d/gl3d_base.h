@@ -14,6 +14,8 @@
 #define GL3D_ENUM_PLUS(_Type) \
 	constexpr auto operator+( _Type t ) { return static_cast<std::underlying_type_t<_Type>>( t ); }
 
+#define GL3D_API
+
 namespace gl3d {
 
 /* Forward declarations */
@@ -37,12 +39,12 @@ using bytes_t = std::vector<uint8_t>;
 using files_t = std::vector<std::filesystem::path>;
 
 //---------------------------------------------------------------------------------------------------------------------
-std::string_view trim( std::string_view text );
-std::string_view to_string_view( bytes_t &bytes );
-void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
-void read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm = false, size_t size = size_t( -1 ) );
-bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd );
-void *get_proc_address( const char *name );
+GL3D_API std::string_view trim( std::string_view text );
+GL3D_API std::string_view to_string_view( bytes_t &bytes );
+GL3D_API void for_each_line( std::string_view text, std::function<void( std::string_view, unsigned )> callback );
+GL3D_API void read_all_bytes( std::istream &is, bytes_t &bytes, bool addNullTerm = false, size_t size = size_t( -1 ) );
+GL3D_API bool unroll_includes( std::stringstream &ss, std::string_view sourceCode, const std::filesystem::path &cwd );
+GL3D_API void *get_proc_address( const char *name );
 
 //---------------------------------------------------------------------------------------------------------------------
 template <typename... Tail>
@@ -237,7 +239,7 @@ template <typename T> struct type_range
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct log
+struct GL3D_API log
 {
 	static void info( const char *fmt, ... );
 	static void success( const char *fmt, ... );
@@ -259,7 +261,7 @@ extern detail::callback_chain<void( const log::message & )> on_log_message;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct vfs
+struct GL3D_API vfs
 {
 	static void mount( const std::filesystem::path &path );
 	static bool unmount( const std::filesystem::path &path );
@@ -348,7 +350,7 @@ GL3D_ENUM_PLUS( space_navigator_button )
 namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-struct keyboard_state
+struct GL3D_API keyboard_state
 {
 	bool key_down[+key::__count];
 	bool operator[]( key k ) const { return key_down[+k]; }
@@ -357,7 +359,7 @@ struct keyboard_state
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-struct mouse_state
+struct GL3D_API mouse_state
 {
 	bool button_down[+mouse_button::__count];
 	bool operator[]( mouse_button b ) const { return button_down[+b]; }
@@ -368,7 +370,7 @@ struct mouse_state
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-struct axis_state
+struct GL3D_API axis_state
 {
 	vec2 pos;
 	vec2 scale = { 1, 1 };
@@ -377,7 +379,7 @@ struct axis_state
 
 //---------------------------------------------------------------------------------------------------------------------
 static constexpr unsigned max_gamepads = 8;
-struct gamepad_state
+struct GL3D_API gamepad_state
 {
 	unsigned port = UINT_MAX;
 	bool button_down[+gamepad_button::__count];
@@ -393,7 +395,7 @@ struct gamepad_state
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-struct space_navigator_state
+struct GL3D_API space_navigator_state
 {
 	vec3 pos, rot;
 	bool button_down[+space_navigator_button::__count];

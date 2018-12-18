@@ -280,14 +280,14 @@ private:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class basic_object
+class GL3D_API basic_object
 {
 public:
 	using ptr = std::shared_ptr<basic_object>;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class gl_object : public basic_object
+class GL3D_API gl_object : public basic_object
 {
 public:
 	using ptr = std::shared_ptr<gl_object>;
@@ -316,7 +316,7 @@ enum class buffer_usage
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class buffer : public detail::gl_object
+class GL3D_API buffer : public detail::gl_object
 {
 public:
 	using ptr = std::shared_ptr<buffer>;
@@ -362,7 +362,7 @@ enum class shader_stage { vertex, geometry, fragment, compute, __count };
 GL3D_ENUM_PLUS( shader_stage )
 
 //---------------------------------------------------------------------------------------------------------------------
-class shader_code
+class GL3D_API shader_code
 {
 public:
 	using ptr = std::shared_ptr<shader_code>;
@@ -388,7 +388,7 @@ protected:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class shader : public detail::gl_object
+class GL3D_API shader : public detail::gl_object
 {
 public:
 	using ptr = std::shared_ptr<shader>;
@@ -410,7 +410,7 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class texture : public detail::gl_object
+class GL3D_API texture : public detail::gl_object
 {
 public:
 	using ptr = std::shared_ptr<texture>;
@@ -529,7 +529,7 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //---------------------------------------------------------------------------------------------------------------------
-struct blend_state
+struct GL3D_API blend_state
 {
 	uint8_t mask = 0xFFu;
 
@@ -540,7 +540,7 @@ struct blend_state
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-struct depth_stencil_state
+struct GL3D_API depth_stencil_state
 {
 	gl_enum depth_func = gl_enum::LESS;
 	uint8_t stencil_read_mask = 0xFFu;
@@ -559,7 +559,7 @@ struct depth_stencil_state
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-struct rasterizer_state
+struct GL3D_API rasterizer_state
 {
 	gl_enum face_cull_mode = gl_enum::BACK;
 	unsigned front_ccw : 1;
@@ -579,7 +579,7 @@ struct rasterizer_state
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class cmd_queue : public detail::basic_object
+class GL3D_API cmd_queue : public detail::basic_object
 {
 public:
 	using ptr = std::shared_ptr<cmd_queue>;
@@ -796,7 +796,7 @@ protected:
 namespace detail {
 
 //---------------------------------------------------------------------------------------------------------------------
-class context : public cmd_queue
+class GL3D_API context : public cmd_queue
 {
 public:
 	using ptr = std::shared_ptr<context>;
@@ -828,7 +828,7 @@ protected:
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-class async_upload_context
+class GL3D_API async_upload_context
 {
 public:
 	using ptr = std::shared_ptr<async_upload_context>;
