@@ -88,7 +88,7 @@ bool starts_with_nocase( std::string_view text, std::string_view head, Tail &&..
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-template <typename F> class callback_chain final
+template <typename F, bool Reversed = false> class callback_chain final
 {
 public:
 	using function_t = std::function<F>;
@@ -104,7 +104,7 @@ public:
 		std::scoped_lock lock( _mutex );
 		auto id = _nextID++;
 		_callbacks.insert( _callbacks.end(), { id, priority, f } );
-		std::sort( _callbacks.begin(), _callbacks.end() );
+		std::stable_sort( _callbacks.begin(), _callbacks.end() );
 
 		return id;
 	}
@@ -120,7 +120,7 @@ public:
 		if ( iter != _callbacks.end() )
 		{
 			_callbacks.erase( iter );
-			std::sort( _callbacks.begin(), _callbacks.end() );
+			std::stable_sort( _callbacks.begin(), _callbacks.end() );
 			return true;
 		}
 
@@ -168,7 +168,14 @@ private:
 		unsigned id = UINT_MAX;
 		int priority = 0;
 		function_t callback;
-		bool operator<( const callback_info &rhs ) const { return priority < rhs.priority; }
+		bool operator<( const callback_info &rhs ) const
+		{
+			if constexpr ( Reversed )
+				return priority > rhs.priority;
+			else
+				return priority < rhs.priority;
+		}
+
 		bool operator==( const function_t &f ) const { return callback == f; }
 	};
 
@@ -280,7 +287,7 @@ struct GL3D_API vfs
 	static bool load( const std::filesystem::path &path, detail::bytes_t &bytes );
 };
 
-GL3D_API extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & )> on_vfs_load;
+GL3D_API extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & ), true> on_vfs_load;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
