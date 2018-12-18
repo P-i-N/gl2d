@@ -110,11 +110,6 @@ protected:
 			indexCount += dc.indexCount;
 			return true;
 		}
-
-		bool can_be_instanced_with( const draw_call &dc ) const
-		{
-			return stateIndex == dc.stateIndex && primitive == dc.primitive && instanceData == dc.instanceData;
-		}
 	};
 
 	std::vector<draw_call> _drawCalls;
