@@ -1,4 +1,4 @@
-#define GL3D_IMPLEMENTATION
+#define GL3D_DYNAMIC
 #include <gl3d/gl3d_window.h>
 
 #define STB_RECT_PACK_IMPLEMENTATION

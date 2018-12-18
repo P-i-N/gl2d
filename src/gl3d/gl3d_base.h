@@ -14,7 +14,15 @@
 #define GL3D_ENUM_PLUS(_Type) \
 	constexpr auto operator+( _Type t ) { return static_cast<std::underlying_type_t<_Type>>( t ); }
 
-#define GL3D_API
+#if defined(GL3D_DYNAMIC)
+	#if defined(GL3D_BUILDING)
+		#define GL3D_API __declspec(dllexport)
+	#else
+		#define GL3D_API __declspec(dllimport)
+	#endif
+#else
+	#define GL3D_API
+#endif
 
 namespace gl3d {
 
@@ -257,7 +265,7 @@ struct GL3D_API log
 	};
 };
 
-extern detail::callback_chain<void( const log::message & )> on_log_message;
+GL3D_API extern detail::callback_chain<void( const log::message & )> on_log_message;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -268,7 +276,7 @@ struct GL3D_API vfs
 	static bool load( const std::filesystem::path &path, detail::bytes_t &bytes );
 };
 
-extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & )> on_vfs_load;
+GL3D_API extern detail::callback_chain<bool( const std::filesystem::path &, detail::bytes_t & )> on_vfs_load;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -429,13 +437,13 @@ struct input_event
 	input_event( type t, unsigned id ) : event_type( t ), window_id( id ) { }
 };
 
-extern detail::callback_chain<void()> on_tick;
-extern detail::callback_chain<bool( input_event & )> on_input_event;
+GL3D_API extern detail::callback_chain<void()> on_tick;
+GL3D_API extern detail::callback_chain<bool( input_event & )> on_input_event;
 
-extern detail::keyboard_state keyboard;
-extern detail::mouse_state mouse;
-extern detail::gamepad_state gamepad[detail::max_gamepads];
-extern detail::space_navigator_state space_navigator;
+GL3D_API extern detail::keyboard_state keyboard;
+GL3D_API extern detail::mouse_state mouse;
+GL3D_API extern detail::gamepad_state gamepad[detail::max_gamepads];
+GL3D_API extern detail::space_navigator_state space_navigator;
 
 } // namespace gl3d
 

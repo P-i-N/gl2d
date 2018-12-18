@@ -8,7 +8,7 @@
 
 namespace gl3d {
 
-struct font
+struct GL3D_API font
 {
 	using ptr = std::shared_ptr<font>;
 
@@ -38,7 +38,7 @@ enum class sorting_mode { none = 0, front_to_back, back_to_front };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class quick_draw
+class GL3D_API quick_draw
 {
 public:
 	using ptr = std::shared_ptr<quick_draw>;

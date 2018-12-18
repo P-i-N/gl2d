@@ -1,21 +1,23 @@
 Projects =
 {
-  -- gl3d
+  -- gl3d.dll
   {
     dir = "src/gl3d",
-    type = "static",
-    defines = { "GL3D_IMPLEMENTATION" }
+    type = "dynamic",
+    defines = { "GL3D_IMPLEMENTATION", "GL3D_DYNAMIC" }
   },
 
-  -- test
+  -- testbench
   {
-    dir = "src/test",
+    dir = "tests/testbench",
+    includes = { "src" },
     type = "console",
+    links = { "gl3d" }
   },
 
   -- fontconv
   {
-    dir = "src/fontconv",
+    dir = "tools/fontconv",
     language = "C#",
     type = "console",
     links = { "System.Drawing" }

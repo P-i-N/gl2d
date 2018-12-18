@@ -11,12 +11,11 @@
 
 namespace gl3d {
 
-extern const unsigned &frame_id;
-extern const float &time;
-extern const float &delta;
-extern unsigned fps_limit;
-
-void run();
+GL3D_API extern const unsigned &frame_id;
+GL3D_API extern const float &time;
+GL3D_API extern const float &delta;
+GL3D_API extern unsigned fps_limit;
+GL3D_API void run();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -33,7 +32,7 @@ GL3D_ENUM_PLUS( window_flag )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class window
+class GL3D_API window
 {
 public:
 	using ptr = std::shared_ptr<window>;
@@ -109,7 +108,7 @@ struct window_event
 	window_event( type t, unsigned id ): event_type( t ), window_id( id ) { }
 };
 
-extern detail::callback_chain<bool( window_event & )> on_window_event;
+GL3D_API extern detail::callback_chain<bool( window_event & )> on_window_event;
 
 } // namespace gl3d
 
