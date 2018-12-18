@@ -15,6 +15,10 @@
 	constexpr auto operator+( _Type t ) { return static_cast<std::underlying_type_t<_Type>>( t ); }
 
 #if defined(GL3D_DYNAMIC)
+	#if defined(_MSC_VER)
+		// TODO: Find a better way?
+		#pragma warning(disable: 4251)
+	#endif
 	#if defined(GL3D_BUILDING)
 		#define GL3D_API __declspec(dllexport)
 	#else
