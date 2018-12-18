@@ -50,6 +50,7 @@
   - [ ] hybrid clustered forward pipeline?
   - [ ] PBR?
 - [ ] ImGui support with multiple viewports
+- [ ] support building as DLL
 
 ---
 
