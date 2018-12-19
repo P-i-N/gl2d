@@ -47,6 +47,9 @@ namespace detail { struct window_impl; }
 
 namespace detail {
 
+static constexpr size_t max_render_targets = 8;
+
+//---------------------------------------------------------------------------------------------------------------------
 using bytes_t = std::vector<uint8_t>;
 using files_t = std::vector<std::filesystem::path>;
 

@@ -944,20 +944,6 @@ void cmd_queue::bind_texture( texture::ptr tex, unsigned slot )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_render_target( texture::ptr tex, unsigned slot, unsigned layer, unsigned mipLevel )
-{
-	if ( _deferred )
-	{
-		write( cmd_type::bind_render_target, slot, layer, mipLevel );
-		_resources.push_back( tex );
-	}
-	else
-	{
-
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
 void cmd_queue::bind_storage_buffer( buffer::ptr buff, unsigned slot, size_t offset, size_t length )
 {
 	if ( _deferred )
@@ -980,6 +966,34 @@ void cmd_queue::bind_storage_buffer( buffer::ptr buff, unsigned slot, size_t off
 			    slot, buff->id(),
 			    static_cast<unsigned>( offset ),
 			    static_cast<unsigned>( length ) );
+		}
+		else
+		{
+
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_render_targets( const std::initializer_list<render_target> &colorTargets, render_target depthStencilTarget, bool adjustViewport )
+{
+	if ( _deferred )
+	{
+		write( cmd_type::bind_render_targets, colorTargets.size(), adjustViewport );
+		for ( auto &rt : colorTargets )
+		{
+			write( rt.layer, rt.mip_level );
+			_resources.push_back( rt.target );
+		}
+
+		write( depthStencilTarget.layer, depthStencilTarget.mip_level );
+		_resources.push_back( depthStencilTarget.target );
+	}
+	else
+	{
+		if ( !colorTargets.size() && !depthStencilTarget.target )
+		{
+
 		}
 		else
 		{
@@ -1467,7 +1481,7 @@ void cmd_queue::execute( gl_state *state )
 			}
 			break;
 
-			case cmd_type::bind_render_target:
+			case cmd_type::bind_render_targets:
 			{
 				assert( 0 );
 			}
@@ -1689,6 +1703,14 @@ unsigned context::get_or_create_layout_vao( const detail::layout *layout )
 	}
 
 	return vaoID;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+unsigned context::get_or_create_fbo( const std::initializer_list<render_target> &colorTargets, const render_target &depthStencilTarget )
+{
+	unsigned fboID = 0;
+
+	return fboID;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

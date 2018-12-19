@@ -309,9 +309,13 @@ int main()
 				float y = 2.0f * cos( rot.x );
 				float z = 2.0f + 2.0f * rot.y;
 
+				ctx->bind_render_targets( rt, dt );
+
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),
 				              mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
+
+				ctx->unbind_render_targets();
 			}
 			break;
 		}

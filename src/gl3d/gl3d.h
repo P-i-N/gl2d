@@ -487,6 +487,8 @@ public:
 		return 1;
 	}
 
+	float aspect_ratio() const { return static_cast<float>( _dimensions.x ) / _dimensions.y; }
+
 	void wrap( gl_enum u, gl_enum v, gl_enum w );
 	void filter( gl_enum minFilter, gl_enum magFilter );
 
@@ -608,8 +610,35 @@ public:
 	void bind_index_buffer( buffer::ptr indices, bool use16bits = false, size_t offset = 0 );
 
 	void bind_texture( texture::ptr tex, unsigned slot );
-	void bind_render_target( texture::ptr tex, unsigned slot, unsigned layer = 0, unsigned mipLevel = 0 );
 	void bind_storage_buffer( buffer::ptr buff, unsigned slot, size_t offset = 0, size_t length = size_t( -1 ) );
+
+	struct GL3D_API render_target
+	{
+		texture::ptr target;
+		unsigned layer = 0;
+		unsigned mip_level = 0;
+
+		render_target() = default;
+
+		render_target( std::nullptr_t ): target( nullptr ) { }
+
+		render_target( texture::ptr tex, unsigned layerIndex = 0, unsigned mip = 0 )
+			: target( tex )
+			, layer( layerIndex )
+			, mip_level( mip )
+		{
+
+		}
+	};
+
+	void bind_render_targets( const std::initializer_list<render_target> &colorTargets, render_target depthStencilTarget, bool adjustViewport = true );
+
+	void bind_render_targets( render_target colorTarget, render_target depthStencilTarget, bool adjustViewport = true )
+	{
+		bind_render_targets( { colorTarget }, depthStencilTarget, adjustViewport );
+	}
+
+	void unbind_render_targets( bool adjustViewport = true ) { bind_render_targets( {}, nullptr, adjustViewport ); }
 
 	void set_uniform_block( const detail::location_variant &location, const void *data, size_t size );
 
@@ -784,7 +813,7 @@ protected:
 		update_texture, update_buffer, resize_buffer,
 		bind_blend_state, bind_depth_stencil_state, bind_rasterizer_state,
 		bind_shader, bind_vertex_buffer, bind_vertex_attribute, bind_index_buffer,
-		bind_texture, bind_render_target, bind_storage_buffer,
+		bind_texture, bind_storage_buffer, bind_render_targets,
 		set_uniform_block, set_uniform, set_uniform_array,
 		draw, draw_indexed,
 		execute,
@@ -812,6 +841,8 @@ public:
 
 	unsigned get_or_create_layout_vao( const detail::layout *layout );
 
+	unsigned get_or_create_fbo( const std::initializer_list<render_target> &colorTargets, const render_target &depthStencilTarget );
+
 protected:
 	void *_window_native_handle = nullptr;
 	void *_native_handle = nullptr;
@@ -824,6 +855,15 @@ protected:
 	};
 
 	std::unordered_map<std::uintptr_t, vao_desc> _layoutVAOs;
+
+	struct fbo_desc
+	{
+		render_target color_targets[max_render_targets];
+		render_target depth_stencil_target;
+		unsigned fbo_id = 0;
+		unsigned unused_frames = 0;
+	};
+
 	gl_state _glState;
 };
 
