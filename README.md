@@ -29,7 +29,7 @@
   - [x] correct VAO handling
   - [ ] erase unused VAOs after while (300 frames/5 seconds?)
   - [ ] using custom vertex attributes
-  - [ ] support (multiple) render targets
+  - [x] support (multiple) render targets
   - [ ] multi draw indirect
 - [ ] asynchronous upload context: `gl3d::detail::async_upload_context`
   - [ ] buffer updates
