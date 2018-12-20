@@ -310,6 +310,8 @@ int main()
 				float z = 2.0f + 2.0f * rot.y;
 
 				ctx->bind_render_targets( rt, dt );
+				ctx->clear_color( { 0.4f, 0.2f, 0.1f, 1.0f } );
+				ctx->clear_depth( 1.0f );
 
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),

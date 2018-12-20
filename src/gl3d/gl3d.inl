@@ -60,7 +60,10 @@ internal_format get_internal_format( gl_format format )
 	{
 		{ gl_format::R8, { gl_enum::RED, gl_enum::UNSIGNED_BYTE, 1 } },
 		{ gl_format::RGB8, { gl_enum::RGB, gl_enum::UNSIGNED_BYTE, 3 } },
-		{ gl_format::RGBA8, { gl_enum::RGBA, gl_enum::UNSIGNED_BYTE, 4 } }
+		{ gl_format::RGBA8, { gl_enum::RGBA, gl_enum::UNSIGNED_BYTE, 4 } },
+		{ gl_format::DEPTH_COMPONENT32F, { gl_enum::DEPTH_COMPONENT, gl_enum::FLOAT, 4 } },
+		{ gl_format::DEPTH24_STENCIL8, { gl_enum::DEPTH_STENCIL, gl_enum::UNSIGNED_INT_24_8, 4 } },
+		{ gl_format::DEPTH32F_STENCIL8, { gl_enum::DEPTH_STENCIL, gl_enum::FLOAT_32_UNSIGNED_INT_24_8_REV, 8 } },
 	};
 
 	if ( auto iter = s_internalFormatMap.find( format ); iter != s_internalFormatMap.end() )
@@ -975,15 +978,16 @@ void cmd_queue::bind_storage_buffer( buffer::ptr buff, unsigned slot, size_t off
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void cmd_queue::bind_render_targets( const std::initializer_list<render_target> &colorTargets, render_target depthStencilTarget, bool adjustViewport )
+void cmd_queue::bind_render_targets( const render_target *colorTargets, size_t count, const render_target &depthStencilTarget, bool adjustViewport )
 {
 	if ( _deferred )
 	{
-		write( cmd_type::bind_render_targets, colorTargets.size(), adjustViewport );
-		for ( auto &rt : colorTargets )
+		write( cmd_type::bind_render_targets, count, adjustViewport );
+		while ( count-- )
 		{
-			write( rt.layer, rt.mip_level );
-			_resources.push_back( rt.target );
+			write( colorTargets->layer, colorTargets->mip_level );
+			_resources.push_back( colorTargets->target );
+			++colorTargets;
 		}
 
 		write( depthStencilTarget.layer, depthStencilTarget.mip_level );
@@ -991,15 +995,47 @@ void cmd_queue::bind_render_targets( const std::initializer_list<render_target> 
 	}
 	else
 	{
-		if ( !colorTargets.size() && !depthStencilTarget.target )
-		{
+		auto fboID = detail::tl_currentContext->get_or_create_fbo( colorTargets, count, depthStencilTarget );
+		gl.BindFramebuffer( gl_enum::DRAW_FRAMEBUFFER, fboID );
 
-		}
-		else
+		if ( adjustViewport )
 		{
+			uvec2 size( 0, 0 );
 
+			if ( fboID )
+			{
+				if ( count )
+				{
+					auto mip = colorTargets->mip_level;
+					size = { colorTargets->target->width( mip ), colorTargets->target->height( mip ) };
+				}
+				else
+				{
+					auto mip = depthStencilTarget.mip_level;
+					size = { depthStencilTarget.target->width( mip ), depthStencilTarget.target->height( mip ) };
+				}
+			}
+			else
+				size = detail::tl_currentContext->default_framebuffer_size();
+
+			if ( size.x && size.y )
+				glViewport( 0, 0, static_cast<int>( size.x ), static_cast<int>( size.y ) );
 		}
 	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void cmd_queue::bind_render_targets( const std::initializer_list<render_target> &colorTargets, const render_target &depthStencilTarget, bool adjustViewport )
+{
+	assert( colorTargets.size() <= detail::max_render_targets );
+
+	render_target tempCopy[detail::max_render_targets];
+
+	unsigned i = 0;
+	for ( const auto &ct : colorTargets )
+		tempCopy[i++] = ct;
+
+	bind_render_targets( tempCopy, colorTargets.size(), depthStencilTarget, adjustViewport );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1658,11 +1694,12 @@ context::~context()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void context::make_current()
+void context::make_current( const uvec2 &defaultFBSize )
 {
 	if ( wglGetCurrentContext() != HGLRC( _native_handle ) )
 		wglMakeCurrent( GetDC( HWND( _window_native_handle ) ), HGLRC( _native_handle ) );
 
+	_defaultFramebufferSize = defaultFBSize;
 	tl_currentContext = this;
 }
 #else
@@ -1706,11 +1743,84 @@ unsigned context::get_or_create_layout_vao( const detail::layout *layout )
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-unsigned context::get_or_create_fbo( const std::initializer_list<render_target> &colorTargets, const render_target &depthStencilTarget )
+unsigned context::get_or_create_fbo( const render_target *colorTargets, size_t count, const render_target &depthStencilTarget )
 {
-	unsigned fboID = 0;
+	// Default framebuffer
+	if ( ( !colorTargets || !count ) && !depthStencilTarget.target )
+		return 0;
 
-	return fboID;
+	for ( auto &desc : _fboDescs )
+	{
+		if ( desc.num_color_targets != count || desc.depth_stencil_target != depthStencilTarget )
+			continue;
+
+		bool found = true;
+		for ( size_t i = 0; i < count; ++i )
+		{
+			if ( desc.color_targets[i] != colorTargets[i] )
+			{
+				found = false;
+				break;
+			}
+		}
+
+		if ( !found )
+			continue;
+
+		desc.unused_frames = 0;
+		return desc.fbo_id;
+	}
+
+	auto &desc = _fboDescs.emplace_back();
+	gl.CreateFramebuffers( 1, &desc.fbo_id );
+
+	for ( size_t i = 0; i < count; ++i )
+	{
+		auto &ct = colorTargets[i];
+
+		if ( ct.target )
+		{
+			ct.target->synchronize();
+
+			if ( ct.target->type() == gl_enum::TEXTURE_2D )
+			{
+				gl.NamedFramebufferTexture(
+				    desc.fbo_id,
+				    static_cast<gl_enum>( +gl_enum::COLOR_ATTACHMENT0 + i ),
+				    ct.target->id(), ct.mip_level );
+			}
+			else
+			{
+				gl.NamedFramebufferTextureLayer(
+				    desc.fbo_id,
+				    static_cast<gl_enum>( +gl_enum::COLOR_ATTACHMENT0 + i ),
+				    ct.target->id(), ct.mip_level, ct.layer );
+			}
+		}
+
+		desc.color_targets[i] = ct;
+	}
+
+	desc.num_color_targets = static_cast<unsigned>( count );
+
+	if ( depthStencilTarget.target )
+	{
+		depthStencilTarget.target->synchronize();
+		gl.NamedFramebufferTexture(
+		    desc.fbo_id,
+		    gl_enum::DEPTH_ATTACHMENT,
+		    depthStencilTarget.target->id(), depthStencilTarget.mip_level );
+
+		desc.depth_stencil_target = depthStencilTarget;
+	}
+
+	if ( gl.CheckNamedFramebufferStatus( desc.fbo_id, gl_enum::FRAMEBUFFER ) != gl_enum::FRAMEBUFFER_COMPLETE )
+	{
+		_fboDescs.pop_back();
+		return 0;
+	}
+
+	return desc.fbo_id;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

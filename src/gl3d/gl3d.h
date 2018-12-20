@@ -66,8 +66,8 @@ struct gl_api
 	GL_PROC(void, UniformHandleui64vARB, int, unsigned, const uint64_t *)
 
 	/// Buffers
-	GL_PROC(   void, CreateBuffers, int, unsigned *)
-	GL_PROC(   void, DeleteBuffers, int, const unsigned *)
+	GL_PROC(   void, CreateBuffers, unsigned, unsigned *)
+	GL_PROC(   void, DeleteBuffers, unsigned, const unsigned *)
 	GL_PROC(   void, NamedBufferData, unsigned, int, const void *, gl_enum)
 	GL_PROC(   void, NamedBufferStorage, unsigned, int, const void *, unsigned)
 	GL_PROC( void *, MapNamedBuffer, unsigned, unsigned)
@@ -78,8 +78,8 @@ struct gl_api
 	GL_PROC(   void, BindBufferRange, gl_enum, unsigned, unsigned, ptrdiff_t, size_t)
 
 	/// Vertex array objects
-	GL_PROC(void, CreateVertexArrays, int, unsigned *)
-	GL_PROC(void, DeleteVertexArrays, int, const unsigned *)
+	GL_PROC(void, CreateVertexArrays, unsigned, unsigned *)
+	GL_PROC(void, DeleteVertexArrays, unsigned, const unsigned *)
 	GL_PROC(void, BindVertexArray, unsigned)
 	GL_PROC(void, EnableVertexArrayAttrib, unsigned, unsigned)
 	GL_PROC(void, DisableVertexArrayAttrib, unsigned, unsigned)
@@ -99,6 +99,14 @@ struct gl_api
 	GL_PROC(    void, MakeTextureHandleResidentARB, uint64_t)
 	GL_PROC(    void, MakeTextureHandleNonResidentARB, uint64_t)
 	GL_PROC(    void, GenerateTextureMipmap, unsigned)
+
+	/// Frame buffer objects
+	GL_PROC(   void, CreateFramebuffers, unsigned, unsigned *)
+	GL_PROC(   void, DeleteFramebuffers, unsigned, const unsigned *)
+	GL_PROC(   void, BindFramebuffer, gl_enum, unsigned)
+	GL_PROC(   void, NamedFramebufferTexture, unsigned, gl_enum, unsigned, int)
+	GL_PROC(   void, NamedFramebufferTextureLayer, unsigned, gl_enum, unsigned, int, int)
+	GL_PROC(gl_enum, CheckNamedFramebufferStatus, unsigned, gl_enum)
 
 	/// Draw calls
 	GL_PROC(void, DrawArraysInstancedBaseInstance, gl_enum, int, unsigned, unsigned, unsigned)
@@ -142,6 +150,9 @@ enum class gl_enum : unsigned
 
 	RED = 0x1903,
 	RG = 0x8227, RGB = 0x1907, BGR = 0x80E0, BGRA, RGBA = 0x1908, STENCIL_INDEX = 0x1901, DEPTH_COMPONENT,
+	DEPTH_STENCIL = 0x84F9,
+	FLOAT_32_UNSIGNED_INT_24_8_REV = 0x8DAD,
+	UNSIGNED_INT_24_8 = 0x84FA,
 
 	CLAMP = 0x2900, REPEAT,
 	CLAMP_TO_EDGE = 0x812F,
@@ -162,6 +173,14 @@ enum class gl_enum : unsigned
 	CW = 0x0900, CCW,
 
 	TEXTURE0 = 0x84C0,
+	COLOR_ATTACHMENT0 = 0x8CE0,
+	DEPTH_STENCIL_ATTACHMENT = 0x821A,
+	DEPTH_ATTACHMENT = 0x8D00,
+	STENCIL_ATTACHMENT = 0x8D20,
+
+	READ_FRAMEBUFFER = 0x8CA8, DRAW_FRAMEBUFFER,
+	FRAMEBUFFER_COMPLETE = 0x8CD5,
+	FRAMEBUFFER = 0x8D40,
 
 	ARRAY_BUFFER = 0x8892, ELEMENT_ARRAY_BUFFER,
 
@@ -226,10 +245,9 @@ enum class gl_format : unsigned
 	R8I, R8UI, R16I, R16UI, R32I, R32UI,
 	RG8I, RG8UI, RG16I, RG16UI, RG32I, RG32UI,
 
-	DEPTH24_STENCIL8 = 0x88F0,
 	DEPTH_COMPONENT32F = 0x8CAC,
+	DEPTH24_STENCIL8 = 0x88F0,
 	DEPTH32F_STENCIL8 = 0x8CAD,
-	FLOAT_32_UNSIGNED_INT_24_8_REV = 0x8DAD,
 };
 
 GL3D_ENUM_PLUS( gl_format )
@@ -629,13 +647,18 @@ public:
 		{
 
 		}
+
+		bool operator==( const render_target &rhs ) const { return target == rhs.target && layer == rhs.layer && mip_level == rhs.mip_level; }
+		bool operator!=( const render_target &rhs ) const { return !( ( *this ) == rhs ); }
 	};
 
-	void bind_render_targets( const std::initializer_list<render_target> &colorTargets, render_target depthStencilTarget, bool adjustViewport = true );
+	void bind_render_targets( const render_target *colorTargets, size_t count, const render_target &depthStencilTarget, bool adjustViewport = true );
 
-	void bind_render_targets( render_target colorTarget, render_target depthStencilTarget, bool adjustViewport = true )
+	void bind_render_targets( const std::initializer_list<render_target> &colorTargets, const render_target &depthStencilTarget, bool adjustViewport = true );
+
+	void bind_render_targets( const render_target &colorTarget, const render_target &depthStencilTarget, bool adjustViewport = true )
 	{
-		bind_render_targets( { colorTarget }, depthStencilTarget, adjustViewport );
+		bind_render_targets( &colorTarget, 1, depthStencilTarget, adjustViewport );
 	}
 
 	void unbind_render_targets( bool adjustViewport = true ) { bind_render_targets( {}, nullptr, adjustViewport ); }
@@ -837,11 +860,12 @@ public:
 	void *window_native_handle() const { return _window_native_handle; }
 	void *native_handle() const { return _native_handle; }
 
-	void make_current();
+	void make_current( const uvec2 &defaultFBSize = { 0, 0 } );
 
 	unsigned get_or_create_layout_vao( const detail::layout *layout );
+	unsigned get_or_create_fbo( const render_target *colorTargets, size_t count, const render_target &depthStencilTarget );
 
-	unsigned get_or_create_fbo( const std::initializer_list<render_target> &colorTargets, const render_target &depthStencilTarget );
+	uvec2 default_framebuffer_size() const { return _defaultFramebufferSize; }
 
 protected:
 	void *_window_native_handle = nullptr;
@@ -860,11 +884,15 @@ protected:
 	{
 		render_target color_targets[max_render_targets];
 		render_target depth_stencil_target;
+		unsigned num_color_targets = 0;
 		unsigned fbo_id = 0;
 		unsigned unused_frames = 0;
 	};
 
+	std::vector<fbo_desc> _fboDescs;
+
 	gl_state _glState;
+	uvec2 _defaultFramebufferSize;
 };
 
 //---------------------------------------------------------------------------------------------------------------------

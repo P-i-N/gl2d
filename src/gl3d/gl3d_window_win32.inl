@@ -396,7 +396,7 @@ void update()
 	if ( auto w = window::from_id( 0 ); w != nullptr )
 	{
 		auto ctx = w->context();
-		ctx->make_current();
+		ctx->make_current( w->size() );
 		glViewport( 0, 0, w->size().x, w->size().y );
 	}
 
@@ -405,9 +405,9 @@ void update()
 	for ( const auto &w : g_windows )
 	{
 		auto ctx = w->context();
-		ctx->make_current();
-
+		ctx->make_current( w->size() );
 		glViewport( 0, 0, w->size().x, w->size().y );
+
 		on_window_event( window_event( window_event::type::paint, w->id() ) );
 
 		auto projMatrix = mat4::make_ortho( 0, float( w->size().x ), float( w->size().y ), 0, -1, 1 );
