@@ -43,6 +43,7 @@
   - [ ] blending modes
   - [ ] sorting modes
 - [ ] simple scene API
+  - [ ] components
   - [ ] node system/hierarchy
   - [ ] BVH partitioning
   - [ ] frustum culling
@@ -51,6 +52,7 @@
   - [ ] PBR?
 - [ ] ImGui support with multiple viewports
 - [x] support building as DLL
+- [ ] distinguish primary & secondary OpenGL contexts
 
 ---
 
