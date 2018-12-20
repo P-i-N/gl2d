@@ -213,8 +213,8 @@ int main()
 
 	window::create( "Main Window", { 1280, 800 } );
 
-	auto rt = texture::create( gl_format::RGBA8, uvec2{ 256, 256 } );
-	auto dt = texture::create( gl_format::DEPTH_COMPONENT32F, uvec2{ 256, 256 } );
+	auto rt = texture::create( gl_format::RGBA8, uvec2{ 1024, 512 } );
+	auto dt = texture::create( gl_format::DEPTH_COMPONENT32F, uvec2{ rt->width(), rt->height() } );
 
 	auto qd3D = std::make_shared<quick_draw>();
 
@@ -315,9 +315,22 @@ int main()
 
 				qd3D->render( ctx,
 				              mat4::make_inverse( mat4::make_look_at( vec3{ x, y, z }, vec3(), vec3::unit_z() ) ),
-				              mat4::make_perspective( 90.0f, w->aspect_ratio(), 0.01f, 1000.0f ) );
+				              mat4::make_perspective( 90.0f, rt->aspect_ratio(), 0.01f, 1000.0f ) );
 
 				ctx->unbind_render_targets();
+
+				auto qd = w->quick_draw();
+				qd->bind_texture( rt );
+				qd->begin( gl_enum::QUADS );
+				qd->uv( { 0, 1 } );
+				qd->vertex( { 0, 0 } );
+				qd->uv( { 1, 1 } );
+				qd->vertex( { rt->width(), 0 } );
+				qd->uv( { 1, 0 } );
+				qd->vertex( { rt->width(), rt->height() } );
+				qd->uv( { 0, 0 } );
+				qd->vertex( { 0, rt->height() } );
+				qd->end();
 			}
 			break;
 		}
