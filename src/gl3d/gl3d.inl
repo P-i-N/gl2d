@@ -48,22 +48,22 @@ int find_uniform_id( const detail::location_variant &location )
 //---------------------------------------------------------------------------------------------------------------------
 struct internal_format
 {
-	gl_enum components = gl_enum::NONE;
-	gl_enum type = gl_enum::NONE;
+	gl_format components = gl_format::NONE;
+	gl_type type = gl_type::NONE;
 	unsigned pixel_size = 0;
 };
 
 //---------------------------------------------------------------------------------------------------------------------
-internal_format get_internal_format( gl_format format )
+internal_format get_internal_format( gl_internal_format format )
 {
-	static std::unordered_map<gl_format, internal_format> s_internalFormatMap =
+	static std::unordered_map<gl_internal_format, internal_format> s_internalFormatMap =
 	{
-		{ gl_format::R8, { gl_enum::RED, gl_enum::UNSIGNED_BYTE, 1 } },
-		{ gl_format::RGB8, { gl_enum::RGB, gl_enum::UNSIGNED_BYTE, 3 } },
-		{ gl_format::RGBA8, { gl_enum::RGBA, gl_enum::UNSIGNED_BYTE, 4 } },
-		{ gl_format::DEPTH_COMPONENT32F, { gl_enum::DEPTH_COMPONENT, gl_enum::FLOAT, 4 } },
-		{ gl_format::DEPTH24_STENCIL8, { gl_enum::DEPTH_STENCIL, gl_enum::UNSIGNED_INT_24_8, 4 } },
-		{ gl_format::DEPTH32F_STENCIL8, { gl_enum::DEPTH_STENCIL, gl_enum::FLOAT_32_UNSIGNED_INT_24_8_REV, 8 } },
+		{ gl_internal_format::R8, { gl_format::RED, gl_type::UNSIGNED_BYTE, 1 } },
+		{ gl_internal_format::RGB8, { gl_format::RGB, gl_type::UNSIGNED_BYTE, 3 } },
+		{ gl_internal_format::RGBA8, { gl_format::RGBA, gl_type::UNSIGNED_BYTE, 4 } },
+		{ gl_internal_format::DEPTH_COMPONENT32F, { gl_format::DEPTH_COMPONENT, gl_type::FLOAT, 4 } },
+		{ gl_internal_format::DEPTH24_STENCIL8, { gl_format::DEPTH_STENCIL, gl_type::UNSIGNED_INT_24_8, 4 } },
+		{ gl_internal_format::DEPTH32F_STENCIL8, { gl_format::DEPTH_STENCIL, gl_type::FLOAT_32_UNSIGNED_INT_24_8_REV, 8 } },
 	};
 
 	if ( auto iter = s_internalFormatMap.find( format ); iter != s_internalFormatMap.end() )
@@ -412,7 +412,7 @@ texture::ptr texture::white_pixel()
 	if ( !detail::g_whitePixel )
 	{
 		uint32_t whiteRGBA = 0xFFFFFFFFu;
-		detail::g_whitePixel = texture::create( gl_format::RGBA8, uvec2{ 1, 1 }, &whiteRGBA );
+		detail::g_whitePixel = texture::create( gl_internal_format::RGBA8, uvec2{ 1, 1 }, &whiteRGBA );
 	}
 
 	return detail::g_whitePixel;
@@ -439,7 +439,7 @@ texture::ptr texture::checkerboard()
 		};
 #undef W
 #undef B
-		detail::g_checkerboard = texture::create( gl_format::RGBA8, uvec2 { 8, 8 }, checkerboardRGBA );
+		detail::g_checkerboard = texture::create( gl_internal_format::RGBA8, uvec2 { 8, 8 }, checkerboardRGBA );
 		detail::g_checkerboard->filter_mag( gl_enum::NEAREST );
 	}
 
@@ -487,14 +487,14 @@ texture::ptr texture::debug_grid()
 			}
 		}
 
-		detail::g_debugGrid = texture::create( gl_format::RGBA8, uvec2{ textureSize, textureSize }, pixels.get() );
+		detail::g_debugGrid = texture::create( gl_internal_format::RGBA8, uvec2{ textureSize, textureSize }, pixels.get() );
 	}
 
 	return detail::g_debugGrid;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips )
+texture::texture( gl_enum type, gl_internal_format format, const uvec3 &dimensions, bool hasMips )
 	: _type( type )
 	, _format( format )
 	, _dimensions( dimensions )
@@ -524,7 +524,7 @@ texture::texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool 
 
 //---------------------------------------------------------------------------------------------------------------------
 texture::texture(
-    gl_enum type, gl_format format, const uvec3 &dimensions,
+    gl_enum type, gl_internal_format format, const uvec3 &dimensions,
     const detail::type_range<part> &parts,
     bool buildMips, bool makeCopy )
 	: texture( type, format, dimensions, buildMips )
@@ -1062,7 +1062,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, bool valu
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::BOOL, value );
+		write( cmd_type::set_uniform, gl_type::BOOL, value );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1074,7 +1074,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, int value
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::INT, value );
+		write( cmd_type::set_uniform, gl_type::INT, value );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1086,7 +1086,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, float val
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT, value );
+		write( cmd_type::set_uniform, gl_type::FLOAT, value );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1098,7 +1098,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const vec
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT_VEC2, value );
+		write( cmd_type::set_uniform, gl_type::FLOAT_VEC2, value );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1110,7 +1110,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const vec
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT_VEC3, value );
+		write( cmd_type::set_uniform, gl_type::FLOAT_VEC3, value );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1122,7 +1122,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const vec
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT_VEC4, value );
+		write( cmd_type::set_uniform, gl_type::FLOAT_VEC4, value );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1134,7 +1134,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const mat
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT_MAT3, value, transpose );
+		write( cmd_type::set_uniform, gl_type::FLOAT_MAT3, value, transpose );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1146,7 +1146,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const mat
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform, gl_enum::FLOAT_MAT4, value, transpose );
+		write( cmd_type::set_uniform, gl_type::FLOAT_MAT4, value, transpose );
 		write_location_variant( location );
 	}
 	else if ( auto id = find_uniform_id( location ); id >= 0 )
@@ -1172,7 +1172,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const uin
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform_array, gl_enum::UNSIGNED_INT64 );
+		write( cmd_type::set_uniform_array, gl_type::UNSIGNED_INT64 );
 		write_data( values, sizeof( decltype( *values ) ) * count );
 		write_location_variant( location );
 	}
@@ -1185,7 +1185,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const uve
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform_array, gl_enum::UNSIGNED_INT_VEC3 );
+		write( cmd_type::set_uniform_array, gl_type::UNSIGNED_INT_VEC3 );
 		write_data( values, sizeof( decltype( *values ) ) * count );
 		write_location_variant( location );
 	}
@@ -1198,7 +1198,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const ive
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform_array, gl_enum::INT_VEC4 );
+		write( cmd_type::set_uniform_array, gl_type::INT_VEC4 );
 		write_data( values, sizeof( decltype( *values ) ) * count );
 		write_location_variant( location );
 	}
@@ -1211,7 +1211,7 @@ void cmd_queue::set_uniform( const detail::location_variant &location, const mat
 {
 	if ( _deferred )
 	{
-		write( cmd_type::set_uniform_array, gl_enum::FLOAT_MAT4, transpose );
+		write( cmd_type::set_uniform_array, gl_type::FLOAT_MAT4, transpose );
 		write_data( values, sizeof( decltype( *values ) ) * count );
 		write_location_variant( location );
 	}
@@ -1338,7 +1338,7 @@ void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, siz
 			gl.DrawElementsInstancedBaseInstance(
 			    primitive,
 			    static_cast<int>( count ),
-			    gl_enum::UNSIGNED_SHORT,
+			    gl_type::UNSIGNED_SHORT,
 			    reinterpret_cast<const void *>( _state->current_ib_offset + 2 * first ),
 			    static_cast<unsigned>( instanceCount ),
 			    static_cast<unsigned>( instanceBase ) );
@@ -1348,7 +1348,7 @@ void cmd_queue::draw_indexed( gl_enum primitive, size_t first, size_t count, siz
 			gl.DrawElementsInstancedBaseInstance(
 			    primitive,
 			    static_cast<int>( count ),
-			    gl_enum::UNSIGNED_INT,
+			    gl_type::UNSIGNED_INT,
 			    reinterpret_cast<const void *>( _state->current_ib_offset + 4 * first ),
 			    static_cast<unsigned>( instanceCount ),
 			    static_cast<unsigned>( instanceBase ) );
@@ -1554,16 +1554,16 @@ void cmd_queue::execute( gl_state *state )
 						set_uniform( read_location_variant(), value, transpose ); \
 					} break
 
-				switch ( read<gl_enum>() )
+				switch ( read<gl_type>() )
 				{
-					case CASE_TYPE( gl_enum::BOOL, bool );
-					case CASE_TYPE( gl_enum::INT, int );
-					case CASE_TYPE( gl_enum::FLOAT, float );
-					case CASE_TYPE( gl_enum::FLOAT_VEC2, vec2 );
-					case CASE_TYPE( gl_enum::FLOAT_VEC3, vec3 );
-					case CASE_TYPE( gl_enum::FLOAT_VEC4, vec4 );
-					case CASE_TYPE_MATRIX( gl_enum::FLOAT_MAT3, mat3 );
-					case CASE_TYPE_MATRIX( gl_enum::FLOAT_MAT4, mat4 );
+					case CASE_TYPE( gl_type::BOOL, bool );
+					case CASE_TYPE( gl_type::INT, int );
+					case CASE_TYPE( gl_type::FLOAT, float );
+					case CASE_TYPE( gl_type::FLOAT_VEC2, vec2 );
+					case CASE_TYPE( gl_type::FLOAT_VEC3, vec3 );
+					case CASE_TYPE( gl_type::FLOAT_VEC4, vec4 );
+					case CASE_TYPE_MATRIX( gl_type::FLOAT_MAT3, mat3 );
+					case CASE_TYPE_MATRIX( gl_type::FLOAT_MAT4, mat4 );
 
 					default:
 						assert( 0 );
@@ -1582,15 +1582,15 @@ void cmd_queue::execute( gl_state *state )
 					             reinterpret_cast<const _Type *>( data.first ), \
 					             data.second / sizeof( _Type ) ); break
 
-				auto type = read<gl_enum>();
+				auto type = read<gl_type>();
 				auto data = read_data();
 
 				switch ( type )
 				{
-					case CASE_TYPE( gl_enum::UNSIGNED_INT64, uint64_t );
-					case CASE_TYPE( gl_enum::UNSIGNED_INT_VEC3, uvec3 );
-					case CASE_TYPE( gl_enum::INT_VEC4, ivec4 );
-					case CASE_TYPE( gl_enum::FLOAT_MAT4, mat4 );
+					case CASE_TYPE( gl_type::UNSIGNED_INT64, uint64_t );
+					case CASE_TYPE( gl_type::UNSIGNED_INT_VEC3, uvec3 );
+					case CASE_TYPE( gl_type::INT_VEC4, ivec4 );
+					case CASE_TYPE( gl_type::FLOAT_MAT4, mat4 );
 
 					default:
 						assert( 0 );

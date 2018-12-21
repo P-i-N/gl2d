@@ -181,7 +181,7 @@ protected:
 		}
 
 		page.m_Texture = gl3d::texture::create(
-		                     gl3d::gl_format::R8,
+		                     gl3d::gl_internal_format::R8,
 		                     gl3d::uvec2{ page.m_Width, page.m_Height },
 		                     page.m_Pixels.get(), false, false );
 
@@ -213,8 +213,8 @@ int main()
 
 	window::create( "Main Window", { 1280, 800 } );
 
-	auto rt = texture::create( gl_format::RGBA8, uvec2{ 1024, 512 } );
-	auto dt = texture::create( gl_format::DEPTH_COMPONENT32F, uvec2{ rt->width(), rt->height() } );
+	auto rt = texture::create( gl_internal_format::RGBA8, uvec2{ 512, 512 } );
+	auto dt = texture::create( gl_internal_format::DEPTH_COMPONENT32F, uvec2{ rt->width(), rt->height() } );
 
 	auto qd3D = std::make_shared<quick_draw>();
 

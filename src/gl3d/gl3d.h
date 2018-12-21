@@ -83,7 +83,7 @@ struct gl_api
 	GL_PROC(void, BindVertexArray, unsigned)
 	GL_PROC(void, EnableVertexArrayAttrib, unsigned, unsigned)
 	GL_PROC(void, DisableVertexArrayAttrib, unsigned, unsigned)
-	GL_PROC(void, VertexArrayAttribFormat, unsigned, unsigned, int, gl_enum, unsigned char, unsigned)
+	GL_PROC(void, VertexArrayAttribFormat, unsigned, unsigned, int, gl_type, unsigned char, unsigned)
 	GL_PROC(void, VertexArrayAttribBinding, unsigned, unsigned, unsigned)
 	GL_PROC(void, VertexArrayVertexBuffer, unsigned, unsigned, unsigned, const void *, int)
 	GL_PROC(void, VertexArrayElementBuffer, unsigned, unsigned)
@@ -92,8 +92,8 @@ struct gl_api
 	GL_PROC(    void, CreateTextures, gl_enum, unsigned, unsigned *)
 	GL_PROC(    void, TextureParameteri, unsigned, gl_enum, int)
 	GL_PROC(    void, TextureParameterf, unsigned, gl_enum, float)
-	GL_PROC(    void, TextureStorage2D, unsigned, unsigned, gl_format, unsigned, unsigned)
-	GL_PROC(    void, TextureSubImage2D, unsigned, int, int, int, unsigned, unsigned, gl_enum, gl_enum, const void *)
+	GL_PROC(    void, TextureStorage2D, unsigned, unsigned, gl_internal_format, unsigned, unsigned)
+	GL_PROC(    void, TextureSubImage2D, unsigned, int, int, int, unsigned, unsigned, gl_format, gl_type, const void *)
 	GL_PROC(    void, BindTextureUnit, unsigned, unsigned)
 	GL_PROC(uint64_t, GetTextureHandleARB, unsigned)
 	GL_PROC(    void, MakeTextureHandleResidentARB, uint64_t)
@@ -110,9 +110,9 @@ struct gl_api
 
 	/// Draw calls
 	GL_PROC(void, DrawArraysInstancedBaseInstance, gl_enum, int, unsigned, unsigned, unsigned)
-	GL_PROC(void, DrawElementsInstancedBaseInstance, gl_enum, unsigned, gl_enum, const void *, unsigned, unsigned)
+	GL_PROC(void, DrawElementsInstancedBaseInstance, gl_enum, unsigned, gl_type, const void *, unsigned, unsigned)
 	GL_PROC(void, MultiDrawArraysIndirect, gl_enum, const void *, unsigned, unsigned)
-	GL_PROC(void, MultiDrawElementsIndirect, gl_enum, gl_enum, const void *, unsigned, unsigned)
+	GL_PROC(void, MultiDrawElementsIndirect, gl_enum, gl_type, const void *, unsigned, unsigned)
 
 	// *INDENT-ON*
 };
@@ -143,16 +143,6 @@ enum class gl_enum : unsigned
 
 	TEXTURE_CUBE_MAP_POSITIVE_X_EXT = 0x8515, TEXTURE_CUBE_MAP_NEGATIVE_X_EXT, TEXTURE_CUBE_MAP_POSITIVE_Y_EXT,
 	TEXTURE_CUBE_MAP_NEGATIVE_Y_EXT, TEXTURE_CUBE_MAP_POSITIVE_Z_EXT, TEXTURE_CUBE_MAP_NEGATIVE_Z_EXT,
-
-	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
-	DOUBLE = 0x140A,
-	UNSIGNED_INT64 = 0x140F,
-
-	RED = 0x1903,
-	RG = 0x8227, RGB = 0x1907, BGR = 0x80E0, BGRA, RGBA = 0x1908, STENCIL_INDEX = 0x1901, DEPTH_COMPONENT,
-	DEPTH_STENCIL = 0x84F9,
-	FLOAT_32_UNSIGNED_INT_24_8_REV = 0x8DAD,
-	UNSIGNED_INT_24_8 = 0x84FA,
 
 	CLAMP = 0x2900, REPEAT,
 	CLAMP_TO_EDGE = 0x812F,
@@ -202,11 +192,6 @@ enum class gl_enum : unsigned
 	UNIFORM_BUFFER = 0x8A11,
 	UNIFORM_BUFFER_OFFSET_ALIGNMENT = 0x8A34,
 
-	FLOAT_VEC2 = 0x8B50, FLOAT_VEC3, FLOAT_VEC4, INT_VEC2, INT_VEC3, INT_VEC4, BOOL,
-	FLOAT_MAT2 = 0x8B5A, FLOAT_MAT3, FLOAT_MAT4,
-
-	UNSIGNED_INT_VEC2 = 0x8DC6, UNSIGNED_INT_VEC3, UNSIGNED_INT_VEC4,
-
 	COMPILE_STATUS = 0x8B81, LINK_STATUS, VALIDATE_STATUS, INFO_LOG_LENGTH,
 	CURRENT_PROGRAM = 0x8B8D,
 
@@ -234,7 +219,7 @@ GL3D_ENUM_PLUS( gl_enum )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-enum class gl_format : unsigned
+enum class gl_internal_format : unsigned
 {
 	NONE = 0,
 	RGB8 = 0x8051,
@@ -250,7 +235,36 @@ enum class gl_format : unsigned
 	DEPTH32F_STENCIL8 = 0x8CAD,
 };
 
-GL3D_ENUM_PLUS( gl_format )
+GL3D_ENUM_PLUS( gl_internal_format )
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class gl_format : unsigned
+{
+	NONE = 0,
+	RED = 0x1903,
+	RG = 0x8227, RGB = 0x1907, BGR = 0x80E0, BGRA, RGBA = 0x1908, STENCIL_INDEX = 0x1901, DEPTH_COMPONENT,
+	DEPTH_STENCIL = 0x84F9,
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class gl_type : unsigned
+{
+	NONE = 0,
+
+	BYTE = 0x1400, UNSIGNED_BYTE, SHORT, UNSIGNED_SHORT, INT, UNSIGNED_INT, FLOAT,
+	DOUBLE = 0x140A,
+	UNSIGNED_INT64 = 0x140F,
+
+	FLOAT_VEC2 = 0x8B50, FLOAT_VEC3, FLOAT_VEC4, INT_VEC2, INT_VEC3, INT_VEC4, BOOL,
+	FLOAT_MAT2 = 0x8B5A, FLOAT_MAT3, FLOAT_MAT4,
+
+	UNSIGNED_INT_VEC2 = 0x8DC6, UNSIGNED_INT_VEC3, UNSIGNED_INT_VEC4,
+
+	FLOAT_32_UNSIGNED_INT_24_8_REV = 0x8DAD,
+	UNSIGNED_INT_24_8 = 0x84FA,
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -262,7 +276,7 @@ struct layout
 	struct attr
 	{
 		unsigned location, offset, element_count;
-		gl_enum element_type;
+		gl_type element_type;
 	};
 
 	std::vector<attr> attribs;
@@ -275,15 +289,17 @@ struct layout
 private:
 	template <typename T> struct type { };
 
-	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, gl_enum::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, gl_enum::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, gl_enum::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, gl_enum::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, gl_enum::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, gl_enum::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, gl_enum::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, gl_enum::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, gl_enum::UNSIGNED_BYTE }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, gl_type::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, gl_type::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, gl_type::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, gl_type::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, gl_type::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, gl_type::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<uvec3> ) { a = { loc, off, 3, gl_type::UNSIGNED_INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, gl_type::FLOAT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, gl_type::INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<uvec4> ) { a = { loc, off, 4, gl_type::UNSIGNED_INT }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, gl_type::UNSIGNED_BYTE }; }
 
 	template <typename T1, typename T2, typename... Args>
 	void init( unsigned index, unsigned location, T1 T2::*member, Args &&... args )
@@ -440,9 +456,9 @@ public:
 	static ptr checkerboard();
 	static ptr debug_grid();
 
-	texture( gl_enum type, gl_format format, const uvec3 &dimensions, bool hasMips = false );
+	texture( gl_enum type, gl_internal_format format, const uvec3 &dimensions, bool hasMips = false );
 
-	texture( gl_format format, const uvec2 &dimensions, bool hasMips = false )
+	texture( gl_internal_format format, const uvec2 &dimensions, bool hasMips = false )
 		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, hasMips )
 	{
 
@@ -456,11 +472,11 @@ public:
 		const void *data = nullptr;
 	};
 
-	texture( gl_enum type, gl_format format, const uvec3 &dimensions,
+	texture( gl_enum type, gl_internal_format format, const uvec3 &dimensions,
 	         const detail::type_range<part> &parts,
 	         bool buildMips = true, bool makeCopy = true );
 
-	texture( gl_format format, const uvec2 &dimensions,
+	texture( gl_internal_format format, const uvec2 &dimensions,
 	         const detail::type_range<part> &parts,
 	         bool buildMips = true, bool makeCopy = true )
 		: texture( gl_enum::TEXTURE_2D, format, { dimensions.x, dimensions.y, 1 }, parts, buildMips, makeCopy )
@@ -468,7 +484,7 @@ public:
 
 	}
 
-	texture( gl_format format, const uvec2 &dimensions,
+	texture( gl_internal_format format, const uvec2 &dimensions,
 	         const void *data,
 	         bool buildMips = true, bool makeCopy = true )
 		: texture( format, dimensions, part{ 0, 0, 0, data }, buildMips, makeCopy )
@@ -479,7 +495,7 @@ public:
 	virtual ~texture();
 
 	gl_enum type() const { return _type; }
-	gl_format format() const { return _format; }
+	gl_internal_format format() const { return _format; }
 	const uvec3 &dimensions() const { return _dimensions; }
 
 	unsigned width( unsigned mipLevel = 0 ) const { return maximum( 1, _dimensions.x >> mipLevel ); }
@@ -531,7 +547,7 @@ protected:
 	void clear();
 
 	gl_enum _type = gl_enum::NONE;
-	gl_format _format = gl_format::NONE;
+	gl_internal_format _format = gl_internal_format::NONE;
 	uvec3 _dimensions;
 
 	std::unique_ptr<part[]> _parts;

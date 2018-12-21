@@ -39,7 +39,9 @@ class shader_code;
 class texture;
 
 enum class gl_enum : unsigned;
+enum class gl_internal_format : unsigned;
 enum class gl_format : unsigned;
+enum class gl_type : unsigned;
 
 namespace detail { struct window_impl; }
 

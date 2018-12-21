@@ -125,6 +125,15 @@ protected:
 		GL3D_LAYOUT( 0, &gpu_vertex::pos, 1, &gpu_vertex::color, 2, &gpu_vertex::uv )
 	};
 
+	struct compact_gpu_vertex
+	{
+		vec3 pos;
+		uvec3 data;
+		vec2 uv;
+
+		GL3D_LAYOUT( 0, &compact_gpu_vertex::pos, 1, &compact_gpu_vertex::data, 2, &compact_gpu_vertex::uv )
+	};
+
 	vec4 _currentColor;
 	vec2 _currentUV;
 

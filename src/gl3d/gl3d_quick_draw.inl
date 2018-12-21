@@ -173,7 +173,7 @@ font::ptr font::create( const char *base64Data )
 	data = cursorInput;
 
 	font::ptr result = std::make_shared<font>();
-	result->char_atlas = texture::create( gl_format::RGBA8, uvec2{ texWidth, texHeight }, image.get() );
+	result->char_atlas = texture::create( gl_internal_format::RGBA8, uvec2{ texWidth, texHeight }, image.get() );
 	result->line_height = GL3D_DATA_EXTRACT( uint8_t );
 	result->base = GL3D_DATA_EXTRACT( uint8_t );
 
