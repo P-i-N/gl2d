@@ -216,10 +216,10 @@ font::ptr font::create( const char *base64Data )
 quick_draw::quick_draw()
 {
 	static const char *s_immediateShader = R"SHADER_SOURCE(
-	#vertex
-	layout (location = 0) in vec3 vertex_Position;
-	layout (location = 1) in vec4 vertex_Color;
-	layout (location = 2) in vec2 vertex_UV;
+#vertex
+
+	layout (location = 0) in vec4 v_PositionColor;
+	layout (location = 1) in uvec4 v_Data;
 
 	in int gl_BaseInstanceARB;
 
@@ -229,32 +229,34 @@ quick_draw::quick_draw()
 
 	out vec4 Color;
 	out vec2 UV;
-	flat out int DataIndex;
+	flat out uint TextureIndex;
 
 	void main()
 	{
-		DataIndex = gl_BaseInstanceARB + gl_InstanceID;
-		mat4 transform = u_Transforms[DataIndex];
-		gl_Position = u_ProjectionMatrix * u_ViewMatrix * transform * vec4(vertex_Position, 1);
-		Color = vertex_Color;
-		UV = vertex_UV;
+		mat4 transform = u_Transforms[gl_BaseInstance + gl_InstanceID];
+		gl_Position = u_ProjectionMatrix * u_ViewMatrix * transform * vec4(v_PositionColor.xyz, 1);
+		
+		uint c = floatBitsToUint(v_PositionColor.w);
+		Color = vec4(float(c & 0xFF), float((c >> 8) & 0xFF), float((c >> 16) & 0xFF), float((c >> 24) & 0xFF));
+		Color /= 255.0;
+		UV = vec2(uintBitsToFloat(v_Data.x), uintBitsToFloat(v_Data.y));
+		TextureIndex = (v_Data.z >> 16);
 	}
 
-	#fragment
+#fragment
 
-	uniform ivec4 u_Scissors[64];
 	uniform uint64_t u_Textures[64];
 
 	layout(origin_upper_left) in vec4 gl_FragCoord;
 	in vec4 Color;
 	in vec2 UV;
-	flat in int DataIndex;
+	flat in uint TextureIndex;
 
 	out vec4 out_Color;
 
 	void main()
 	{
-		out_Color = Color * texture(sampler2D(u_Textures[DataIndex]), UV);
+		out_Color = Color * texture(sampler2D(u_Textures[TextureIndex]), UV);
 	}
 	)SHADER_SOURCE";
 
@@ -287,13 +289,16 @@ void quick_draw::reset()
 	_startVertex = UINT_MAX;
 
 	_transforms = { mat4() };
-	_scissors = { ivec4( 0, 0, 16384, 16384 ) };
+
+	_currentData = { 0, 0, 0, 0 };
+	set_scissors( { 0, 0, 4095, 4095 } );
+	uv( { 0, 0 } );
 
 	_textureHandles = { 0 };
 	_textureIndexMap = { { texture::white_pixel(), 0 } };
 
-	_currentUV = { 0, 0 };
-	_currentColor = { 1, 1, 1, 1 };
+	unsigned white = 0xFFFFFFFFu;
+	memcpy( &_currentColor, &white, 4 );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -308,7 +313,7 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 			_vertexBuffer = buffer::create( buffer_usage::dynamic_resizable, _vertices );
 		else
 		{
-			auto verticesSize = _vertices.size() * sizeof( gpu_vertex );
+			auto verticesSize = _vertices.size() * sizeof( compact_gpu_vertex );
 
 			if ( verticesSize > _vertexBuffer->size() )
 				queue->resize_buffer( _vertexBuffer, _vertices.data(), verticesSize );
@@ -338,16 +343,14 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 	}
 
 	queue->bind_shader( _shader );
-	queue->bind_vertex_buffer( _vertexBuffer, gpu_vertex::layout() );
+	queue->bind_vertex_buffer( _vertexBuffer, compact_gpu_vertex::layout() );
 	queue->bind_index_buffer( _indexBuffer );
 	queue->set_uniform( "u_ProjectionMatrix", proj );
 	queue->set_uniform( "u_ViewMatrix", view );
+	queue->set_uniform( "u_Textures", _textureHandles );
 
 	unsigned currentStateIndex = UINT_MAX;
-
 	mat4 transforms[detail::k_renderBatchSize];
-	ivec4 scissors[detail::k_renderBatchSize];
-	uint64_t textures[detail::k_renderBatchSize];
 
 	size_t start = 0;
 	while ( start < _drawCalls.size() )
@@ -357,15 +360,11 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 
 		for ( size_t i = 0; i < count; ++i )
 		{
-			auto id = _drawCalls[start + i].instanceData;
-			transforms[i] = _transforms[id.x];
-			scissors[i] = _scissors[id.y];
-			textures[i] = _textureHandles[id.z];
+			auto id = _drawCalls[start + i].transformIndex;
+			transforms[i] = _transforms[id];
 		}
 
 		queue->set_uniform( "u_Transforms", transforms, count );
-		queue->set_uniform( "u_Scissors", scissors, count );
-		queue->set_uniform( "u_Textures", textures, count );
 
 		for ( size_t i = start, instanceID = 0; i < end; ++i, ++instanceID )
 		{
@@ -400,25 +399,23 @@ void quick_draw::pop_transform()
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::bind_texture( texture::ptr tex )
 {
-	assert( !building_mesh() );
+	_currentData.z &= 0x0000FFFFu;
 
 	if ( tex )
 	{
 		auto iter = _textureIndexMap.find( tex );
 		if ( iter != _textureIndexMap.end() )
 		{
-			_currentDrawCall.instanceData.z = iter->second;
+			_currentData.z |= ( iter->second << 16 );
 			return;
 		}
 
 		auto index = static_cast<unsigned>( _textureHandles.size() );
-		_currentDrawCall.instanceData.z = index;
+		_currentData.z |= ( index << 16 );
 		_textureIndexMap.insert( { tex, index } );
 		_textureHandles.push_back( 0 );
 		_dirtyBuffers = true;
 	}
-	else
-		_currentDrawCall.instanceData.z = 0;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -434,6 +431,15 @@ void quick_draw::bind_font( font::ptr f )
 	{
 
 	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::set_scissors( const uvec4 &box )
+{
+	assert( box.x < 4096 && box.y < 4096 && box.z < 4096 && box.w < 4096 );
+
+	//_currentData &= 0xFFFF000000000000ull; // Clear lower 4x 12bits (keep 16bit texture index)
+	//_currentData |= box.x | ( box.y << 12 ) | ( box.z << 24 ) | ( static_cast<uint64_t>( box.w ) << 36 );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -516,23 +522,26 @@ void quick_draw::vertex( const vec3 &pos )
 		_currentVertex = _vertices.end() - detail::k_vertexBatchAllocation;
 	}
 
-	_currentVertex->pos = pos;
-	_currentVertex->color = _currentColor;
-	_currentVertex->uv = _currentUV;
-
+	_currentVertex->posColor = vec4( pos.x, pos.y, pos.z, _currentColor );
+	_currentVertex->data = _currentData;
 	++_currentVertex;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::color( const vec4 &c )
 {
-	_currentColor = c;
+	auto u = static_cast<unsigned>( clamp( c.x, 0.0f, 1.0f ) * 255.0f );
+	u |= static_cast<unsigned>( clamp( c.y, 0.0f, 1.0f ) * 255.0f ) << 8u;
+	u |= static_cast<unsigned>( clamp( c.z, 0.0f, 1.0f ) * 255.0f ) << 16u;
+	u |= static_cast<unsigned>( clamp( c.w, 0.0f, 1.0f ) * 255.0f ) << 24u;
+
+	memcpy( &_currentColor, &u, 4 );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::uv( const vec2 &texCoord )
 {
-	_currentUV = texCoord;
+	memcpy( _currentData.data, texCoord.data, 8 );
 }
 
 } // namespace gl3d

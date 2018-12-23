@@ -59,6 +59,8 @@ public:
 
 	void bind_font( font::ptr f );
 
+	void set_scissors( const uvec4 &box );
+
 	void begin( gl_enum primitiveType );
 
 	void end();
@@ -96,13 +98,13 @@ protected:
 		unsigned firstIndex = UINT_MAX;
 		unsigned indexCount = 0;
 		unsigned stateIndex = UINT_MAX;
-		uvec3 instanceData = { 0, 0, 0 };
+		unsigned transformIndex = 0;
 
 		bool try_merging_with( const draw_call &dc )
 		{
 			if (
 			    stateIndex != dc.stateIndex ||
-			    instanceData != dc.instanceData ||
+			    transformIndex != dc.transformIndex ||
 			    primitive != dc.primitive ||
 			    ( firstIndex + indexCount ) != dc.firstIndex )
 				return false;
@@ -116,32 +118,20 @@ protected:
 
 	draw_call _currentDrawCall;
 
-	struct gpu_vertex
-	{
-		vec3 pos;
-		vec4 color;
-		vec2 uv;
-
-		GL3D_LAYOUT( 0, &gpu_vertex::pos, 1, &gpu_vertex::color, 2, &gpu_vertex::uv )
-	};
-
 	struct compact_gpu_vertex
 	{
-		vec3 pos;
-		uvec3 data;
-		vec2 uv;
+		vec4 posColor; // xyz = world position, w = 32bit RGBA color (converted using floatBitsToUint)
+		uvec4 data;    // xy = UV coord, zw = 16bits texture index, 4x 12bits scissor rect.
 
-		GL3D_LAYOUT( 0, &compact_gpu_vertex::pos, 1, &compact_gpu_vertex::data, 2, &compact_gpu_vertex::uv )
+		GL3D_LAYOUT( 0, &compact_gpu_vertex::posColor, 1, &compact_gpu_vertex::data )
 	};
 
-	vec4 _currentColor;
-	vec2 _currentUV;
+	float _currentColor;
+	uvec4 _currentData;
 
-	std::vector<gpu_vertex> _vertices;
+	std::vector<compact_gpu_vertex> _vertices;
 	std::vector<unsigned> _indices;
 	std::vector<mat4> _transforms;
-	std::vector<ivec4> _scissors;
-	std::vector<uvec3> _instanceData;
 
 	decltype( _vertices )::iterator _currentVertex;
 	unsigned _startVertex = UINT_MAX;

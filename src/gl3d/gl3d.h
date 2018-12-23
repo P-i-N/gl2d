@@ -84,6 +84,7 @@ struct gl_api
 	GL_PROC(void, EnableVertexArrayAttrib, unsigned, unsigned)
 	GL_PROC(void, DisableVertexArrayAttrib, unsigned, unsigned)
 	GL_PROC(void, VertexArrayAttribFormat, unsigned, unsigned, int, gl_type, unsigned char, unsigned)
+	GL_PROC(void, VertexArrayAttribIFormat, unsigned, unsigned, int, gl_type, unsigned)
 	GL_PROC(void, VertexArrayAttribBinding, unsigned, unsigned, unsigned)
 	GL_PROC(void, VertexArrayVertexBuffer, unsigned, unsigned, unsigned, const void *, int)
 	GL_PROC(void, VertexArrayElementBuffer, unsigned, unsigned)
@@ -277,6 +278,7 @@ struct layout
 	{
 		unsigned location, offset, element_count;
 		gl_type element_type;
+		bool is_integer;
 	};
 
 	std::vector<attr> attribs;
@@ -289,17 +291,17 @@ struct layout
 private:
 	template <typename T> struct type { };
 
-	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, gl_type::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, gl_type::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, gl_type::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, gl_type::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, gl_type::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, gl_type::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<uvec3> ) { a = { loc, off, 3, gl_type::UNSIGNED_INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, gl_type::FLOAT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, gl_type::INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<uvec4> ) { a = { loc, off, 4, gl_type::UNSIGNED_INT }; }
-	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, gl_type::UNSIGNED_BYTE }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<int> ) { a = { loc, off, 1, gl_type::INT, true }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<float> ) { a = { loc, off, 1, gl_type::FLOAT, false }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec2> ) { a = { loc, off, 2, gl_type::FLOAT, false }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec2> ) { a = { loc, off, 2, gl_type::INT, true }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec3> ) { a = { loc, off, 3, gl_type::FLOAT, false }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec3> ) { a = { loc, off, 3, gl_type::INT, true }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<uvec3> ) { a = { loc, off, 3, gl_type::UNSIGNED_INT, true }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<vec4> ) { a = { loc, off, 4, gl_type::FLOAT, false }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<ivec4> ) { a = { loc, off, 4, gl_type::INT, true }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<uvec4> ) { a = { loc, off, 4, gl_type::UNSIGNED_INT, true }; }
+	void fill( attr &a, unsigned loc, unsigned off, type<byte_vec4> ) { a = { loc, off, 4, gl_type::UNSIGNED_BYTE, false }; }
 
 	template <typename T1, typename T2, typename... Args>
 	void init( unsigned index, unsigned location, T1 T2::*member, Args &&... args )

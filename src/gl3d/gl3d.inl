@@ -330,8 +330,7 @@ bool shader_code::source( std::string_view sourceCode, const std::filesystem::pa
 
 	std::string sharedSource =
 	    "#version 460 core\n"
-	    "#extension GL_ARB_gpu_shader_int64 : enable\n"
-	    "#extension GL_ARB_shader_draw_parameters : enable\n";
+	    "#extension GL_ARB_gpu_shader_int64 : enable\n";
 
 	std::string *currentStage = &sharedSource;
 
@@ -452,13 +451,13 @@ texture::ptr texture::debug_grid()
 	std::scoped_lock lock( detail::g_builtInTextureMutex );
 	if ( !detail::g_debugGrid )
 	{
-		const uint32_t crossColors[] =
-		{ 0xFFB116E5u, 0xFF5E167Eu, 0xFFE54A16u, 0xFFE5E516u, 0xFF4AE516u, 0xFF16E57Eu, 0xFF16B1E5u, 0xFF1616E5u };
-
-		constexpr unsigned crossSize = 8;
 		constexpr unsigned textureSize = 1024;
 		constexpr unsigned gridSize = 128;
 		constexpr unsigned miniGridSize = 32;
+		constexpr unsigned crossSize = 8;
+
+		const uint32_t crossColors[] =
+		{ 0xFFB116E5u, 0xFF5E167Eu, 0xFFE54A16u, 0xFFE5E516u, 0xFF4AE516u, 0xFF16E57Eu, 0xFF16B1E5u, 0xFF1616E5u };
 
 		auto pixels = std::make_unique<uint32_t[]>( textureSize * textureSize );
 
@@ -1727,7 +1726,11 @@ unsigned context::get_or_create_layout_vao( const detail::layout *layout )
 
 		for ( auto &a : layout->attribs )
 		{
-			gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
+			if ( a.is_integer )
+				gl.VertexArrayAttribIFormat( vaoID, a.location, a.element_count, a.element_type, a.offset );
+			else
+				gl.VertexArrayAttribFormat( vaoID, a.location, a.element_count, a.element_type, 0, a.offset );
+
 			gl.VertexArrayAttribBinding( vaoID, a.location, 0 );
 		}
 
