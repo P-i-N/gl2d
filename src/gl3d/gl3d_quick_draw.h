@@ -53,6 +53,8 @@ public:
 
 	void push_transform();
 
+	void push_transform( const mat4 &mult );
+
 	void pop_transform();
 
 	void bind_texture( texture::ptr tex );
@@ -76,6 +78,14 @@ public:
 	void color( const vec3 &c, float alpha = 1.0f ) { color( { c.x, c.y, c.z, alpha } ); }
 
 	void uv( const vec2 &texCoord );
+
+	void draw_aabb( const box3 &aabb, bool filled = false );
+
+	void draw_frustum( const mat4 &mat );
+
+	void draw_texture( const vec2 &pos, texture::ptr tex, float scale = 1.0f );
+
+	void draw_text( const vec2 &pos, std::string_view text );
 
 protected:
 	bool _dirtyBuffers = true;

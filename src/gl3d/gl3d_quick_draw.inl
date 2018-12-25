@@ -221,7 +221,7 @@ quick_draw::quick_draw()
 	layout (location = 0) in vec4 v_PositionColor;
 	layout (location = 1) in uvec4 v_Data;
 
-	in int gl_BaseInstanceARB;
+	in int gl_BaseInstance;
 
 	uniform mat4 u_ProjectionMatrix;
 	uniform mat4 u_ViewMatrix;
@@ -387,13 +387,22 @@ void quick_draw::render( cmd_queue::ptr queue, const mat4 &view, const mat4 &pro
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::push_transform()
 {
+	assert( !building_mesh() );
+	_transforms.push_back( _transforms.back() );
+}
 
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::push_transform( const mat4 &mult )
+{
+	assert( !building_mesh() );
+	_transforms.push_back( _transforms.back() * mult );
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void quick_draw::pop_transform()
 {
-
+	assert( !building_mesh() && _transforms.size() > 1 ); // There should always remain 1 matrix on the stack (identity)
+	_transforms.pop_back();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -438,8 +447,10 @@ void quick_draw::set_scissors( const uvec4 &box )
 {
 	assert( box.x < 4096 && box.y < 4096 && box.z < 4096 && box.w < 4096 );
 
-	//_currentData &= 0xFFFF000000000000ull; // Clear lower 4x 12bits (keep 16bit texture index)
-	//_currentData |= box.x | ( box.y << 12 ) | ( box.z << 24 ) | ( static_cast<uint64_t>( box.w ) << 36 );
+	uint64_t scissorData = box.x | ( box.y << 12 ) | ( box.z << 24 ) | ( static_cast<uint64_t>( box.w ) << 36 );
+	_currentData.z &= 0xFFFF0000u;
+	_currentData.z |= static_cast<unsigned>( scissorData >> 32u );
+	_currentData.w = scissorData & 0xFFFFFFFFu;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -542,6 +553,56 @@ void quick_draw::color( const vec4 &c )
 void quick_draw::uv( const vec2 &texCoord )
 {
 	memcpy( _currentData.data, texCoord.data, 8 );
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::draw_aabb( const box3 &aabb, bool filled )
+{
+	if ( filled )
+	{
+
+	}
+	else
+	{
+		begin( gl_enum::LINES );
+
+		end();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::draw_frustum( const mat4 &worldProj )
+{
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::draw_texture( const vec2 &pos, texture::ptr tex, float scale )
+{
+	if ( !tex )
+		return;
+
+	auto oldData = _currentData;
+	bind_texture( tex );
+	begin( gl_enum::QUADS );
+	{
+		uv( { 0, 1 } );
+		vertex( pos );
+		uv( { 1, 1 } );
+		vertex( { pos.x + tex->width() * scale, pos.y } );
+		uv( { 1, 0 } );
+		vertex( { pos.x + tex->width() * scale, pos.y + tex->height() * scale } );
+		uv( { 0, 0 } );
+		vertex( { pos.x, pos.y + tex->height() * scale } );
+	}
+	end();
+	_currentData = oldData;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void quick_draw::draw_text( const vec2 &pos, std::string_view text )
+{
+
 }
 
 } // namespace gl3d

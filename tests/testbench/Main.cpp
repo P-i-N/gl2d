@@ -320,17 +320,7 @@ int main()
 				ctx->unbind_render_targets();
 
 				auto qd = w->quick_draw();
-				qd->bind_texture( rt );
-				qd->begin( gl_enum::QUADS );
-				qd->uv( { 0, 1 } );
-				qd->vertex( { 0, 0 } );
-				qd->uv( { 1, 1 } );
-				qd->vertex( { rt->width(), 0 } );
-				qd->uv( { 1, 0 } );
-				qd->vertex( { rt->width(), rt->height() } );
-				qd->uv( { 0, 0 } );
-				qd->vertex( { 0, rt->height() } );
-				qd->end();
+				qd->draw_texture( { 0, 0 }, rt );
 			}
 			break;
 		}
